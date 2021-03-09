@@ -110,3 +110,4 @@ package-lock.json
 # Generated PNG files
 *.png
 output/
+examples/
