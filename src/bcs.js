@@ -38,17 +38,17 @@ const { chromium } = require('playwright');
   // Box Extraction Process - JavaScript code evaluated in web browser context
   const boxes = await page.evaluate(async () => {
 
-    const textNodes = extractTextNodes();
-    const imageNodes = await extractImageNodes();
+    var t0 = performance.now()
+      extractBoxes(document.body);
+    var t1 = performance.now()
 
     return {
-      textNodes: textNodes, 
-      imageNodes:  imageNodes,
-      oneChildNodes: oneChildNodes,
+      boxes: boxes,
       document: {
         height: document.body.scrollHeight, 
         width: document.body.scrollWidth 
-      }
+      }, 
+      time: "Call to doSomething took " + (t1 - t0) + " milliseconds."
     };
 
   });

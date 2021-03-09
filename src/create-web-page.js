@@ -66,16 +66,8 @@ function buildHtml(req, data) {
   svg.width(data.document.width);
   svg.height(data.document.height);
 
-  data.textNodes.forEach(node => {
+  data.boxes.forEach(node => {
    createSvgBox(node);  
-  });
-
-  data.oneChildNodes.forEach(node => {
-    createSvgBox(node);  
-   });
-
-  data.imageNodes.forEach(img => {
-    createSvgBox(img);  
   });
 
   return `<!DOCTYPE html>
