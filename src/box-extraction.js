@@ -6,15 +6,61 @@
  * Description: Functions useful for process of box extraction.
  */
 
+/**
+ * All extracted boxes 
+ */
+ var boxes = [];
+ var imageNodes = [];
+ var textNodes = [];
+ var otherNodes = [];
 
-//  var textNodesCount=0;
-//  var textNodes=[];
-//  var imageNodesCount=0;
-//  var imageNodes=[];
-//  var oneChildNodesCount = 0;
-//  var oneChildNodes = [];
-//  var auxTextNodeRange = document.createRange();
-//  var allElements = [];
+ /**
+  * Extracts all relevant boxes from given web page
+  * @param {Root HTML Element from which extraction starts} node 
+  * @returns 
+  */
+ function extractBoxes(node) {
+   
+   if(node.nodeType == Node.TEXT_NODE) 
+   {
+     // Skip text nodes that aren't visible 
+     if(!isVisible(node)) {
+       return;
+     } 
+ 
+    //  saveTextBox(node);
+     textNodes.push(node);
+     return;
+ 
+   } 
+   else if (node.nodeType == Node.ELEMENT_NODE) 
+   {
+     // Skip element unrelevant nodes
+     if(isExcluded(node)) {
+         return;
+     } 
+ 
+     // Image node
+     if(node.tagName == "IMG") 
+     {
+      //  saveImageBox(node);
+      images.push(node);
+     } 
+     else
+     {
+         if(hasNoBranches(node))
+         {
+           saveSmallestBox(node);
+         }
+     } 
+   }
+ 
+ 
+    // Recursively extract boxes from child nodes
+    for (let i=0; i < node.childNodes.length; i++) {
+     extractBoxes(node.childNodes[i]);
+   }
+ }
 
 /**
  * Get computed style property value of HTML Element
@@ -91,6 +137,94 @@ function isExcluded(node) {
 }
 
 /**
+ * Check if Element has transparent background
+ * @param {HTML Element} element 
+ * @returns true - has transparent background, false - doesn't have
+ */
+ function isTransparent(element) {
+
+  var hasNoBgImage = getStylePropertyValue(element, 'background-image') === 'none';
+  var hasNoBgColor = getStylePropertyValue(element, 'background-color') === 'rgba(0, 0, 0, 0)';
+
+  // Check background color and image of element if it is transparent
+  if(hasNoBgImage && hasNoBgColor) 
+  {
+    return true;
+  }
+}
+
+/**
+ * Check if HTML Element has branches
+ * @returns true - has no branches, false - has branches
+ */
+function hasNoBranches(node) {
+
+  var childNodesCount = node.childNodes.length;
+
+  // Has branches
+  if(childNodesCount > 1) {
+    return false;
+  }
+
+  // Has no branches - it is one-child node
+  if(childNodesCount == 0) {
+    return true;
+  }
+
+  if(node.childNodes.length == 1){
+
+    // If element's only child is text node 
+    if(node.childNodes[0].nodeType == Node.TEXT_NODE) 
+    {
+      return true;
+    } 
+    else
+    {
+      // Continue to leaves recursively
+      hasNoBranches(node.childNodes[0]);
+    }
+  } 
+}
+
+function saveSmallestBox(node) {
+  var childNodesCount = node.childNodes.length;
+  var child, bgColor;
+
+  if(childNodesCount == 0)
+  {
+    saveBox(node);
+  }
+  else
+  {
+    child = node.childNodes[0];
+    // bgColor = getBgColor(node, parentBg);
+
+    if(child.nodeType == Node.TEXT_NODE)
+    {
+      saveTextBox(child);
+    } 
+    else if(child.tagName == "IMG") 
+    {
+      // saveImageBox(child);
+    }
+    else
+    {
+      if(isTransparent(node))
+      {
+        saveSmallestBox(child, parentBg);
+      }
+      else
+      {
+        saveBox(child, parentBg);
+      }
+    }
+
+
+  } 
+
+}
+
+/**
  * Function for timing the evaluation, testing purposes
  */
 function timeTheFunction() {
@@ -104,10 +238,10 @@ function timeTheFunction() {
  * Creates box from text node and adds it into the ouput array.
  * @param {Text node} textNode 
  */
-function storeTextBox(textNode) {
+function saveTextBox(textNode) {
 
   if(textNode.nodeType != Node.TEXT_NODE) {
-    throw "Parameter in function createTextBox() has to be TextNode!";
+    throw "Parameter in function saveTextBox() has to be TextNode!";
   }
 
   var color, bboxes;
@@ -135,43 +269,37 @@ function storeTextBox(textNode) {
   }      
 }
 
-/**
- * All extracted boxes 
- */
-var boxes = [];
-
-/**
- * Extracts all relevant boxes from given web page
- * @param {Root HTML Element from which extraction starts} node 
- * @returns 
- */
-function extractBoxes(node) {
-
-  if (node.nodeType == Node.ELEMENT_NODE) {
-
-    // Skip element unrelevant nodes
-    if(isExcluded(node)) {
-        return;
-    } 
-
-    // Recursively extract boxes from child nodes
-    for (let i=0; i < node.childNodes.length; i++) {
-      extractBoxes(node.childNodes[i]);
-    }
-
-  } else if(node.nodeType == Node.TEXT_NODE) {
-
-    // Skip text nodes that aren't visible 
-    if(!isVisible(node)) {
-      return;
-    } 
-
-    storeTextBox(node);
-
+function saveBox(oneChildNode) {
+  if(oneChildNode.nodeType != Node.ELEMENT_NODE) {
+    throw "Parameter in function saveBox() has to be ElementNode!";
   }
 
+  var color, bbox;
+
+  // One-child box's background color 
+  color = getStylePropertyValue(oneChildNode, 'background-color');
+
+  // Minimal bounding box 
+  bbox = oneChildNode.getBoundingClientRect();
+
+  // Save one-child box into output set of boxes
+  // boxes.push({color: color, bbox: JSON.stringify(bbox)});
+  boxes.push(oneChildNode);
 
 }
+
+async function saveImageBox(img) {
+  
+  const fac = new FastAverageColor();
+  var color = await fac.getColorAsync(img.src);
+  var bbox = JSON.stringify(img.getBoundingClientRect());
+  return {color: color.hex, bbox: bbox};
+//     // boxes.push({color: color, bbox: bbox});
+}
+
+
+
+
    
 // function isOneChildNode(node) {
 
@@ -433,18 +561,18 @@ function extractBoxes(node) {
 // }
 
 
-// async function extractImageNodes() {
-//     var imageNodes = [];
-//     const fac = new FastAverageColor();
-//     const images = Array.from(document.querySelectorAll('img')); // getElementsByTagName is probably faster
-//     const colorPremises = images.map(img => fac.getColorAsync(img.src));
-//     const colors = await Promise.all(colorPremises);
-//     const bboxes = images.map(img => JSON.stringify(img.getBoundingClientRect()));
+async function extractImageNodes() {
+    var imageNodes = [];
+    const fac = new FastAverageColor();
+    const images = Array.from(document.querySelectorAll('img')); // getElementsByTagName is probably faster
+    const colorPremises = images.map(img => fac.getColorAsync(img.src));
+    const colors = await Promise.all(colorPremises);
+    const bboxes = images.map(img => JSON.stringify(img.getBoundingClientRect()));
     
-//     for(i=0; i<images.length; i++) {
-//         imageNodes[i] = {bbox: bboxes[i], color: colors[i].hex};
-//     }
+    for(i=0; i<images.length; i++) {
+        imageNodes[i] = {bbox: bboxes[i], color: colors[i].hex};
+    }
     
-//     return imageNodes;
-// }
+    return {imageNodes: imageNodes, imagescount: imageNodes.length};
+}
     

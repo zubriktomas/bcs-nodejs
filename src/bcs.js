@@ -39,11 +39,11 @@ const { chromium } = require('playwright');
   const boxes = await page.evaluate(async () => {
 
     var t0 = performance.now()
-      extractBoxes(document.body);
+    extractBoxes(document.body);
     var t1 = performance.now()
 
     return {
-      boxes: boxes,
+      boxes: {boxes},
       document: {
         height: document.body.scrollHeight, 
         width: document.body.scrollWidth 
