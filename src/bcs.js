@@ -28,7 +28,8 @@ const { chromium } = require('playwright');
 
   // Load webpage for segmentation process given by input argument
   // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'networkidle2'});
-  await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
+  // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
+  await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
 
   // Add JavaScript files into webpage for execution and processing in browser context
   await page.addScriptTag({ path: './src/helper-functions.js'});
@@ -39,11 +40,11 @@ const { chromium } = require('playwright');
   const boxes = await page.evaluate(async () => {
 
     var t0 = performance.now()
-    extractBoxes(document.body);
+    var boxes = extractBoxes();
     var t1 = performance.now()
 
     return {
-      boxes: {boxes},
+      boxes: boxes,
       document: {
         height: document.body.scrollHeight, 
         width: document.body.scrollWidth 

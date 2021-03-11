@@ -9,58 +9,67 @@
 /**
  * All extracted boxes 
  */
- var boxes = [];
- var imageNodes = [];
- var textNodes = [];
- var otherNodes = [];
+
+namespace = {};
+namespace.imageNodes = [];
+namespace.textNodes = [];
+namespace.otherNodes = [];
+
+function extractBoxes() {
+  extractNodes(document.body);
+  return getTextBox(namespace.textNodes[0]);
+}
 
  /**
   * Extracts all relevant boxes from given web page
   * @param {Root HTML Element from which extraction starts} node 
   * @returns 
   */
- function extractBoxes(node) {
-   
-   if(node.nodeType == Node.TEXT_NODE) 
-   {
-     // Skip text nodes that aren't visible 
-     if(!isVisible(node)) {
-       return;
-     } 
- 
-    //  saveTextBox(node);
-     textNodes.push(node);
-     return;
- 
-   } 
-   else if (node.nodeType == Node.ELEMENT_NODE) 
-   {
-     // Skip element unrelevant nodes
-     if(isExcluded(node)) {
-         return;
-     } 
- 
-     // Image node
-     if(node.tagName == "IMG") 
-     {
-      //  saveImageBox(node);
-      images.push(node);
-     } 
-     else
-     {
-         if(hasNoBranches(node))
-         {
-           saveSmallestBox(node);
-         }
-     } 
-   }
- 
- 
-    // Recursively extract boxes from child nodes
-    for (let i=0; i < node.childNodes.length; i++) {
-     extractBoxes(node.childNodes[i]);
-   }
- }
+function extractNodes(node) {
+  
+  if(isTextNode(node)) 
+  {
+    namespace.textNodes.push(node);
+    return;
+  } 
+  else if(isImageNode(node))
+  {
+      namespace.imageNodes.push(node);
+      return; 
+  }
+  else {
+    // Skip element unrelevant nodes
+    if(isExcluded(node)) {
+        return;
+    } 
+
+    if(hasNoBranches(node))
+    {
+      // Get smallest box and stop recursion
+      var smallest = getSmallest(node);
+
+      if(smallest == null) {
+        return;
+      } else if(isTextNode(smallest)) {
+        namespace.textNodes.push(smallest);
+      } else if(isImageNode(smallest)) {
+        namespace.imageNodes.push(smallest);
+      } else {
+        namespace.otherNodes.push(smallest);
+      }
+
+      return;
+    } 
+  }
+
+  // Get all valid child nodes
+  var childNodes = getChildNodes(node);
+
+  // Recursively extract boxes from child nodes
+  for (let i=0; i < childNodes.length; i++) {
+    extractNodes(childNodes[i]);
+  }
+}
 
 /**
  * Get computed style property value of HTML Element
@@ -137,6 +146,25 @@ function isExcluded(node) {
 }
 
 /**
+ * Check if Element has background image
+ * @param {HTML Element} element 
+ * @returns true, false
+ */
+function hasBackgroundImage(element) {
+  return getStylePropertyValue(element, 'background-image') === 'none';
+}
+
+//
+async function getImgColorAsync() {
+
+}
+
+function getBgColor() {
+
+}
+
+
+/**
  * Check if Element has transparent background
  * @param {HTML Element} element 
  * @returns true - has transparent background, false - doesn't have
@@ -147,9 +175,11 @@ function isExcluded(node) {
   var hasNoBgColor = getStylePropertyValue(element, 'background-color') === 'rgba(0, 0, 0, 0)';
 
   // Check background color and image of element if it is transparent
-  if(hasNoBgImage && hasNoBgColor) 
-  {
+  if(hasNoBgImage && hasNoBgColor) {
     return true;
+  } 
+  else{
+    return false;
   }
 }
 
@@ -157,70 +187,91 @@ function isExcluded(node) {
  * Check if HTML Element has branches
  * @returns true - has no branches, false - has branches
  */
-function hasNoBranches(node) {
+ function hasNoBranches(node) {
 
-  var childNodesCount = node.childNodes.length;
+  // Create Array from NodeList
+  var childNodes = getChildNodes(node);
 
-  // Has branches
-  if(childNodesCount > 1) {
+  // Has one child
+  if(childNodes.length == 1){
+
+    // Get first and only valid child
+    var child = childNodes[0];
+
+    if(isTextNode(child)) {
+      return true;
+    } else {
+      return hasNoBranches(child);
+    }
+  } 
+  else if (childNodes.length == 0) {
+    return true;
+  } else {
     return false;
   }
-
-  // Has no branches - it is one-child node
-  if(childNodesCount == 0) {
-    return true;
-  }
-
-  if(node.childNodes.length == 1){
-
-    // If element's only child is text node 
-    if(node.childNodes[0].nodeType == Node.TEXT_NODE) 
-    {
-      return true;
-    } 
-    else
-    {
-      // Continue to leaves recursively
-      hasNoBranches(node.childNodes[0]);
-    }
-  } 
 }
 
-function saveSmallestBox(node) {
-  var childNodesCount = node.childNodes.length;
-  var child, bgColor;
+function getEndChild(node) {
+  var childNodes = getChildNodes(node);
 
-  if(childNodesCount == 0)
+  if(childNodes.length == 1) 
   {
-    saveBox(node);
-  }
-  else
-  {
-    child = node.childNodes[0];
-    // bgColor = getBgColor(node, parentBg);
-
-    if(child.nodeType == Node.TEXT_NODE)
-    {
-      saveTextBox(child);
-    } 
-    else if(child.tagName == "IMG") 
-    {
-      // saveImageBox(child);
-    }
-    else
-    {
-      if(isTransparent(node))
-      {
-        saveSmallestBox(child, parentBg);
-      }
-      else
-      {
-        saveBox(child, parentBg);
-      }
-    }
-
-
+      return getEndChild(childNodes[0]);
   } 
+  else 
+  {
+      return node;
+  }
+}
+
+function getParentWithBackground(node) {
+   
+  var hasTransparentParent = isTransparent(node.parentElement);
+
+  if(hasNoBranches(node.parentElement) && !hasTransparentParent) 
+  {
+      return node.parentElement;
+  } 
+  else if (!hasTransparentParent) 
+  {
+      return getParentWithBackground(node.parentElement);
+  } 
+  else {
+      return null;
+  }
+}
+
+
+
+function getChildNodes(node) {
+  // Create Array from NodeList
+  var childNodes = Array.from(node.childNodes);
+  // Filter out non-visible nodes
+  childNodes = childNodes.filter(node => isVisible(node));
+  return childNodes;
+}
+
+function isTextNode(node) {
+    return node.nodeType == Node.TEXT_NODE;
+}
+
+function isImageNode(node) {
+    return node.tagName == "IMG";
+}
+
+function isElementNode(node) {
+    return !isTextNode(node) && !isImageNode(node);
+}
+
+function getSmallest(node) {
+
+  var lastChild = getEndChild(node);
+
+  if(isElementNode(lastChild) && isTransparent(lastChild)) {
+      return getParentWithBackground(lastChild);
+  } else {
+      return lastChild;
+  }
 
 }
 
@@ -229,7 +280,7 @@ function saveSmallestBox(node) {
  */
 function timeTheFunction() {
   var t0 = performance.now()
-  extractBoxes(document.body);
+  extractNodes(document.body);
   var t1 = performance.now()
   console.log("Box Extraction took " + (t1 - t0) + " milliseconds.")
 }
@@ -238,13 +289,13 @@ function timeTheFunction() {
  * Creates box from text node and adds it into the ouput array.
  * @param {Text node} textNode 
  */
-function saveTextBox(textNode) {
+function getTextBox(textNode) {
 
   if(textNode.nodeType != Node.TEXT_NODE) {
     throw "Parameter in function saveTextBox() has to be TextNode!";
   }
 
-  var color, bboxes;
+  var color, bbox, bboxes, textBoxes=[];
   var range = document.createRange();
 
   // Every text box has representing parent's color of text
@@ -265,26 +316,36 @@ function saveTextBox(textNode) {
 
   // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
   for(let i=0; i < bboxes.length; i++) {
-    boxes.push({color: color, bbox: JSON.stringify(bboxes[i])});
+    //saveTextBox() boxes.push({color: color, bbox: JSON.stringify(bboxes[i])});
+    bbox = JSON.stringify(bboxes[i]);
+    textBoxes.push({color: color, bbox: bbox})
   }      
+
+  return textBoxes;
 }
 
-function saveBox(oneChildNode) {
-  if(oneChildNode.nodeType != Node.ELEMENT_NODE) {
-    throw "Parameter in function saveBox() has to be ElementNode!";
+
+async function getBoxAsync() {
+
+}
+
+function getBox(node) {
+  if(node.nodeType != Node.ELEMENT_NODE) {
+    throw "Parameter in function getBox() has to be ElementNode!";
   }
 
   var color, bbox;
 
   // One-child box's background color 
-  color = getStylePropertyValue(oneChildNode, 'background-color');
+  color = getStylePropertyValue(node, 'background-color');
 
   // Minimal bounding box 
-  bbox = oneChildNode.getBoundingClientRect();
+  bbox = JSON.stringify(node.getBoundingClientRect());
 
   // Save one-child box into output set of boxes
   // boxes.push({color: color, bbox: JSON.stringify(bbox)});
-  boxes.push(oneChildNode);
+  // boxes.push(node);
+  return {color: color, bbox: bbox};
 
 }
 
@@ -296,31 +357,7 @@ async function saveImageBox(img) {
   return {color: color.hex, bbox: bbox};
 //     // boxes.push({color: color, bbox: bbox});
 }
-
-
-
-
    
-// function isOneChildNode(node) {
-
-//   // koniec rekurzie - je oneChildNode
-//   if(node.childNodes.length == 0){
-//     for (let i = 0; i < node.childNodes.length; i++) {
-//       if(node.childNodes[i].nodeValue.trim() != "") {
-//         return false;
-//       }
-//     }
-//     return true;  
-//   } 
-
-//   // koniec rekurzie - nie je oneChildNode
-//   if(node.childNodes.length > 1) {
-//       return false;
-//   }
-
-//   return isOneChildNode(node.firstElementChild);
-// }
-    
 // function containsSmallerBoxWithNontransparentBackgroundOrText(oneChildNode) {
 
 //     if(oneChildNode.childElementCount == 1){
@@ -395,80 +432,6 @@ async function saveImageBox(img) {
 // }
     
  
-// function traverse(node) {
-//   if (node.nodeType == Node.ELEMENT_NODE || node.nodeType == Node.DOCUMENT_NODE) {
-
-//     // exclude elements with invisible text nodes
-//     if (isExcluded(node)) {
-//       return
-//     }
-
-//     // if(node.tagName == "IMG") {
-    
-//     //   const fac = new FastAverageColor();
-//     //   var bbox = JSON.stringify(node.getBoundingClientRect());
-
-//     //   fac.getColorAsync(node.src).then(color => {
-//     //     imageNodes[imageNodesCount] = {node: node.tagName, color: color.hex, bbox: bbox};
-//     //     imageNodesCount = imageNodesCount + 1; 
-//     //   });
-      
-//     // }
-
-//     if (isSelectedOneChildNode(node)) {
-//       var color = getElementComputedStyleOfProperty(node, 'background-color');
-//       var bbox = JSON.stringify(node.getBoundingClientRect());
-
-//       if(node.tagName == "A") {
-//         const fac = new FastAverageColor();
-//         const imageUrlValue = getElementComputedStyleOfProperty(node, 'background-image');
-//         const imageUrl = imageUrlValue.split(/"/)[1];
-//         fac.getColorAsync(imageUrl).then(color => {
-//           oneChildNodes[oneChildNodesCount] = {node: node.tagName, color: color.hex, bbox: bbox};
-//           oneChildNodesCount = oneChildNodesCount + 1;
-//         });
-//       } else {
-            
-//         oneChildNodes[oneChildNodesCount] = {node: node.tagName, color:color, bbox: bbox};
-//         oneChildNodesCount = oneChildNodesCount + 1;
-
-//       }
-
-//     }
-
-//     for (let i=0; i < node.childNodes.length; i++) {
-//       // recursively call to traverse
-//       traverse(node.childNodes[i]);
-//     }
-
-//   } else if (node.nodeType == Node.TEXT_NODE) {
-
-//     // exclude text node consisting of only spaces
-//     if (node.nodeValue.trim() == "") {
-//       return;
-//     }
-
-//     var color = getElementComputedStyleOfProperty(node.parentElement, 'color');
-//     var bboxes;
-//     if(node.parentElement.tagName == "A") {
-//       bboxes = node.parentElement.getClientRects();
-//     } else {
-//       auxTextNodeRange.selectNodeContents(node);
-//       bboxes = auxTextNodeRange.getClientRects();  
-//     }
-
-//     for(let i=0; i<bboxes.length; i++) {
-//       textNodes[textNodesCount]={text: node.nodeValue.trim(), color: color, bbox: JSON.stringify(bboxes[i])}; 
-//       textNodesCount+=1;
-//     }      
-
-//   }
-// }
-
-//     // function extractOneChildNodes() {
-//     //   return oneChildNodes;
-//     // }
-
 
 // async function createBox(node) {
 
@@ -509,70 +472,16 @@ async function saveImageBox(img) {
 
 // }
 
-// async function extractOneChildNodes() {
-//   var oneChildNodes = [];
-//   const nodeIterator = document.createNodeIterator(
-//     document.body,
-//     NodeFilter.SHOW_ELEMENT,
-//     (node) => { 
-//       if (isSelectedOneChildNode(node)) {
-//         return NodeFilter.FILTER_ACCEPT;
-//       } else {
-//         return NodeFilter.FILTER_REJECT;
-//       }
-//     } 
-//   );
-
-//   var oneChildNode = nodeIterator.nextNode(); 
-  
-//   while (oneChildNode) {
-//     oneChildNodes = oneChildNodes.concat(await createBox(oneChildNode));
-//     oneChildNode = nodeIterator.nextNode();
-//   }
-
-//   return oneChildNodes;
-// }
-    
-
-// function extractTextNodes() {
-//   var textNodes = [];
-//   const nodeIterator = document.createNodeIterator(
-//     document.body,
-//     NodeFilter.SHOW_TEXT,
-//     (node) => { 
-//       if(isExcluded(node)) {
-//         return NodeFilter.FILTER_REJECT;
-//       } else if (isVisible(node)) {
-//         return NodeFilter.FILTER_ACCEPT;
-//       } else {
-//         return NodeFilter.FILTER_SKIP; 
-//       }
-//     } 
-//   );
-  
-//   var textNode = nodeIterator.nextNode(); // returns the next node
-  
-//   while (textNode) {
-//     textNodes = textNodes.concat(createBox(textNode));
-//     textNode = nodeIterator.nextNode();
-//   }
-
-//   return textNodes;
-// }
-
-
-async function extractImageNodes() {
-    var imageNodes = [];
+async function extractImageNodes(imageNodes) {
+    var imageBoxes = [];
     const fac = new FastAverageColor();
-    const images = Array.from(document.querySelectorAll('img')); // getElementsByTagName is probably faster
-    const colorPremises = images.map(img => fac.getColorAsync(img.src));
+    const colorPremises = imageNodes.map(img => fac.getColorAsync(img.src));
     const colors = await Promise.all(colorPremises);
-    const bboxes = images.map(img => JSON.stringify(img.getBoundingClientRect()));
+    const bboxes = imageNodes.map(img => JSON.stringify(img.getBoundingClientRect()));
     
-    for(i=0; i<images.length; i++) {
-        imageNodes[i] = {bbox: bboxes[i], color: colors[i].hex};
+    for(i=0; i<imageNodes.length; i++) {
+        imageBoxes[i] = {bbox: bboxes[i], color: colors[i].hex};
     }
     
-    return {imageNodes: imageNodes, imagescount: imageNodes.length};
+    return imageBoxes;
 }
-    
