@@ -272,7 +272,6 @@ function getSmallest(node) {
   } else {
       return lastChild;
   }
-
 }
 
 /**
@@ -355,122 +354,45 @@ async function saveImageBox(img) {
   var color = await fac.getColorAsync(img.src);
   var bbox = JSON.stringify(img.getBoundingClientRect());
   return {color: color.hex, bbox: bbox};
-//     // boxes.push({color: color, bbox: bbox});
 }
    
-// function containsSmallerBoxWithNontransparentBackgroundOrText(oneChildNode) {
+async function createBox(node) {
 
-//     if(oneChildNode.childElementCount == 1){
-//         if(hasTransparentBackground(oneChildNode.firstElementChild)) {
-//             return containsSmallerBoxWithNontransparentBackgroundOrText(oneChildNode.firstElementChild);      
-//         } else {
-//             return true;
-//         }
-//     }
+  var color, bbox;
+  var nodes = [];
 
-//     if(oneChildNode.hasChildNodes()) {
-//       for (let i = 0; i < oneChildNode.childNodes.length; i++) {
+  if(node.nodeType == Node.TEXT_NODE) {
+    color = getElementComputedStyleOfProperty(node.parentElement, 'color');
 
-//         // one child node contains text node
-//         if(oneChildNode.childNodes[i].data.trim() != "") {
-//           return true;
-//         }
-        
-//       }
-//     }
-      
-//     return false;
-// }
+    if(node.parentElement.tagName == "A") {
+      bbox = node.parentElement.getClientRects();
+    } else {
+      auxTextNodeRange.selectNodeContents(node);
+      bbox = auxTextNodeRange.getClientRects();  
+    }
+
+    for(let i=0; i < bbox.length; i++) {
+      nodes.push({text: node.nodeValue.trim(), color: color, bbox: JSON.stringify(bbox[i])});
+    }      
+
+  } else if(node.nodeType == Node.ELEMENT_NODE) {
+    color = getElementComputedStyleOfProperty(node, 'background-color');
+    bbox = JSON.stringify(node.getBoundingClientRect());
     
-// function hasOneChildParentWithNontransparentBackground(oneChildNode) {
-//     if(oneChildNode.parentElement.childElementCount > 1) {
-//         return false;
-//     }
+    if(node.tagName == "A") {
+      const fac = new FastAverageColor();
+      const imageUrlValue = getElementComputedStyleOfProperty(node, 'background-image');
+      const imageUrl = imageUrlValue.split(/"/)[1];
+      await fac.getColorAsync(imageUrl).then(color => {
+        nodes.push({node: node.tagName, color: color.hex, bbox: bbox});
+      });
+    } else {
+      nodes.push({node: node.tagName, color:color, bbox: bbox});
+    }
+  }
 
-//     if(hasTransparentBackground(oneChildNode.parentElement)) {
-//         return hasOneChildParentWithNontransparentBackground(oneChildNode.parentElement);
-//     }
-
-//     return true;
-// }
-    
-//     // TODO: Pozor!, v hlavnom cykle traverse ak najdem node, ktory je selected, dalej (hlbsie v strome) nepokracujem!
-//     // odpada kontrola listoveho uzla
-// function isSelectedOneChildNode(oneChildNode) {
-  
-//   if(!isVisible(oneChildNode)) {
-//     return false;
-//   }
-
-
-//   if(!isOneChildNode(oneChildNode)) {
-//     return false;
-//   }
-
-//   if(containsSmallerBoxWithNontransparentBackgroundOrText(oneChildNode)) {
-//       return false;
-//   } else {
-//     // oneChildNode s potomkom
-//     if(oneChildNode.childElementCount == 1){
-//         return !hasTransparentBackground(oneChildNode);
-      
-//     // leaf, mozno nemusim riesit - problem s pripadom, kedy su vsetky parentske oneChildNody bez pozadia
-//     } else {
-//         if(hasTransparentBackground(oneChildNode)) {
-            
-//             if(hasOneChildParentWithNontransparentBackground(oneChildNode)) {
-//                 return false;
-//             } else {
-//                 return true;
-//             }
-//         } else {
-//             return false;
-//         }
-//     }
-    
-//   }
-// }
-    
- 
-
-// async function createBox(node) {
-
-//   var color, bbox;
-//   var nodes = [];
-
-//   if(node.nodeType == Node.TEXT_NODE) {
-//     color = getElementComputedStyleOfProperty(node.parentElement, 'color');
-
-//     if(node.parentElement.tagName == "A") {
-//       bbox = node.parentElement.getClientRects();
-//     } else {
-//       auxTextNodeRange.selectNodeContents(node);
-//       bbox = auxTextNodeRange.getClientRects();  
-//     }
-
-//     for(let i=0; i < bbox.length; i++) {
-//       nodes.push({text: node.nodeValue.trim(), color: color, bbox: JSON.stringify(bbox[i])});
-//     }      
-
-//   } else if(node.nodeType == Node.ELEMENT_NODE) {
-//     color = getElementComputedStyleOfProperty(node, 'background-color');
-//     bbox = JSON.stringify(node.getBoundingClientRect());
-    
-//     if(node.tagName == "A") {
-//       const fac = new FastAverageColor();
-//       const imageUrlValue = getElementComputedStyleOfProperty(node, 'background-image');
-//       const imageUrl = imageUrlValue.split(/"/)[1];
-//       await fac.getColorAsync(imageUrl).then(color => {
-//         nodes.push({node: node.tagName, color: color.hex, bbox: bbox});
-//       });
-//     } else {
-//       nodes.push({node: node.tagName, color:color, bbox: bbox});
-//     }
-//   }
-
-//   return nodes;
-
-// }
+  return nodes;
+}
 
 async function extractImageNodes(imageNodes) {
     var imageBoxes = [];
