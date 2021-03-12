@@ -1,11 +1,14 @@
-function getElementComputedStyleOfProperty(element, property) {
-  return window.getComputedStyle(element, null).getPropertyValue(property);
+/**
+ * Get computed style of HTML Element
+ * @param {HTML Element} element 
+ * @returns 
+ */
+function getStyle(element) { 
+  return element.currentStyle || window.getComputedStyle(element, false);
 }
 
-function hasTransparentBackground(element) {
-  if(getElementComputedStyleOfProperty(element, 'background-color') === 'rgba(0, 0, 0, 0)') {
-      return true;
-  } else {
-      return false;
+function assert(condition, message) {
+  if (!condition){
+    throw Error('Assert failed: ' + (message || ''));
   }
 }

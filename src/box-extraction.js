@@ -1,296 +1,76 @@
-/**
+ /**
  * Project: Box Clustering Segmentation in Node.js
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
  * Year: 2021
  * License:  GNU GPLv3
- * Description: Functions useful for process of box extraction.
+ * Description: Functions useful for process of node extraction.
  */
 
 /**
- * All extracted boxes 
- */
-
-namespace = {};
-namespace.imageNodes = [];
-namespace.textNodes = [];
-namespace.otherNodes = [];
-
-function extractBoxes() {
-  extractNodes(document.body);
-  return getTextBox(namespace.textNodes[0]);
-}
-
- /**
-  * Extracts all relevant boxes from given web page
-  * @param {Root HTML Element from which extraction starts} node 
-  * @returns 
-  */
-function extractNodes(node) {
-  
-  if(isTextNode(node)) 
-  {
-    namespace.textNodes.push(node);
-    return;
-  } 
-  else if(isImageNode(node))
-  {
-      namespace.imageNodes.push(node);
-      return; 
-  }
-  else {
-    // Skip element unrelevant nodes
-    if(isExcluded(node)) {
-        return;
-    } 
-
-    if(hasNoBranches(node))
-    {
-      // Get smallest box and stop recursion
-      var smallest = getSmallest(node);
-
-      if(smallest == null) {
-        return;
-      } else if(isTextNode(smallest)) {
-        namespace.textNodes.push(smallest);
-      } else if(isImageNode(smallest)) {
-        namespace.imageNodes.push(smallest);
-      } else {
-        namespace.otherNodes.push(smallest);
-      }
-
-      return;
-    } 
-  }
-
-  // Get all valid child nodes
-  var childNodes = getChildNodes(node);
-
-  // Recursively extract boxes from child nodes
-  for (let i=0; i < childNodes.length; i++) {
-    extractNodes(childNodes[i]);
-  }
-}
-
-/**
- * Get computed style property value of HTML Element
- * @param {HTML Element} element 
- * @param {String that represents HTML Element's property} property 
+ * Extract boxes from all extracted nodes
  * @returns 
  */
-function getStylePropertyValue(element, property) {
-  return window.getComputedStyle(element, null).getPropertyValue(property);
-}
-
-/**
- * Check if given node is visible on webpage.
- * @param {Element or text node} node 
- * @returns true - if it's visible, false - if it's non-visible
- */
- function isVisible(node) {
-
-  if (node.nodeType == Node.ELEMENT_NODE) {
-    const bbox = node.getBoundingClientRect();  
-    
-    // Element explicitly non-visible
-    if (bbox.width == 0 || bbox.height == 0) {
-      return false;
-    }
-
-    // Element implicitly non-visible 
-    if(getStylePropertyValue(node, 'visibility') in ["hidden", "collapse"]){
-      return false;
-    }
-
-    // Element implicitly non-visible
-    if(getStylePropertyValue(node, 'display') == "none"){
-      return false;
-    }
-
-  } else if (node.nodeType == Node.TEXT_NODE) {
-
-    // Text non-visible
-    if(node.nodeValue.trim() == "") {
-      return false;
-    }
-
-    // Check parent's visibility
-    return isVisible(node.parentElement);
-  }
-
-  // Node supposed to be visible
-  return true;
-}
-
-/**
-* Check if given node should be exluded from further processing.
-* @param {Element or text node} node 
-* @returns true - if it's excluded, false - if it's not excluded
-*/
-function isExcluded(node) {
-
-  // List of excluded tag names
-  var excludedTagNames = ["STYLE", "SCRIPT", "NOSCRIPT", "IFRAME", "OBJECT"];
-
-  if(node.nodeType == Node.ELEMENT_NODE)
-  {
-    return excludedTagNames.includes(node.tagName);
-  } 
-  else if(node.nodeType == Node.TEXT_NODE) 
-  {
-    return excludedTagNames.includes(node.parentElement.tagName);
-  } 
-  else {
-    // Throws exception when given invalid node type
-    throw "Node type has to be TEXT_NODE|ELEMENT_NODE";
-  }
-}
-
-/**
- * Check if Element has background image
- * @param {HTML Element} element 
- * @returns true, false
- */
-function hasBackgroundImage(element) {
-  return getStylePropertyValue(element, 'background-image') === 'none';
-}
-
-//
-async function getImgColorAsync() {
-
-}
-
-function getBgColor() {
-
-}
-
-
-/**
- * Check if Element has transparent background
- * @param {HTML Element} element 
- * @returns true - has transparent background, false - doesn't have
- */
- function isTransparent(element) {
-
-  var hasNoBgImage = getStylePropertyValue(element, 'background-image') === 'none';
-  var hasNoBgColor = getStylePropertyValue(element, 'background-color') === 'rgba(0, 0, 0, 0)';
-
-  // Check background color and image of element if it is transparent
-  if(hasNoBgImage && hasNoBgColor) {
-    return true;
-  } 
-  else{
-    return false;
-  }
-}
-
-/**
- * Check if HTML Element has branches
- * @returns true - has no branches, false - has branches
- */
- function hasNoBranches(node) {
-
-  // Create Array from NodeList
-  var childNodes = getChildNodes(node);
-
-  // Has one child
-  if(childNodes.length == 1){
-
-    // Get first and only valid child
-    var child = childNodes[0];
-
-    if(isTextNode(child)) {
-      return true;
-    } else {
-      return hasNoBranches(child);
-    }
-  } 
-  else if (childNodes.length == 0) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-function getEndChild(node) {
-  var childNodes = getChildNodes(node);
-
-  if(childNodes.length == 1) 
-  {
-      return getEndChild(childNodes[0]);
-  } 
-  else 
-  {
-      return node;
-  }
-}
-
-function getParentWithBackground(node) {
-   
-  var hasTransparentParent = isTransparent(node.parentElement);
-
-  if(hasNoBranches(node.parentElement) && !hasTransparentParent) 
-  {
-      return node.parentElement;
-  } 
-  else if (!hasTransparentParent) 
-  {
-      return getParentWithBackground(node.parentElement);
-  } 
-  else {
-      return null;
-  }
-}
-
-
-
-function getChildNodes(node) {
-  // Create Array from NodeList
-  var childNodes = Array.from(node.childNodes);
-  // Filter out non-visible nodes
-  childNodes = childNodes.filter(node => isVisible(node));
-  return childNodes;
-}
-
-function isTextNode(node) {
-    return node.nodeType == Node.TEXT_NODE;
-}
-
-function isImageNode(node) {
-    return node.tagName == "IMG";
-}
-
-function isElementNode(node) {
-    return !isTextNode(node) && !isImageNode(node);
-}
-
-function getSmallest(node) {
-
-  var lastChild = getEndChild(node);
-
-  if(isElementNode(lastChild) && isTransparent(lastChild)) {
-      return getParentWithBackground(lastChild);
-  } else {
-      return lastChild;
-  }
-}
-
-/**
- * Function for timing the evaluation, testing purposes
- */
-function timeTheFunction() {
-  var t0 = performance.now()
+function extractBoxes() {
   extractNodes(document.body);
-  var t1 = performance.now()
-  console.log("Box Extraction took " + (t1 - t0) + " milliseconds.")
+
+  var boxes = [];
+
+  textNodes.forEach(textNode => {
+    var textBoxes = getTextBoxes(textNode);
+    boxes = boxes.concat(textBoxes);
+  });
+
+  otherNodes.forEach(otherNode => {
+    var otherBox = getBox(otherNode);
+    boxes.push(otherBox);
+  })
+
+  return boxes;
+}
+
+async function getBgImgColorAsync(node) {
+
+  const fac = new FastAverageColor();
+  var imageUrl, imageColor;
+
+  if(isImageNode(node)) {
+    imageUrl = node.currentSrc || node.src;
+
+  } else if(isElementNode(node)){
+    var bgImage = getStyle(node).backgroundImage;
+    imageUrl = bgImage.slice(4, -1).replace(/["']/g, "");
+  }
+
+  imageColor = await fac.getColorAsync(imageUrl);
+
+  return imageColor.hex;
+
+}
+
+function getBgImgColor(node) {
+  
+  assert(isImageNode(node));
+
+  try {
+    const fac = new FastAverageColor();
+    var imageColor = fac.getColor(node);
+    return imageColor.hex;
+  } catch (error) {
+    return null;
+  }
+}
+
+function getBgColor(node) {
+  return getStyle(node).backgroundColor;
 }
 
 /**
  * Creates box from text node and adds it into the ouput array.
  * @param {Text node} textNode 
  */
-function getTextBox(textNode) {
+function getTextBoxes(textNode) {
 
-  if(textNode.nodeType != Node.TEXT_NODE) {
+  if(!isTextNode(textNode)) { //cyklicka zavislost
     throw "Parameter in function saveTextBox() has to be TextNode!";
   }
 
@@ -298,7 +78,7 @@ function getTextBox(textNode) {
   var range = document.createRange();
 
   // Every text box has representing parent's color of text
-  color = getStylePropertyValue(textNode.parentElement, 'color');
+  color = getStyle(textNode.parentElement).color;
 
   // HTML Element <a> can contain inline icon, that influences size of box
   if(textNode.parentElement.tagName == "A") 
@@ -329,23 +109,19 @@ async function getBoxAsync() {
 }
 
 function getBox(node) {
-  if(node.nodeType != Node.ELEMENT_NODE) {
+  if(!isElementNode(node)) {
     throw "Parameter in function getBox() has to be ElementNode!";
   }
 
   var color, bbox;
 
   // One-child box's background color 
-  color = getStylePropertyValue(node, 'background-color');
+  color = getStyle(node).backgroundColor;
 
   // Minimal bounding box 
   bbox = JSON.stringify(node.getBoundingClientRect());
 
-  // Save one-child box into output set of boxes
-  // boxes.push({color: color, bbox: JSON.stringify(bbox)});
-  // boxes.push(node);
   return {color: color, bbox: bbox};
-
 }
 
 async function saveImageBox(img) {
