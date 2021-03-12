@@ -29,7 +29,8 @@ const { chromium } = require('playwright');
   // Load webpage for segmentation process given by input argument
   // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'networkidle2'});
   // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
-  await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
+  // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
+  await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
 
   // Add JavaScript files into webpage for execution and processing in browser context
   await page.addScriptTag({ path: './src/helper-functions.js'});
@@ -50,6 +51,7 @@ const { chromium } = require('playwright');
         height: document.body.scrollHeight, 
         width: document.body.scrollWidth 
       }, 
+      boxesCount: boxes.length,
       time: "Call to doSomething took " + (t1 - t0) + " milliseconds."
     };
 

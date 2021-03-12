@@ -15,15 +15,15 @@ function extractBoxes() {
 
   var boxes = [];
 
-  textNodes.forEach(textNode => {
+  extraction.textNodes.forEach(textNode => {
     var textBoxes = getTextBoxes(textNode);
     boxes = boxes.concat(textBoxes);
   });
 
-  otherNodes.forEach(otherNode => {
-    var otherBox = getBox(otherNode);
-    boxes.push(otherBox);
-  })
+  // extraction.otherNodes.forEach(otherNode => {
+  //   var otherBox = getBox(otherNode);
+  //   boxes.push(otherBox);
+  // })
 
   return boxes;
 }

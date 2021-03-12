@@ -96,9 +96,9 @@ function isVisible(node) {
       const bbox = node.getBoundingClientRect();  
       
       // Element explicitly non-visible
-      if (bbox.width == 0 || bbox.height == 0) {
-        return false;
-      }
+      // if (bbox.width == 0 || bbox.height == 0) {
+      //   return false;
+      // }
   
       // Element implicitly non-visible 
       if(getStyle(node).visibility in ["hidden", "collapse"]){
@@ -137,15 +137,14 @@ function isExcluded(node) {
   
     if(isElementNode(node))
     {
-      return excludedTagNames.includes(node.tagName);
+        return excludedTagNames.includes(node.tagName);
     } 
     else if(isTextNode(node)) 
     {
-      return excludedTagNames.includes(node.parentElement.tagName);
+        return excludedTagNames.includes(node.parentElement.tagName);
     } 
     else {
-      // Throws exception when given invalid node type
-      throw "Node type has to be TEXT_NODE|ELEMENT_NODE";
+        return true;
     }
 }
   
