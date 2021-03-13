@@ -42,6 +42,7 @@ const { chromium } = require('playwright');
 
     var t0 = performance.now()
     var boxes = await extractBoxes();
+    // var boxes = await extractImageNodes();
     var t1 = performance.now()
 
     return {

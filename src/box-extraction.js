@@ -6,11 +6,9 @@
  * Description: Functions useful for process of node extraction.
  */
 
-// var boxes = [];
-
 /**
  * Extract boxes from all extracted nodes
- * @returns 
+ * @returns color.hex
  */
 
 async function getBgImgColorAsync(node) {
@@ -25,26 +23,25 @@ async function getBgImgColorAsync(node) {
 
   } else if(isElementNode(node)){
     var bgImage = getStyle(node).backgroundImage;
-    imageUrl = bgImage.slice(4, -1).replace(/["']/g, "");
+    regex = /(?:\(['"]?)(.*?)(?:['"]?\))/,
+    imageUrl = regex.exec(bgImage)[1];
   }
 
-  imageColor = await fac.getColorAsync(imageUrl);
-
-  return imageColor.hex;
-
+  if(imageUrl.startsWith("http")){
+    imageColor = await fac.getColorAsync(imageUrl);
+    return imageColor.hex;
+  } else {
+    return imageUrl;
+  }
 }
 
 function getBgImgColor(img) {
   
   assert(isImageNode(img), "Function getBgImgColor() applicable only on imageNodes!");
 
-  try {
-    const fac = new FastAverageColor();
-    var imageColor = fac.getColor(img);
-    return imageColor.hex;
-  } catch (errorCORS) {
-    return null;
-  }
+  const fac = new FastAverageColor();
+  var imageColor = fac.getColor(img);
+  return imageColor.hex;
 }
 
 function getBgColor(node) {
@@ -82,7 +79,6 @@ function getTextBoxes(textNode) {
 
   // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
   for(let i=0; i < bboxes.length; i++) {
-    //saveTextBox() boxes.push({color: color, bbox: JSON.stringify(bboxes[i])});
     bbox = JSON.stringify(bboxes[i]);
     textBoxes.push({color: color, bbox: bbox})
   }      
@@ -101,7 +97,6 @@ async function getElementBox(node) {
     color = getBgColor(node);
   } else if (hasBackgroundImage(node)) {
     color = await getBgImgColorAsync(node);
-    return {color: color.hex, bbox: bbox};
   }
 
   bbox = JSON.stringify(node.getBoundingClientRect());
@@ -113,14 +108,14 @@ async function getImageBox(img) {
 
   assert(isImageNode(img));
 
-  var color = getBgColor(img);
   var bbox = JSON.stringify(img.getBoundingClientRect());
-
-  if(color == null) {
-    color = await getBgImgColorAsync(img);
+  var color;
+  
+  if((color = getBgImgColor(img)) == "#000000") {
+      color = await getBgImgColorAsync(img);
   }
-
-  return {color: color.hex, bbox: bbox};
+    
+  return {color: color, bbox: bbox};
 }
    
  /**
@@ -171,9 +166,54 @@ async function getImageBox(img) {
         
           // Recursively extract child nodes
           for (let i=0; i < childNodes.length; i++) {
-            extract(childNodes[i]);
+            await extract(childNodes[i]);
           }
         }
+      }
+    }
+
+    function removeContaining(boxes) {
+      var count = boxes.length;
+
+      var containers = [];
+      for (let contained = 0; i < count; i++) {
+        for (let possible_container = 0; j < count; j++) {
+          if(contained != possible_container) {
+            if(containsBox(boxes[possible_container], boxes[contained])) {
+              containers.push(possible_container);
+            }
+          }
+        }        
+      }
+      return containers;
+    }
+
+    /**
+     * Check if box1 contains box2
+     * @param {Box} box1 Possible container
+     * @param {Box} box2 Contained
+     * @returns 
+     */
+    function containsBox(box1, box2) {
+      var bbox1, bbox2, t1, l1, b1, r1, t2, l2, b2, r2;
+
+      bbox1 = JSON.parse(box1.bbox);
+      bbox2 = JSON.parse(box2.bbox);
+
+      t1 = bbox1.top;
+      l1 = bbox1.left;
+      r1 = bbox1.bottom;
+      b1 = bbox1.right;
+
+      t2 = bbox2.top;
+      l2 = bbox2.left;
+      r2 = bbox2.bottom;
+      b2 = bbox2.right;
+
+      if(r2 <= r1 && l2 >= l1 && t2 >= t1 && b2 <= b1){
+        return true;
+      } else {
+        return false;
       }
     }
   }
