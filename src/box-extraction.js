@@ -154,10 +154,10 @@ function getBox(node) {
   return {color: color, bbox: bbox};
 }
 
-async function saveImageBox(img) {
+async function getImageBox(img) {
   
   const fac = new FastAverageColor();
-  var color = await fac.getColorAsync(img.src);
+  var color = await fac.getColorAsync(img.currentSrc || img.src);
   var bbox = JSON.stringify(img.getBoundingClientRect());
   return {color: color.hex, bbox: bbox};
 }

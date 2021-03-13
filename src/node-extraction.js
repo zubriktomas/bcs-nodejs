@@ -7,15 +7,6 @@
  */
 
  /**
- * Box Extraction namespace to handle global variables
- */
-extraction = {
-    imageNodes: imageNodes = [],
-    textNodes: textNodes = [],
-    otherNodes: otherNodes = []
-  };
- 
- /**
   * Extracts all relevant nodes from given web page
   * @param {Root HTML Element from which extraction starts} node 
   * @returns 
@@ -24,14 +15,13 @@ async function extractNodes(node) {
 
     if(isTextNode(node)) 
     {
-      // extraction.textNodes.push(node);
       boxes = boxes.concat(getTextBoxes(node));
       return;
     } 
     else if(isImageNode(node))
     {
-        // extraction.imageNodes.push(node);
-        return; 
+      boxes.push(await getImageBox(node));
+      return; 
     }
     else {
       // Skip element unrelevant nodes
@@ -41,23 +31,17 @@ async function extractNodes(node) {
   
       if(hasNoBranches(node))
       {
-        console.log(node, "hasNoBranches");
-
         // Get smallest box and stop recursion
         var smallest = getSmallest(node);
 
-        console.log(node, "getSmallest");
-  
         if(smallest == null) {
-            return;
+          return;
         } else if(isTextNode(smallest)) {
           boxes = boxes.concat(getTextBoxes(smallest));
-            // extraction.textNodes.push(smallest);
         } else if(isImageNode(smallest)) {
-            // extraction.imageNodes.push(smallest);
+          boxes.push(await getImageBox(smallest));
         } else if(isElementNode(smallest)) {
-            // extraction.otherNodes.push(smallest);
-            boxes.push(getBox(smallest));
+          boxes.push(getBox(smallest));
         }
   
         return;
