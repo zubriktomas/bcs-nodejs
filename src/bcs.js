@@ -34,7 +34,6 @@ const { chromium } = require('playwright');
 
   // Add JavaScript files into webpage for execution and processing in browser context
   await page.addScriptTag({ path: './src/helper-functions.js'});
-  await page.addScriptTag({ path: './src/node-extraction.js'});
   await page.addScriptTag({ path: './src/box-extraction.js'});
   await page.addScriptTag({ url: 'https://unpkg.com/fast-average-color/dist/index.min.js'});
 
@@ -52,7 +51,7 @@ const { chromium } = require('playwright');
         width: document.body.scrollWidth 
       }, 
       boxesCount: boxes.length,
-      time: "Call to doSomething took " + (t1 - t0) + " milliseconds."
+      time: "Box Extraction took " + (t1 - t0) + " milliseconds."
     };
 
   });

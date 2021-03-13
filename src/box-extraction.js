@@ -6,59 +6,16 @@
  * Description: Functions useful for process of node extraction.
  */
 
-var boxes = [];
+// var boxes = [];
 
 /**
  * Extract boxes from all extracted nodes
  * @returns 
  */
-async function extractBoxes() {
-  await extractNodes(document.body);
-
-  // var boxes = [];
-
-  // // // pozor overlapping nodes!! TODO TODO TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-  // var textBoxes = textNodes.map(node => getTextBoxes(node));
-  // boxes = boxes.concat(textBoxes.flat());
-
-  // var imageBoxes = await extractImageBoxes(extraction.imageNodes);
-  // boxes = boxes.concat(imageBoxes);
-
-  // var nodesWithBgImage = extraction.otherNodes.filter(node => hasBackgroundImage(node));
-  // var nodesWithBgColor = extraction.otherNodes.filter(node => hasBackgroundColor(node));
-
-  // var boxesWithBgImage = await extractBoxesWithBgImageAsync(nodesWithBgImage);
-  // var boxesWithBgColor = extractBoxesWithBgColor(nodesWithBgColor);
-
-  // extraction.otherNodes.forEach(otherNode => {
-  //   if(isVisible(otherNode)){
-  //     var otherBox = getBox(otherNode);
-  //     boxes.push(otherBox);
-  //   }
-  // });
-
-  return boxes;
-}
-
-async function extractBoxesWithBgImageAsync(nodes) {
-
-}
-
-function extractBoxesWithBgColor(nodes) {
-
-}
-
-function contains(a, b) {
-	return !(
-		b.x1 < a.x1 ||
-		b.y1 < a.y1 ||
-		b.x2 > a.x2 ||
-		b.y2 > a.y2
-	);
-}
 
 async function getBgImgColorAsync(node) {
+
+  assert(isElementNode(node));
 
   const fac = new FastAverageColor();
   var imageUrl, imageColor;
@@ -77,15 +34,15 @@ async function getBgImgColorAsync(node) {
 
 }
 
-function getBgImgColor(node) {
+function getBgImgColor(img) {
   
-  assert(isImageNode(node));
+  assert(isImageNode(img), "Function getBgImgColor() applicable only on imageNodes!");
 
   try {
     const fac = new FastAverageColor();
-    var imageColor = fac.getColor(node);
+    var imageColor = fac.getColor(img);
     return imageColor.hex;
-  } catch (error) {
+  } catch (errorCORS) {
     return null;
   }
 }
@@ -134,82 +91,264 @@ function getTextBoxes(textNode) {
 }
 
 
-async function getBoxAsync() {
+async function getElementBox(node) {
 
-}
-
-function getBox(node) {
-  if(!isElementNode(node)) {
-    throw "Parameter in function getBox() has to be ElementNode!";
-  }
+  assert(isElementNode(node), "Parameter in function getElementBox() has to be ElementNode!");
 
   var color, bbox;
 
-  // One-child box's background color 
-  color = getStyle(node).backgroundColor;
+  if(hasBackgroundColor(node)) { 
+    color = getBgColor(node);
+  } else if (hasBackgroundImage(node)) {
+    color = await getBgImgColorAsync(node);
+    return {color: color.hex, bbox: bbox};
+  }
 
-  // Minimal bounding box 
   bbox = JSON.stringify(node.getBoundingClientRect());
 
   return {color: color, bbox: bbox};
 }
 
 async function getImageBox(img) {
-  
-  const fac = new FastAverageColor();
-  var color = await fac.getColorAsync(img.currentSrc || img.src);
+
+  assert(isImageNode(img));
+
+  var color = getBgColor(img);
   var bbox = JSON.stringify(img.getBoundingClientRect());
+
+  if(color == null) {
+    color = await getBgImgColorAsync(img);
+  }
+
   return {color: color.hex, bbox: bbox};
 }
    
-async function createBox(node) {
+ /**
+  * Extracts all relevant nodes from given web page
+  * @param {Root HTML Element from which extraction starts} node 
+  * @returns 
+  */
+  async function extractBoxes() {
 
-  var color, bbox;
-  var nodes = [];
-
-  if(node.nodeType == Node.TEXT_NODE) {
-    color = getElementComputedStyleOfProperty(node.parentElement, 'color');
-
-    if(node.parentElement.tagName == "A") {
-      bbox = node.parentElement.getClientRects();
-    } else {
-      auxTextNodeRange.selectNodeContents(node);
-      bbox = auxTextNodeRange.getClientRects();  
-    }
-
-    for(let i=0; i < bbox.length; i++) {
-      nodes.push({text: node.nodeValue.trim(), color: color, bbox: JSON.stringify(bbox[i])});
-    }      
-
-  } else if(node.nodeType == Node.ELEMENT_NODE) {
-    color = getElementComputedStyleOfProperty(node, 'background-color');
-    bbox = JSON.stringify(node.getBoundingClientRect());
+    var boxes = [];
+    await extract(document.body);
+    return boxes;
+  
+    async function extract(node) {
+  
+      if(isTextNode(node)) 
+      {
+        boxes = boxes.concat(getTextBoxes(node));
+      } 
+      else if(isImageNode(node))
+      {
+        boxes.push(await getImageBox(node));
+      }
+      else {
+        // Skip element unrelevant nodes
+        if(isExcluded(node)) {
+            return;
+        } 
     
-    if(node.tagName == "A") {
-      const fac = new FastAverageColor();
-      const imageUrlValue = getElementComputedStyleOfProperty(node, 'background-image');
-      const imageUrl = imageUrlValue.split(/"/)[1];
-      await fac.getColorAsync(imageUrl).then(color => {
-        nodes.push({node: node.tagName, color: color.hex, bbox: bbox});
-      });
-    } else {
-      nodes.push({node: node.tagName, color:color, bbox: bbox});
+        if(hasNoBranches(node))
+        {
+          // Get smallest box and stop recursion
+          var smallest = getSmallest(node);
+  
+          if(smallest == null) {
+            return;
+          } else if(isTextNode(smallest)) {
+            boxes = boxes.concat(getTextBoxes(smallest));
+          } else if(isImageNode(smallest)) {
+            boxes.push(await getImageBox(smallest));
+          } else if(isElementNode(smallest)) {
+            boxes.push(await getElementBox(smallest));
+          }
+  
+        } else {
+          // Get all valid child nodes
+          var childNodes = getChildNodes(node);
+        
+          // Recursively extract child nodes
+          for (let i=0; i < childNodes.length; i++) {
+            extract(childNodes[i]);
+          }
+        }
+      }
     }
   }
+  
+  /**
+   * Check if Element has transparent background
+   * @param {HTML Element} element 
+   * @returns true - has transparent background, false - doesn't have
+   */
+  function isTransparent(element) {
+  
+      if(isImageNode(element)) {
+        return false;
+      }
 
-  return nodes;
-}
-
-async function extractImageBoxes(imageNodes) {
-    var imageBoxes = [];
-    const fac = new FastAverageColor();
-    const colorPremises = imageNodes.map(img => fac.getColorAsync(img.src));
-    const colors = await Promise.all(colorPremises);
-    const bboxes = imageNodes.map(img => JSON.stringify(img.getBoundingClientRect()));
+      if(!hasBackgroundColor(element) && !hasBackgroundImage(element)) {
+        return true;
+      } else {
+        return false;
+      }
+  }
+  
+  /**
+   * Check if given node is visible on webpage.
+   * @param {Element or text node} node 
+   * @returns true - if it's visible, false - if it's non-visible
+   */
+  function isVisible(node) {
+  
+      if (isElementNode(node)) {
+        const bbox = node.getBoundingClientRect();  
+        
+        // Element explicitly non-visible
+        // if (bbox.width == 0 || bbox.height == 0) {
+        //   return false;
+        // }
     
-    for(i=0; i<imageNodes.length; i++) {
-        imageBoxes[i] = {bbox: bboxes[i], color: colors[i].hex};
+        // Element implicitly non-visible 
+        if(getStyle(node).visibility in ["hidden", "collapse"]){
+          return false;
+        }
+    
+        // Element implicitly non-visible
+        if(getStyle(node).display == "none"){
+          return false;
+        }
+    
+      } else if (isTextNode(node)) {
+    
+        // Text non-visible
+        if(node.nodeValue.trim() == "") {
+          return false;
+        }
+    
+        // Check parent's visibility
+        return isVisible(node.parentElement);
+      }
+    
+      // Node supposed to be visible
+      return true;
+  }
+    
+  /**
+   * Check if given node should be exluded from further processing.
+   * @param {Element or text node} node 
+   * @returns true - if it's excluded, false - if it's not excluded
+   */
+  function isExcluded(node) {
+    
+      // List of excluded tag names
+      var excludedTagNames = ["STYLE", "SCRIPT", "NOSCRIPT", "IFRAME", "OBJECT"];
+    
+      if(isElementNode(node))
+      {
+          return excludedTagNames.includes(node.tagName);
+      } 
+      else if(isTextNode(node)) 
+      {
+          return excludedTagNames.includes(node.parentElement.tagName);
+      } 
+      else {
+          return true;
+      }
+  }
+    
+  /**
+   * Check if Element has background image
+   * @param {HTML Element} element 
+   * @returns true, false
+   */
+  function hasBackgroundImage(element) {
+    return getStyle(element).backgroundImage != 'none';
+  }
+  
+  function hasBackgroundColor(element) {
+    return getStyle(element).backgroundColor != 'rgba(0, 0, 0, 0)';
+  }
+  
+  /**
+   * Check if HTML Element has branches
+   * @returns true - has no branches, false - has branches
+   */
+   function hasNoBranches(node) {
+  
+      var childNodes = getChildNodes(node);
+  
+      if(childNodes.length == 1){
+    
+        var child = childNodes[0];
+    
+        if(isTextNode(child)) {
+          return true;
+        } else {
+          return hasNoBranches(child);
+        }
+      } 
+      else if (childNodes.length == 0) {
+        return true;
+      } else {
+        return false;
+      }
     }
     
-    return imageBoxes;
-}
+  function getLastChild(node) {
+  
+      var childNodes = getChildNodes(node);
+    
+      if(childNodes.length == 1) {
+          return getLastChild(childNodes[0]);
+      } else {
+          return node;
+      }
+  }
+    
+  function getParentWithBackground(node) {
+      
+      var parent = node.parentElement;
+      var isParentTransparent = isTransparent(parent);
+  
+      if(hasNoBranches(parent) && !isParentTransparent) {
+          return parent;
+      } else if (!isParentTransparent) {
+          return getParentWithBackground(parent);
+      } else {
+          return null;
+      }
+  }
+  
+  function getChildNodes(node) {
+      // Create Array from NodeList
+      var childNodes = Array.from(node.childNodes);
+      // Filter out non-visible nodes
+      childNodes = childNodes.filter(node => isVisible(node));
+      return childNodes;
+  }
+    
+  function isTextNode(node) {
+      return node.nodeType == Node.TEXT_NODE;
+  }
+    
+  function isImageNode(node) {
+      return node.tagName == "IMG";
+  }
+    
+  function isElementNode(node) {
+      return node.nodeType == Node.ELEMENT_NODE;
+  }
+    
+  function getSmallest(node) {
+  
+      var lastChild = getLastChild(node);
+  
+      if(isElementNode(lastChild) && isTransparent(lastChild)) {
+          return getParentWithBackground(lastChild);
+      } else {
+          return lastChild;
+      }
+  }
