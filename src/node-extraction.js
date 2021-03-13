@@ -20,16 +20,17 @@ extraction = {
   * @param {Root HTML Element from which extraction starts} node 
   * @returns 
   */
-function extractNodes(node) {
-  
+async function extractNodes(node) {
+
     if(isTextNode(node)) 
     {
-      extraction.textNodes.push(node);
+      // extraction.textNodes.push(node);
+      boxes = boxes.concat(getTextBoxes(node));
       return;
     } 
     else if(isImageNode(node))
     {
-        extraction.imageNodes.push(node);
+        // extraction.imageNodes.push(node);
         return; 
     }
     else {
@@ -40,17 +41,23 @@ function extractNodes(node) {
   
       if(hasNoBranches(node))
       {
+        console.log(node, "hasNoBranches");
+
         // Get smallest box and stop recursion
         var smallest = getSmallest(node);
+
+        console.log(node, "getSmallest");
   
         if(smallest == null) {
             return;
         } else if(isTextNode(smallest)) {
-            extraction.textNodes.push(smallest);
+          boxes = boxes.concat(getTextBoxes(smallest));
+            // extraction.textNodes.push(smallest);
         } else if(isImageNode(smallest)) {
-            extraction.imageNodes.push(smallest);
-        } else {
-            extraction.otherNodes.push(smallest);
+            // extraction.imageNodes.push(smallest);
+        } else if(isElementNode(smallest)) {
+            // extraction.otherNodes.push(smallest);
+            boxes.push(getBox(smallest));
         }
   
         return;
@@ -62,7 +69,7 @@ function extractNodes(node) {
   
     // Recursively extract child nodes
     for (let i=0; i < childNodes.length; i++) {
-      extractNodes(childNodes[i]);
+      await extractNodes(childNodes[i]);
     }
 }
 
@@ -72,6 +79,10 @@ function extractNodes(node) {
  * @returns true - has transparent background, false - doesn't have
  */
 function isTransparent(element) {
+
+    if(isImageNode(element)) {
+      return false;
+    }
 
     var hasNoBgImage = getStyle(element).backgroundImage === 'none';
     var hasNoBgColor = getStyle(element).backgroundColor === 'rgba(0, 0, 0, 0)';
@@ -154,7 +165,11 @@ function isExcluded(node) {
  * @returns true, false
  */
 function hasBackgroundImage(element) {
-    return getStyle(element).backgroundImage === 'none';
+  return getStyle(element).backgroundImage != 'none';
+}
+
+function hasBackgroundColor(element) {
+  return getStyle(element).backgroundColor != 'rgba(0, 0, 0, 0)';
 }
 
 /**

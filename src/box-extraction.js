@@ -6,26 +6,56 @@
  * Description: Functions useful for process of node extraction.
  */
 
+var boxes = [];
+
 /**
  * Extract boxes from all extracted nodes
  * @returns 
  */
-function extractBoxes() {
-  extractNodes(document.body);
+async function extractBoxes() {
+  await extractNodes(document.body);
 
-  var boxes = [];
+  // var boxes = [];
 
-  extraction.textNodes.forEach(textNode => {
-    var textBoxes = getTextBoxes(textNode);
-    boxes = boxes.concat(textBoxes);
-  });
+  // // // pozor overlapping nodes!! TODO TODO TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  // var textBoxes = textNodes.map(node => getTextBoxes(node));
+  // boxes = boxes.concat(textBoxes.flat());
+
+  // var imageBoxes = await extractImageBoxes(extraction.imageNodes);
+  // boxes = boxes.concat(imageBoxes);
+
+  // var nodesWithBgImage = extraction.otherNodes.filter(node => hasBackgroundImage(node));
+  // var nodesWithBgColor = extraction.otherNodes.filter(node => hasBackgroundColor(node));
+
+  // var boxesWithBgImage = await extractBoxesWithBgImageAsync(nodesWithBgImage);
+  // var boxesWithBgColor = extractBoxesWithBgColor(nodesWithBgColor);
 
   // extraction.otherNodes.forEach(otherNode => {
-  //   var otherBox = getBox(otherNode);
-  //   boxes.push(otherBox);
-  // })
+  //   if(isVisible(otherNode)){
+  //     var otherBox = getBox(otherNode);
+  //     boxes.push(otherBox);
+  //   }
+  // });
 
   return boxes;
+}
+
+async function extractBoxesWithBgImageAsync(nodes) {
+
+}
+
+function extractBoxesWithBgColor(nodes) {
+
+}
+
+function contains(a, b) {
+	return !(
+		b.x1 < a.x1 ||
+		b.y1 < a.y1 ||
+		b.x2 > a.x2 ||
+		b.y2 > a.y2
+	);
 }
 
 async function getBgImgColorAsync(node) {
@@ -170,7 +200,7 @@ async function createBox(node) {
   return nodes;
 }
 
-async function extractImageNodes(imageNodes) {
+async function extractImageBoxes(imageNodes) {
     var imageBoxes = [];
     const fac = new FastAverageColor();
     const colorPremises = imageNodes.map(img => fac.getColorAsync(img.src));
