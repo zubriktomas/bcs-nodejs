@@ -58,34 +58,64 @@ function getTextBoxes(textNode) {
     throw "Parameter in function saveTextBox() has to be TextNode!";
   }
 
-  var color, bbox, bboxes, textBoxes=[];
-  var range = document.createRange();
+  var color, bboxes, textBoxes=[];
 
   // Every text box has representing parent's color of text
   color = getStyle(textNode.parentElement).color;
 
   // HTML Element <a> can contain inline icon, that influences size of box
-  if(textNode.parentElement.tagName == "A") 
-  {
-    // Get min.bounding box of parent element
-    bboxes = textNode.parentElement.getClientRects();
-  } 
-  else 
-  {
-    // Text node on his own needs range to get minimal bounding boxes
-    range.selectNodeContents(textNode);
-    bboxes = range.getClientRects();  
-  }
+  // if(textNode.parentElement.tagName == "A") 
+  // {
+  //   // Get min.bounding box of parent element
+  //   bboxes = textNode.parentElement.getClientRects();
+  // } 
+  // else 
+  // {
+  // Text node on his own needs range to get minimal bounding boxes
+  // }
 
+  bboxes = getBoundingBox(textNode);
+  
   // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
   for(let i=0; i < bboxes.length; i++) {
-    bbox = JSON.stringify(bboxes[i]);
-    textBoxes.push({color: color, bbox: bbox})
+    textBoxes.push({color: color, bbox: bboxes[i]})
   }      
 
   return textBoxes;
 }
 
+function getBoundingBox(node) {
+  var bbox;
+
+  const isInvalidbbox = (bbox) => {return (bbox.x < 0 || bbox.y < 0 || bbox.bottom < 0 || bbox.right < 0)};
+
+  if(isElementNode(node)) 
+  {
+    bbox = node.getBoundingClientRect();
+
+    // if(isInvalidbbox(bbox)) {
+    return JSON.stringify(bbox);
+    // } 
+    
+  } else if (isTextNode(node)) {
+    
+    var range = document.createRange();
+    range.selectNodeContents(node);
+    var bboxes = range.getClientRects();  
+    var bboxesOut = [];
+    
+    // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
+    for(let i=0; i < bboxes.length; i++) {
+      bbox = bboxes[i];
+      if(!(isInvalidbbox(bbox))) {
+        bbox = JSON.stringify(bbox);
+        bboxesOut.push(bbox);
+      }
+    }      
+    return bboxesOut;
+  }
+  
+}
 
 async function getElementBox(node) {
 
@@ -99,20 +129,20 @@ async function getElementBox(node) {
     color = await getBgImgColorAsync(node);
   }
 
-  bbox = JSON.stringify(node.getBoundingClientRect());
+  bbox = getBoundingBox(node);
 
   return {color: color, bbox: bbox};
 }
 
-async function getImageBox(img) {
+async function getImageBox(node) {
 
-  assert(isImageNode(img));
+  assert(isImageNode(node));
 
-  var bbox = JSON.stringify(img.getBoundingClientRect());
+  var bbox = getBoundingBox(node);
   var color;
   
-  if((color = getBgImgColor(img)) == "#000000") {
-      color = await getBgImgColorAsync(img);
+  if((color = getBgImgColor(node)) == "#000000") {
+      color = await getBgImgColorAsync(node);
   }
     
   return {color: color, bbox: bbox};
@@ -127,6 +157,9 @@ async function getImageBox(img) {
 
     var boxes = [];
     await extract(document.body);
+
+    // boxes = removeContaining(boxes);
+
     return boxes;
   
     async function extract(node) {
@@ -176,16 +209,20 @@ async function getImageBox(img) {
       var count = boxes.length;
 
       var containers = [];
-      for (let contained = 0; i < count; i++) {
-        for (let possible_container = 0; j < count; j++) {
+      for (let contained = 0; contained < count; contained++) {
+        for (let possible_container = 0; possible_container < count; possible_container++) {
           if(contained != possible_container) {
             if(containsBox(boxes[possible_container], boxes[contained])) {
-              containers.push(possible_container);
+              if(!containers.includes(possible_container)){
+                containers.push(possible_container);
+              }
             }
           }
         }        
       }
-      return containers;
+
+      boxes = boxes.filter(item => !containers.includes(item))
+      return boxes;
     }
 
     /**
