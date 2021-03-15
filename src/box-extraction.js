@@ -7,161 +7,91 @@
  */
 
 /**
- * Extract boxes from all extracted nodes
- * @returns color.hex
+ * Box Structure
  */
-
-async function getBgImgColorAsync(node) {
-
-  assert(isElementNode(node));
-
-  const fac = new FastAverageColor();
-  var imageUrl, imageColor;
-
-  if(isImageNode(node)) {
-    imageUrl = node.currentSrc || node.src;
-
-  } else if(isElementNode(node)){
-    var bgImage = getStyle(node).backgroundImage;
-    regex = /(?:\(['"]?)(.*?)(?:['"]?\))/,
-    imageUrl = regex.exec(bgImage)[1];
+class Box {
+  /**
+   * 
+   * @param {DOMRect} bbox 
+   * @param {string} color 
+   */
+  constructor(bbox, color) {
+    this.left = bbox.left;
+    this.right = bbox.right;
+    this.top = bbox.top;
+    this.bottom = bbox.bottom;
+    this.width = bbox.width;
+    this.height = bbox.height;
+    this.color = color;
   }
 
-  if(imageUrl.startsWith("http")){
-    imageColor = await fac.getColorAsync(imageUrl);
-    return imageColor.hex;
-  } else {
-    return imageUrl;
-  }
-}
-
-function getBgImgColor(img) {
-  
-  assert(isImageNode(img), "Function getBgImgColor() applicable only on imageNodes!");
-
-  const fac = new FastAverageColor();
-  var imageColor = fac.getColor(img);
-  return imageColor.hex;
-}
-
-function getBgColor(node) {
-  return getStyle(node).backgroundColor;
-}
-
-/**
- * Creates box from text node and adds it into the ouput array.
- * @param {Text node} textNode 
- */
-function getTextBoxes(textNode) {
-
-  if(!isTextNode(textNode)) { //cyklicka zavislost
-    throw "Parameter in function saveTextBox() has to be TextNode!";
+  /**
+   * 
+   * @param {*} box 
+   * @returns 
+   */
+  contains(box) {
+    return this.top <= box.top && this.left <= box.left &&
+            this.bottom >= box.bottom && this.right >= box.right;
   }
 
-  var color, bboxes, textBoxes=[];
+  /**
+   * 
+   * @param {*} boxes 
+   * @returns 
+   */
+  containsAny(boxes) {
+    var boxIndex = boxes.indexOf(this);
+    var boxesCount = boxes.length;
 
-  // Every text box has representing parent's color of text
-  color = getStyle(textNode.parentElement).color;
-
-  // HTML Element <a> can contain inline icon, that influences size of box
-  // if(textNode.parentElement.tagName == "A") 
-  // {
-  //   // Get min.bounding box of parent element
-  //   bboxes = textNode.parentElement.getClientRects();
-  // } 
-  // else 
-  // {
-  // Text node on his own needs range to get minimal bounding boxes
-  // }
-
-  bboxes = getBoundingBox(textNode);
-  
-  // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
-  for(let i=0; i < bboxes.length; i++) {
-    textBoxes.push({color: color, bbox: bboxes[i]})
-  }      
-
-  return textBoxes;
-}
-
-function getBoundingBox(node) {
-  var bbox;
-
-  const isInvalidbbox = (bbox) => {return (bbox.x < 0 || bbox.y < 0 || bbox.bottom < 0 || bbox.right < 0)};
-
-  if(isElementNode(node)) 
-  {
-    bbox = node.getBoundingClientRect();
-
-    // if(isInvalidbbox(bbox)) {
-    return JSON.stringify(bbox);
-    // } 
-    
-  } else if (isTextNode(node)) {
-    
-    var range = document.createRange();
-    range.selectNodeContents(node);
-    var bboxes = range.getClientRects();  
-    var bboxesOut = [];
-    
-    // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
-    for(let i=0; i < bboxes.length; i++) {
-      bbox = bboxes[i];
-      if(!(isInvalidbbox(bbox))) {
-        bbox = JSON.stringify(bbox);
-        bboxesOut.push(bbox);
+    for (let i = 0; i < boxesCount; i++) {
+      if(boxIndex == i) {
+        continue;
       }
-    }      
-    return bboxesOut;
+
+      if(this.contains(boxes[i])){
+        return true;
+      }
+    }
+
+    return false;
   }
+}
+
   
-}
-
-async function getElementBox(node) {
-
-  assert(isElementNode(node), "Parameter in function getElementBox() has to be ElementNode!");
-
-  var color, bbox;
-
-  if(hasBackgroundColor(node)) { 
-    color = getBgColor(node);
-  } else if (hasBackgroundImage(node)) {
-    color = await getBgImgColorAsync(node);
-  }
-
-  bbox = getBoundingBox(node);
-
-  return {color: color, bbox: bbox};
-}
-
-async function getImageBox(node) {
-
-  assert(isImageNode(node));
-
-  var bbox = getBoundingBox(node);
-  var color;
-  
-  if((color = getBgImgColor(node)) == "#000000") {
-      color = await getBgImgColorAsync(node);
-  }
-    
-  return {color: color, bbox: bbox};
-}
-   
  /**
-  * Extracts all relevant nodes from given web page
-  * @param {Root HTML Element from which extraction starts} node 
-  * @returns 
+  * Extracts all relevant boxes from given web page
+  * @returns boxes
   */
   async function extractBoxes() {
 
     var boxes = [];
     await extract(document.body);
-
-    // boxes = removeContaining(boxes);
-
+    // return getValidBoxes(boxes);
     return boxes;
+
+    /**
+     * 
+     * @param {Box[]} boxes 
+     * @returns 
+     */
+    function getValidBoxes(boxes) {
+      var validBoxes = [];
+      var boxesCount = boxes.length;
+
+      for (let i = 0; i < boxesCount; i++) {
+        if(!boxes[i].containsAny(boxes)) {
+          validBoxes.push(boxes[i]);
+        }
+      }
+      return validBoxes;
+    }
   
+    /**
+     * 
+     * @param {Node} node 
+     * @returns 
+     */
     async function extract(node) {
   
       if(isTextNode(node)) 
@@ -204,57 +134,178 @@ async function getImageBox(node) {
         }
       }
     }
-
-    function removeContaining(boxes) {
-      var count = boxes.length;
-
-      var containers = [];
-      for (let contained = 0; contained < count; contained++) {
-        for (let possible_container = 0; possible_container < count; possible_container++) {
-          if(contained != possible_container) {
-            if(containsBox(boxes[possible_container], boxes[contained])) {
-              if(!containers.includes(possible_container)){
-                containers.push(possible_container);
-              }
-            }
-          }
-        }        
-      }
-
-      boxes = boxes.filter(item => !containers.includes(item))
-      return boxes;
-    }
-
-    /**
-     * Check if box1 contains box2
-     * @param {Box} box1 Possible container
-     * @param {Box} box2 Contained
-     * @returns 
-     */
-    function containsBox(box1, box2) {
-      var bbox1, bbox2, t1, l1, b1, r1, t2, l2, b2, r2;
-
-      bbox1 = JSON.parse(box1.bbox);
-      bbox2 = JSON.parse(box2.bbox);
-
-      t1 = bbox1.top;
-      l1 = bbox1.left;
-      r1 = bbox1.bottom;
-      b1 = bbox1.right;
-
-      t2 = bbox2.top;
-      l2 = bbox2.left;
-      r2 = bbox2.bottom;
-      b2 = bbox2.right;
-
-      if(r2 <= r1 && l2 >= l1 && t2 >= t1 && b2 <= b1){
-        return true;
-      } else {
-        return false;
-      }
-    }
   }
   
+/**
+ * Get average color of background image of HTML element
+ * @param {Node} node 
+ * @returns 
+ */
+async function getBgImgColorAsync(node) {
+
+  assert(isElementNode(node));
+
+  const fac = new FastAverageColor();
+  var imageUrl, imageColor;
+
+  if(isImageNode(node)) {
+    imageUrl = node.currentSrc || node.src;
+
+  } else if(isElementNode(node)){
+    var bgImage = getStyle(node).backgroundImage;
+    regex = /(?:\(['"]?)(.*?)(?:['"]?\))/,
+    imageUrl = regex.exec(bgImage)[1];
+  }
+
+  if(imageUrl.startsWith("http")){
+    imageColor = await fac.getColorAsync(imageUrl);
+    return imageColor.hex;
+  } else {
+    return imageUrl;
+  }
+}
+
+/**
+ * 
+ * @param {Node} img 
+ * @returns 
+ */
+function getBgImgColor(img) {
+  
+  assert(isImageNode(img), "Function getBgImgColor() applicable only on imageNodes!");
+
+  const fac = new FastAverageColor();
+  var imageColor = fac.getColor(img);
+  return imageColor.hex;
+}
+
+
+/**
+ * 
+ * @param {Node} node 
+ * @returns 
+ */
+function getBgColor(node) {
+  return getStyle(node).backgroundColor;
+}
+
+/**
+ * Creates box from text node and adds it into the ouput array.
+ * @param {Node} textNode 
+ */
+function getTextBoxes(textNode) {
+
+  assert(isTextNode(textNode), "Parameter in function saveTextBox() has to be TextNode!");
+
+  var color, bboxes, textBoxes=[];
+
+  // Every text box's representing color is parent's color of text
+  color = getStyle(textNode.parentElement).color;
+  bboxes = getBoundingBoxes(textNode);
+  
+  // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
+  for(let i=0; i < bboxes.length; i++) {
+    // textBoxes.push({color: color, bbox: bboxes[i]})
+    textBoxes.push(new Box(bboxes[i], color));
+  }      
+
+  return textBoxes;
+}
+
+/**
+ * 
+ * @param {Node} textNode 
+ * @returns {DOMRect[]} array
+ */
+function getBoundingBoxes(textNode) {
+  assert(isTextNode(textNode));
+  
+  // Maybe should be deleted
+  const isInvalidbbox = (bbox) => {
+    var bboxParent = getBoundingBox(textNode.parentElement);
+
+    if(bboxParent.left > bbox.left || bboxParent.top > bbox.top || bboxParent.bottom < bbox.bottom || bboxParent.right < bbox.right){
+      return true;
+    }
+    else if(bbox.left < 0 || bbox.top < 0 || bbox.bottom < 0 || bbox.right < 0 || bbox.width==0 || bbox.height ==0) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  var range, rects, rectsLength, bbox, bboxes = [];
+
+  range = document.createRange();
+  range.selectNodeContents(textNode);
+
+  rects = range.getClientRects();  
+  rectsLength = rects.length;
+
+  // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
+  for(let i=0;  i < rectsLength; i++) {
+    bbox=rects[i];
+    if(!(isInvalidbbox(bbox))) {
+      bboxes.push(bbox);
+    }
+  }      
+  return bboxes;
+}
+
+/**
+ * 
+ * @param {*} node 
+ * @returns 
+ */
+function getBoundingBox(node) {
+  assert(isElementNode(node));
+
+  var bbox = node.getBoundingClientRect();
+  return bbox;
+}
+
+/**
+ * 
+ * @param {*} node 
+ * @returns 
+ */
+async function getElementBox(node) {
+
+  assert(isElementNode(node), "Parameter in function getElementBox() has to be ElementNode!");
+
+  var bbox, color;
+
+  bbox = getBoundingBox(node);
+
+  if(hasBackgroundColor(node)) { 
+    color = getBgColor(node);
+  } else if (hasBackgroundImage(node)) {
+    color = await getBgImgColorAsync(node);
+  }
+
+  return new Box(bbox, color);
+}
+
+/**
+ * 
+ * @param {*} node 
+ * @returns 
+ */
+async function getImageBox(node) {
+
+  assert(isImageNode(node));
+
+  var bbox, color;
+  
+  bbox = getBoundingBox(node);
+  
+  if((color = getBgImgColor(node)) == "#000000") {
+      color = await getBgImgColorAsync(node);
+  }
+    
+  return new Box(bbox, color);
+}
+ 
   /**
    * Check if Element has transparent background
    * @param {HTML Element} element 
@@ -281,20 +332,21 @@ async function getImageBox(node) {
   function isVisible(node) {
   
       if (isElementNode(node)) {
-        const bbox = node.getBoundingClientRect();  
-        
+        // const bbox = getBoundingBox(node);  
         // Element explicitly non-visible
         // if (bbox.width == 0 || bbox.height == 0) {
         //   return false;
         // }
     
+        var style = getStyle(node);
+
         // Element implicitly non-visible 
-        if(getStyle(node).visibility in ["hidden", "collapse"]){
+        if(style.visibility == "hidden" || style.visibility == "collapse"){
           return false;
         }
     
         // Element implicitly non-visible
-        if(getStyle(node).display == "none"){
+        if(style.display == "none"){
           return false;
         }
     
@@ -305,8 +357,6 @@ async function getImageBox(node) {
           return false;
         }
     
-        // Check parent's visibility
-        return isVisible(node.parentElement);
       }
     
       // Node supposed to be visible
@@ -344,7 +394,13 @@ async function getImageBox(node) {
   function hasBackgroundImage(element) {
     return getStyle(element).backgroundImage != 'none';
   }
+
   
+  /**
+   * 
+   * @param {*} element 
+   * @returns 
+   */
   function hasBackgroundColor(element) {
     return getStyle(element).backgroundColor != 'rgba(0, 0, 0, 0)';
   }
@@ -374,6 +430,11 @@ async function getImageBox(node) {
       }
     }
     
+  /**
+   * 
+   * @param {*} node 
+   * @returns 
+   */
   function getLastChild(node) {
   
       var childNodes = getChildNodes(node);
@@ -385,6 +446,11 @@ async function getImageBox(node) {
       }
   }
     
+  /**
+   * 
+   * @param {*} node 
+   * @returns 
+   */
   function getParentWithBackground(node) {
       
       var parent = node.parentElement;
@@ -399,26 +465,60 @@ async function getImageBox(node) {
       }
   }
   
+  /**
+   * 
+   * @param {*} node 
+   * @returns 
+   */
   function getChildNodes(node) {
-      // Create Array from NodeList
-      var childNodes = Array.from(node.childNodes);
-      // Filter out non-visible nodes
-      childNodes = childNodes.filter(node => isVisible(node));
-      return childNodes;
+
+      var childNodes = node.childNodes;
+      var childNodesCount = childNodes.length;
+      var validChildNodes = [];
+
+      for (let i = 0; i < childNodesCount; i++) {
+        var child = childNodes[i];
+        if(isVisible(child)) {
+          validChildNodes.push(child);
+        }
+        
+      }
+
+      return validChildNodes;
   }
-    
+  
+  /**
+   * 
+   * @param {*} node 
+   * @returns 
+   */
   function isTextNode(node) {
       return node.nodeType == Node.TEXT_NODE;
   }
-    
+  
+  /**
+   * 
+   * @param {*} node 
+   * @returns 
+   */
   function isImageNode(node) {
       return node.tagName == "IMG";
   }
-    
+
+  /**
+   * 
+   * @param {*} node 
+   * @returns 
+   */  
   function isElementNode(node) {
       return node.nodeType == Node.ELEMENT_NODE;
   }
-    
+
+  /**
+   * 
+   * @param {*} node 
+   * @returns 
+   */  
   function getSmallest(node) {
   
       var lastChild = getLastChild(node);

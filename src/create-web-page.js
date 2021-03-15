@@ -44,19 +44,34 @@ function runServer(data) {
 }
 
 // Create visual (SVG) representation of given box structure
+// function createSvgBox(box) {
+//   var bbox = JSON.parse(box.bbox);
+
+//   svg.rect({
+//     x: bbox.x,
+//     y: bbox.y,
+//     width: bbox.width,
+//     height: bbox.height,
+//     fill: box.color,
+//     padding:0,
+//     margin:0
+//   });
+// }
+
 function createSvgBox(box) {
-  var bbox = JSON.parse(box.bbox);
+  // var box = JSON.parse(box);
 
   svg.rect({
-    x: bbox.x,
-    y: bbox.y,
-    width: bbox.width,
-    height: bbox.height,
+    x: box.left,
+    y: box.top,
+    width: box.width,
+    height: box.height,
     fill: box.color,
     padding:0,
     margin:0
   });
 }
+
 
 // Create box representation of webpage nodes
 function buildHtml(req, data) {
