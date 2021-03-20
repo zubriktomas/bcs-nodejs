@@ -9,6 +9,9 @@
 // Import webpage box creator
 const webPageCreator = require('./create-web-page');
 
+// Import clustering module
+const clustering = require('./clustering');
+
 // Import playwright
 const { chromium } = require('playwright');
 
@@ -29,22 +32,19 @@ const { chromium } = require('playwright');
   // Load webpage for segmentation process given by input argument
   // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'networkidle2'});
   // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
-  // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
-  await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
+  await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
+  // await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
 
   // Add JavaScript files into webpage for execution and processing in browser context
   await page.addScriptTag({ path: './src/helper-functions.js'});
   await page.addScriptTag({ path: './src/box-extraction.js'});
   await page.addScriptTag({ url: 'https://unpkg.com/fast-average-color/dist/index.min.js'});
 
+  console.time("extraction");
   // Box Extraction Process - JavaScript code evaluated in web browser context
-  const boxes = await page.evaluate(async () => {
+  const extracted = await page.evaluate(async () => {
 
-    var debug = false;
-
-    var t0 = performance.now()
     var boxes = await extractBoxes();
-    var t1 = performance.now()
 
     return {
       boxes: boxes,
@@ -52,11 +52,10 @@ const { chromium } = require('playwright');
         height: document.body.scrollHeight, 
         width: document.body.scrollWidth 
       }, 
-      boxesCount: boxes.length,
-      time: "Box Extraction took " + (t1 - t0) + " milliseconds."
+      boxesCount: boxes.length
     };
-
   });
+  console.timeEnd("extraction");
 
   // Capture screenshot of webpage in PNG format
   await page.screenshot({ path: './output/webpage.png', fullPage: true });
@@ -68,11 +67,15 @@ const { chromium } = require('playwright');
   // Close browser instance (no longer needed)
   await browser.close();
 
+  console.time("clustering");
+  clustering.process(extracted);
+  console.timeEnd("clustering");
+
   // Extracted boxes can be used in next processing step
-  console.log(boxes);
+  // console.log(extracted);
 
   // Visualize box tree representation of webpage and take screenshot
-  webPageCreator.runServer(boxes);
+  // webPageCreator.runServer(extracted);
   
   // BCS has finished successfully!
   console.log("BCS has finished successfully!");

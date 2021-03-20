@@ -15,7 +15,9 @@ class Box {
    * @param {DOMRect} bbox 
    * @param {string} color 
    */
+  
   constructor(bbox, color) {
+    this.id = `(${bbox.left}, ${bbox.top}, ${bbox.right}, ${bbox.bottom}, ${color})`;
     this.left = bbox.left;
     this.right = bbox.right;
     this.top = bbox.top;
@@ -239,15 +241,20 @@ function getBoundingBoxes(textNode) {
   range = document.createRange();
   range.selectNodeContents(textNode);
 
+  if(isInvalidbbox(range.getBoundingClientRect())) {
+    return [];
+  }
+
+
   rects = range.getClientRects();  
   rectsLength = rects.length;
 
   // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
   for(let i=0;  i < rectsLength; i++) {
     bbox=rects[i];
-    if(!(isInvalidbbox(bbox))) {
+    // if(!(isInvalidbbox(bbox))) {
       bboxes.push(bbox);
-    }
+    // }
   }      
   return bboxes;
 }
@@ -299,9 +306,9 @@ async function getImageBox(node) {
   
   bbox = getBoundingBox(node);
   
-  if((color = getBgImgColor(node)) == "#000000") {
+  // if((color = getBgImgColor(node)) == "#000000") {
       color = await getBgImgColorAsync(node);
-  }
+  // }
     
   return new Box(bbox, color);
 }
