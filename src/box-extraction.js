@@ -15,9 +15,9 @@ class Box {
    * @param {DOMRect} bbox 
    * @param {string} color 
    */
-  
+
   constructor(bbox, color) {
-    this.id = `(${bbox.left}, ${bbox.top}, ${bbox.right}, ${bbox.bottom}, ${color})`;
+    this.id = `(t: ${bbox.top}, l:${bbox.left}, b:${bbox.bottom}, r:${bbox.right}, c:${color})`;
     this.left = bbox.left;
     this.right = bbox.right;
     this.top = bbox.top;
@@ -60,7 +60,6 @@ class Box {
   }
 }
 
-  
  /**
   * Extracts all relevant boxes from given web page
   * @returns boxes
