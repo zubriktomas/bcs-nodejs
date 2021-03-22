@@ -32,7 +32,8 @@ const { chromium } = require('playwright');
   // Load webpage for segmentation process given by input argument
   // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'networkidle2'});
   // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
-  await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
+  // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
+  await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
   // await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
 
   // Add JavaScript files into webpage for execution and processing in browser context
@@ -40,11 +41,12 @@ const { chromium } = require('playwright');
   await page.addScriptTag({ path: './src/box-extraction.js'});
   await page.addScriptTag({ url: 'https://unpkg.com/fast-average-color/dist/index.min.js'});
 
-  console.time("extraction");
   // Box Extraction Process - JavaScript code evaluated in web browser context
   const extracted = await page.evaluate(async () => {
 
+    var t0 = performance.now();
     var boxes = await extractBoxes();
+    var t1 = performance.now();
 
     return {
       boxes: boxes,
@@ -52,13 +54,13 @@ const { chromium } = require('playwright');
         height: document.body.scrollHeight, 
         width: document.body.scrollWidth 
       }, 
-      boxesCount: boxes.length
+      boxesCount: boxes.length,
+      time: t1-t0
     };
   });
-  console.timeEnd("extraction");
 
   // Capture screenshot of webpage in PNG format
-  await page.screenshot({ path: './output/webpage.png', fullPage: true });
+  // await page.screenshot({ path: './output/webpage.png', fullPage: true });
 
   // Capture screenshot of webpage in PDF format
   // await page.emulateMedia({media:"screen"});
@@ -67,16 +69,17 @@ const { chromium } = require('playwright');
   // Close browser instance (no longer needed)
   await browser.close();
 
-  console.time("clustering");
+  // console.log("Extraction time:", extracted.time, "ms");
   clustering.process(extracted);
-  console.timeEnd("clustering");
 
   // Extracted boxes can be used in next processing step
   // console.log(extracted);
 
   // Visualize box tree representation of webpage and take screenshot
-  // webPageCreator.runServer(extracted);
+  webPageCreator.runServer(extracted);
   
+  // console.log(extracted);
+
   // BCS has finished successfully!
   console.log("BCS has finished successfully!");
 

@@ -18,10 +18,14 @@ class BoxRelation {
 
     calculateAbsoluteDistance(boxA, boxB, direction) {
         var absoluteDistance;
-        if(direction == SelectorDirection.horizontal) {
-            absoluteDistance = Math.abs(boxB.left - boxA.right);
-        } else if (direction == SelectorDirection.vertical) {
-            absoluteDistance = Math.abs(boxB.top - boxA.bottom);
+        if(direction == SelectorDirection.right) {
+            absoluteDistance = boxB.left - boxA.right;
+        } else if (direction == SelectorDirection.down) {
+            absoluteDistance = boxB.top - boxA.bottom; 
+        } else if (direction == SelectorDirection.left) {
+            absoluteDistance = boxA.right - boxB.left; 
+        } else if (direction == SelectorDirection.up) {
+            absoluteDistance = boxA.bottom - boxB.top; 
         }
         return absoluteDistance;
     }
@@ -75,22 +79,42 @@ function findNeighbours(box, direction) {
     const pageWidth = globals.pageWidth;
     const pageHeight = globals.pageHeight;
     const selectorWidth = 100;
-    const selectorHeight = 100;
+    const selectorHeight = 50;
 
-    if(direction == SelectorDirection.horizontal){
-        for (let i = selectorWidth; i < pageWidth + selectorWidth; i+=selectorWidth) {
+    if(direction == SelectorDirection.right){
+        for (let i = box.right + 1 + selectorWidth; i < pageWidth + selectorWidth; i+=selectorWidth) {
         
-            selector = {minX: box.right+1, minY: box.top+1, maxX: box.right - 1 + i, maxY: box.bottom-1};
+            selector = {minX: box.right+1, minY: box.top+1, maxX: i, maxY: box.bottom-1};
             neighbours = tree.search(selector);    
     
             if(neighbours.length) {
                 break;
             }
         }
-    } else {
-        for (let i = selectorHeight; i < pageHeight + selectorHeight; i+=selectorHeight) {
+    } else if (direction == SelectorDirection.down) {
+        for (let i = box.bottom + 1 + selectorHeight; i < pageHeight + selectorHeight; i+=selectorHeight) {
         
-            selector = {minX: box.left+1, minY: box.bottom+1, maxX: box.right-1, maxY: box.bottom - 1 + i};
+            selector = {minX: box.left+1, minY: box.bottom+1, maxX: box.right-1, maxY: i};
+            neighbours = tree.search(selector);    
+    
+            if(neighbours.length) {
+                break;
+            }
+        }
+    } else if (direction == SelectorDirection.left) {
+        for (let i = box.left - 1 - selectorWidth; i > 0 - selectorWidth; i-=selectorWidth) {
+        
+            selector = {minX: i, minY: box.top + 1, maxX: box.left-1 , maxY: box.bottom-1};
+            neighbours = tree.search(selector);    
+    
+            if(neighbours.length) {
+                break;
+            }
+        }
+    } else if (direction == SelectorDirection.up) {
+        for (let i = box.top - 1 - selectorHeight; i > 0 - selectorHeight; i-=selectorHeight) {
+        
+            selector = {minX: box.left + 1, minY: i, maxX: box.right - 1 , maxY: box.top - 1};
             neighbours = tree.search(selector);    
     
             if(neighbours.length) {
@@ -99,13 +123,18 @@ function findNeighbours(box, direction) {
         }
     }
 
-    var rel, relations = []; shortestDistance = direction == SelectorDirection.horizontal ? pageWidth : pageHeight;
+    var rel, relations = []; shortestDistance = pageWidth + pageHeight;
+
     for (let i = 0; i < neighbours.length; i++) {
         rel = new BoxRelation(box, neighbours[i], direction);
 
         relations.push(rel);
         if(rel.absoluteDistance < shortestDistance) {
             shortestDistance = rel.absoluteDistance;
+        }
+
+        if(rel.absoluteDistance > box.maxNeighbourDistance) {
+            box.maxNeighbourDistance = rel.absoluteDistance;
         }
     }
 
@@ -123,17 +152,23 @@ function findNeighbours(box, direction) {
 
 function findDirectNeighbours(box) {
 
-    var right = [], down = [];
+    var r = [], d = [];
 
-    right = findNeighbours(box, SelectorDirection.horizontal);    
-    down = findNeighbours(box, SelectorDirection.vertical);
+    r = findNeighbours(box, SelectorDirection.right);    
+    d = findNeighbours(box, SelectorDirection.down);
+    l = findNeighbours(box, SelectorDirection.left);
+    u = findNeighbours(box, SelectorDirection.up);
 
-    directNeighbours = right.concat(down);
+    directNeighbours = [];
+    directNeighbours = directNeighbours.concat(r);
+    directNeighbours = directNeighbours.concat(d);
+    directNeighbours = directNeighbours.concat(l);
+    directNeighbours = directNeighbours.concat(u);
 
-    // console.log(box.id);
-    // console.log(directNeighbours.map(x => x.id));
 
-    // console.log("\n\n");
+    console.log(box.id);
+    console.log(directNeighbours.map(x => x.id));
+    console.log("\n\n");
 }
 
 function process(extracted) {
@@ -149,6 +184,12 @@ function process(extracted) {
     for (let i = 0; i < extracted.boxes.length; i++) {
         var box = extracted.boxes[i];
         findDirectNeighbours(box);    
+    }
+
+    for (let i = 0; i < globals.allRelations.length; i++) {
+        rel = globals.allRelations[i];
+
+        
     }
 
     console.log("Boxes Count: ", extracted.boxes.length);

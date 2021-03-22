@@ -25,6 +25,7 @@ class Box {
     this.width = bbox.width;
     this.height = bbox.height;
     this.color = color;
+    this.maxNeighbourDistance = 0;
   }
 
   /**
