@@ -26,6 +26,8 @@ class Box {
     this.height = bbox.height;
     this.color = color;
     this.maxNeighbourDistance = 0;
+    this.relations = [];
+    this.neighbours = [];
   }
 
   /**
@@ -161,7 +163,7 @@ async function getBgImgColorAsync(node) {
 
   if(imageUrl.startsWith("http")){
     imageColor = await fac.getColorAsync(imageUrl);
-    return imageColor.hex;
+    return imageColor.rgb;
   } else {
     return imageUrl;
   }
@@ -178,7 +180,7 @@ function getBgImgColor(img) {
 
   const fac = new FastAverageColor();
   var imageColor = fac.getColor(img);
-  return imageColor.hex;
+  return imageColor.rgb;
 }
 
 

@@ -76,7 +76,7 @@ const { chromium } = require('playwright');
   // console.log(extracted);
 
   // Visualize box tree representation of webpage and take screenshot
-  webPageCreator.runServer(extracted);
+  // webPageCreator.runServer(extracted);
   
   // console.log(extracted);
 

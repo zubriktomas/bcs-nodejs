@@ -1,19 +1,33 @@
 const RBush = require('rbush');
+const sort = require('fast-sort');
 
 module.exports.process = process;
 
 var globals = {};
 globals.allRelations = [];
+globals.uniqueRelations = {};
 
 class BoxRelation {
     constructor(boxA, boxB, direction) {
+        this.id = this.generateId(boxA, boxB, direction);
         this.boxA = boxA;
         this.boxB = boxB;
         this.direction = direction;
         this.absoluteDistance = this.calculateAbsoluteDistance(boxA, boxB, direction);
+        this.relativeDistance = null;
+        this.shapeSimilarity = null;
+        this.colorSimilarity = null;
         this.similarity = null;
         this.alignmentScore = null;
         this.cardinality = null;
+    }
+
+    generateId(boxA, boxB, direction) {
+        if(direction == SelectorDirection.right || direction == SelectorDirection.down) {
+            return boxA.id + boxB.id;
+        } else {
+            return boxB.id + boxA.id;
+        }
     }
 
     calculateAbsoluteDistance(boxA, boxB, direction) {
@@ -23,11 +37,77 @@ class BoxRelation {
         } else if (direction == SelectorDirection.down) {
             absoluteDistance = boxB.top - boxA.bottom; 
         } else if (direction == SelectorDirection.left) {
-            absoluteDistance = boxA.right - boxB.left; 
+            absoluteDistance = boxA.left - boxB.right; 
         } else if (direction == SelectorDirection.up) {
-            absoluteDistance = boxA.bottom - boxB.top; 
+            absoluteDistance = boxA.top - boxB.bottom; 
         }
         return absoluteDistance;
+    }
+
+    calculateRelativeDistance() {
+        var relA, relB, maxdA, maxdB;
+
+        maxdA = this.boxA.maxNeighbourDistance;
+        maxdB = this.boxB.maxNeighbourDistance;
+
+        relA = this.absoluteDistance / maxdA;
+        relB = this.absoluteDistance / maxdB;
+
+        this.relativeDistance = (relA + relB) / 2;
+    }
+
+    calculateShapeSimilarity() {
+        // Spolocne premenne pre oba vypocty
+        var widthA, heightA, widthB, heightB;
+
+        // Premenne pre vypocet ratio
+        var ratioA,  ratioB,  ratio, maxRatio, minRatio;
+
+        widthA = this.boxA.width;
+        heightA = this.boxA.height;
+        widthB = this.boxB.width;
+        heightB = this.boxB.height;
+
+        ratioA = widthA / heightA;
+        ratioB = widthB / heightB;
+
+        maxRatio = Math.max(ratioA, ratioB);
+        minRatio = Math.min(ratioA, ratioB);
+
+        ratio = (maxRatio - minRatio) / ( (Math.pow(maxRatio, 2) - 1) / maxRatio );
+
+        // Premenne pre vypocet size
+        var sizeA, sizeB, size;
+
+        sizeA = widthA * heightA;
+        sizeB = widthB * heightB;
+
+        size = 1 - (Math.min(sizeA, sizeB) / Math.max(sizeA, sizeB));
+
+        this.shapeSimilarity = (ratio + size) / 2;
+    }
+
+    calculateColorSimilarity() {
+        var colorA, colorB, rPart, gPart, bPart;
+
+        colorA = getRgbFromString(this.boxA.color);
+        colorB = getRgbFromString(this.boxB.color);
+
+        rPart = Math.pow(colorA.r - colorB.r, 2);
+        gPart = Math.pow(colorA.g - colorB.g, 2);
+        bPart = Math.pow(colorA.b - colorB.b, 2);
+
+        this.colorSimilarity = Math.sqrt(rPart + gPart + bPart) / Math.sqrt(3);
+    }
+
+    calculateBaseSimilarity() {
+        if(this.relativeDistance == 0) {
+            this.similarity = 0;
+        } else if (this.relativeDistance == 1) {
+            this.similarity = 1;
+        } else {
+            this.similarity = (this.relativeDistance + this.shapeSimilarity + this.colorSimilarity) / 3;
+        }
     }
 }
 
@@ -38,38 +118,13 @@ class MyRBush extends RBush {
 }
 
 /* Selector Direction Enum JavaScript best practice */
-const SelectorDirection = Object.freeze({"right":1, "down":2, "left":3, "up":4, "vertical": 5, "horizontal": 6});
+const SelectorDirection = Object.freeze({"right":"right", "down":"down", "left":"left", "up":"up", "vertical": 5, "horizontal": 6});
 
 function createMyRBush(boxes) {
     const tree = new MyRBush();
     tree.load(boxes);
     return tree;
 }
-
-// function findRelations(tree, box, document, direction) {
-//     var selector, relations, minX, minY, maxX, maxY, pageWidth, pageHeight;
-//     minX = box.left;
-//     minY = box.top;
-//     maxX = box.right;
-//     maxY = box.bottom;
-//     pageWidth = document.width;
-//     pageHeight = document.height;
-//     if(direction == SelectorDirection.right) {
-//         selector = {minX:maxX+1, minY:minY+1, maxX:pageWidth, maxY:maxY-1};
-//     } else if(direction == SelectorDirection.down) {
-//         // selector = {minX:minX+1, minY:0, maxX:maxX-1, maxY:minY-1};
-//         selector = {minX:minX+1, minY:minY-1, maxX:maxX-1, maxY: pageHeight};
-//     } 
-//     // console.log(selector);
-//     // else if(direction == SelectorDirection.left) {
-//     //     selector = {minX:0, minY:minY+1, maxX:minX-1, maxY:maxY-1};
-//     // } else if(direction == SelectorDirection.up) {
-//     //     selector = {minX:minX+1, minY:maxY+1, maxX:maxX-1, maxY:pageHeight};
-//     // }
-//     relations = tree.search(selector);
-//     return relations;
-// }
-
 
 // It is expected to find one, but possibly multiple
 function findNeighbours(box, direction) {
@@ -133,18 +188,27 @@ function findNeighbours(box, direction) {
             shortestDistance = rel.absoluteDistance;
         }
 
-        if(rel.absoluteDistance > box.maxNeighbourDistance) {
-            box.maxNeighbourDistance = rel.absoluteDistance;
-        }
+       
     }
 
     for (let i = 0; i < relations.length; i++) {
         rel = relations[i];
         
         if(rel.absoluteDistance == shortestDistance) {
+            globals.uniqueRelationsIds.add(rel.id);
+            globals.uniqueRelations[rel.id] = rel;
+
             directNeighbours.push(rel.boxB);
+            box.relations.push(rel);
             globals.allRelations.push(rel);
+
+
+            if(rel.absoluteDistance > box.maxNeighbourDistance) {
+                box.maxNeighbourDistance = rel.absoluteDistance;
+            }
         }
+
+        
     }
 
     return directNeighbours;
@@ -166,10 +230,26 @@ function findDirectNeighbours(box) {
     directNeighbours = directNeighbours.concat(u);
 
 
-    console.log(box.id);
-    console.log(directNeighbours.map(x => x.id));
-    console.log("\n\n");
+    // console.log(box.id);
+    // console.log(directNeighbours.map(x => x.id));
+    // console.log("\n\n");
 }
+
+function getRgbFromString(rgbString) {
+    var rgbArray, rgb = {}; 
+
+    rgbArray = rgbString.replace(/[^\d,]/g, '').split(',');
+
+    rgb.r = parseInt(rgbArray[0])/255;
+    rgb.g = parseInt(rgbArray[1])/255;
+    rgb.b = parseInt(rgbArray[2])/255;
+
+    if(rgbArray.length == 4) {
+        rgb.a = parseInt(rgbArray[3]);
+    }
+    return rgb;
+}
+
 
 function process(extracted) {
 
@@ -179,30 +259,60 @@ function process(extracted) {
     globals.pageWidth = extracted.document.width;
     globals.pageHeight = extracted.document.height;
 
+    const boxesCount = globals.boxes.length;
+
     console.time("findDirectNeighbours");
 
-    for (let i = 0; i < extracted.boxes.length; i++) {
-        var box = extracted.boxes[i];
+    for (let i = 0; i < boxesCount; i++) {
+        var box = globals.boxes[i];
         findDirectNeighbours(box);    
     }
 
-    for (let i = 0; i < globals.allRelations.length; i++) {
-        rel = globals.allRelations[i];
+    const relationsCount = globals.allRelations.length;
 
-        
+    
+    for (let i = 0; i < relationsCount; i++) {
+        var rel = globals.allRelations[i];
+        rel.calculateRelativeDistance();
+        rel.calculateShapeSimilarity();
+        rel.calculateColorSimilarity();
+        rel.calculateBaseSimilarity();
+    }
+    
+    var bestSimilarity = 1;
+    var theMostSimilarPair = null;
+    for (let i = 0; i < relationsCount; i++) {
+        var rel = globals.allRelations[i];
+
+        if(rel.similarity < bestSimilarity) {
+            bestSimilarity = rel.similarity;
+            theMostSimilarPair = rel;
+        }
     }
 
-    console.log("Boxes Count: ", extracted.boxes.length);
-    console.log("Relations Count: ", globals.allRelations.length);
+    // console.log("The most similar are: ");
+    // console.log(theMostSimilarPair.boxA.id);
+    // console.log(theMostSimilarPair.boxB.id);
+  
+    Object.keys(globals.uniqueRelations).forEach(relId => {
+        console.log(globals.uniqueRelations[relId].similarity);
+    });
+
+    
+    console.log("\_\_\_");
+
+    var uniqrels = Object.values(globals.uniqueRelations);
+    sort(uniqrels).asc(rel => rel.similarity);
+
+    uniqrels.forEach(rel => {
+        console.log(rel.similarity);
+    });
 
     console.timeEnd("findDirectNeighbours");
 
+    // console.log(Object.keys(globals.uniqueRelations).length);
     // console.log(globals.allRelations.length);
-
-    // box = globals.boxes[0];
-    // findDirectNeighbours(box);
-
-   
+    // console.log(globals.uniqueRelationsIds.size);
 
 
 
