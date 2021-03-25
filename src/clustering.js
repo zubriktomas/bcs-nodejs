@@ -1,20 +1,33 @@
 const RBush = require('rbush');
 const sort = require('fast-sort');
+const webPageCreator = require('./create-web-page');
 
 module.exports.process = process;
 
 var globals = {};
-globals.allRelations = [];
-globals.uniqueRelations = {};
-globals.clusters = [];
+
+function getRgbFromString(rgbString) {
+    var rgbArray, rgb = {}; 
+
+    rgbArray = rgbString.replace(/[^\d,]/g, '').split(',');
+
+    rgb.r = parseInt(rgbArray[0])/255;
+    rgb.g = parseInt(rgbArray[1])/255;
+    rgb.b = parseInt(rgbArray[2])/255;
+
+    if(rgbArray.length == 4) {
+        rgb.a = parseInt(rgbArray[3]);
+    }
+    return rgb;
+}
 
 class BoxRelation {
-    constructor(boxA, boxB, direction) {
-        this.id = this.generateId(boxA, boxB, direction);
-        this.boxA = boxA;
-        this.boxB = boxB;
+    constructor(boxAId, boxBId, direction) {
+        this.boxA = globals.boxesMap[boxAId];
+        this.boxB = globals.boxesMap[boxBId];
         this.direction = direction;
-        this.absoluteDistance = this.calculateAbsoluteDistance(boxA, boxB, direction);
+        this.id = this.generateId();
+        this.absoluteDistance = this.calculateAbsoluteDistance();
         this.relativeDistance = null;
         this.shapeSimilarity = null;
         this.colorSimilarity = null;
@@ -23,24 +36,24 @@ class BoxRelation {
         this.cardinality = null;
     }
 
-    generateId(boxA, boxB, direction) {
-        if(direction == SelectorDirection.right || direction == SelectorDirection.down) {
-            return boxA.id + boxB.id;
+    generateId() {
+        if(this.direction == SelectorDirection.right || this.direction == SelectorDirection.down) {
+            return this.boxA.id + this.boxB.id;
         } else {
-            return boxB.id + boxA.id;
+            return this.boxB.id + this.boxA.id;
         }
     }
 
-    calculateAbsoluteDistance(boxA, boxB, direction) {
+    calculateAbsoluteDistance() {
         var absoluteDistance;
-        if(direction == SelectorDirection.right) {
-            absoluteDistance = boxB.left - boxA.right;
-        } else if (direction == SelectorDirection.down) {
-            absoluteDistance = boxB.top - boxA.bottom; 
-        } else if (direction == SelectorDirection.left) {
-            absoluteDistance = boxA.left - boxB.right; 
-        } else if (direction == SelectorDirection.up) {
-            absoluteDistance = boxA.top - boxB.bottom; 
+        if(this.direction == SelectorDirection.right) {
+            absoluteDistance = this.boxB.left - this.boxA.right;
+        } else if (this.direction == SelectorDirection.down) {
+            absoluteDistance = this.boxB.top - this.boxA.bottom; 
+        } else if (this.direction == SelectorDirection.left) {
+            absoluteDistance = this.boxA.left - this.boxB.right; 
+        } else if (this.direction == SelectorDirection.up) {
+            absoluteDistance = this.boxA.top - this.boxB.bottom; 
         }
         return absoluteDistance;
     }
@@ -113,7 +126,7 @@ class BoxRelation {
 }
 
 class MyRBush extends RBush {
-    toBBox(box) { return {minX: box.left, minY: box.top, maxX: box.right, maxY: box.bottom, id:box.id}; }
+    toBBox(entity) { return {minX: entity.left, minY: entity.top, maxX: entity.right, maxY: entity.bottom, id:entity.id}; }
     compareMinX(a, b) { return a.left - b.left; }
     compareMinY(a, b) { return a.top - b.top; }
 }
@@ -124,6 +137,7 @@ class Cluster {
         this.top = Math.min(boxA.top, boxB.top);
         this.right = Math.max(boxA.right, boxB.right);
         this.bottom = Math.max(boxA.bottom, boxB.bottom);
+        this.id = `(t: ${this.top}, l:${this.left}, b:${this.bottom}, r:${this.right})`;
         this.boxes = this.assignBoxes(boxA, boxB);
         this.neighbours = {};
         // this.cumulativeSimilarity =
@@ -144,12 +158,11 @@ class Cluster {
         return boxes;
     }
 
-    getNeighbours(boxA, boxB) {
+    getNeighbours() {
 
         for (let i = 0; i < boxA.neighbours.length; i++) {
             neighbourId = boxA.neighboursIds[i];
             if(neighbourOfA != boxA.id && neighbourOfA != boxB.id) {
-                // this.neighbours.push(globals.boxes);
                 this.neighboursIds[neighbourId] = neighbourId;
             }
         }
@@ -166,9 +179,6 @@ function createMyRBush(boxes) {
     return tree;
 }
 
-function findRelationsRight(box, info) {
-}
-
 // It is expected to find one, but possibly multiple
 function findNeighbours(box, direction) {
     var selector, neighbours = [];
@@ -176,7 +186,7 @@ function findNeighbours(box, direction) {
     const tree = globals.tree;
     const pageWidth = globals.pageWidth;
     const pageHeight = globals.pageHeight;
-    const selectorWidth = 50;
+    const selectorWidth = 100;
     const selectorHeight = 50;
 
     if(direction == SelectorDirection.right){
@@ -221,19 +231,19 @@ function findNeighbours(box, direction) {
         }
     }
 
-    var rel, tmpRelations = [], shortestDistance = pageWidth + pageHeight;
+    var rel, relations = [], shortestDistance = pageWidth + pageHeight;
 
     for (let i = 0; i < neighbours.length; i++) {
-        rel = new BoxRelation(box, neighbours[i], direction);
+        rel = new BoxRelation(box.id, neighbours[i].id, direction);
 
-        tmpRelations.push(rel);
+        relations.push(rel);
         if(rel.absoluteDistance < shortestDistance) {
             shortestDistance = rel.absoluteDistance;
         }
     }
 
-    for (let i = 0; i < tmpRelations.length; i++) {
-        rel = tmpRelations[i];
+    for (let i = 0; i < relations.length; i++) {
+        rel = relations[i];
         
         if(rel.absoluteDistance == shortestDistance) {
             globals.uniqueRelations[rel.id] = rel;
@@ -241,17 +251,9 @@ function findNeighbours(box, direction) {
             box.relationsIds.push(rel.id);
             box.neighboursIds.push(rel.boxB.id);
 
-            // !!! Uneffective !!! 
-            // box.relations[rel.id] = rel;
-            // // globals.allRelations.push(rel);
-            // if(box.id == rel.boxA.id) {
-            //     box.neighbours[rel.boxB.id] = rel.boxB;
-            // } else {
-            //     box.neighbours[rel.boxA.id] = rel.boxA;
-            // }
-
-            if(rel.absoluteDistance > box.maxNeighbourDistance) {
+            if(rel.absoluteDistance >= box.maxNeighbourDistance) {
                 box.maxNeighbourDistance = rel.absoluteDistance;
+                
             }
         }
     }
@@ -265,26 +267,35 @@ function findDirectNeighbours(box) {
     findNeighbours(box, SelectorDirection.up);
 }
 
-function getRgbFromString(rgbString) {
-    var rgbArray, rgb = {}; 
-
-    rgbArray = rgbString.replace(/[^\d,]/g, '').split(',');
-
-    rgb.r = parseInt(rgbArray[0])/255;
-    rgb.g = parseInt(rgbArray[1])/255;
-    rgb.b = parseInt(rgbArray[2])/255;
-
-    if(rgbArray.length == 4) {
-        rgb.a = parseInt(rgbArray[3]);
+function findAllRelations() {
+    var boxes = Object.values(globals.boxesMap);
+    var boxesCount = boxes.length;
+    for (let i = 0; i < boxesCount; i++) {
+        findDirectNeighbours(boxes[i]);
     }
-    return rgb;
+
+    var uniqueRelations = Object.values(globals.uniqueRelations);
+
+    for (let i = 0; i < uniqueRelations.length; i++) {
+        var rel = uniqueRelations[i];
+        rel.calculateRelativeDistance();
+        rel.calculateShapeSimilarity();
+        rel.calculateColorSimilarity();
+        rel.calculateBaseSimilarity();
+    }
+    
+    sort(uniqueRelations).asc(rel => rel.similarity);
+
+    return uniqueRelations;
 }
 
 function assignGlobals(extracted) {
-    globals.tree = createMyRBush(extracted.boxes);
-    globals.boxes = extracted.boxes;
+    globals.tree = createMyRBush(Object.values(extracted.boxesMap));
+    globals.boxesMap = extracted.boxesMap;
     globals.pageWidth = extracted.document.width;
     globals.pageHeight = extracted.document.height;
+    globals.uniqueRelations = {};
+    globals.clusters = {};
 }
 
 
@@ -293,8 +304,10 @@ function mergeTest(rel) {
     var threshold = 0.5;
 
     if(rel.similarity < threshold) {
+        // console.log("Merge test passed!");
         return true;
     } else {
+        // console.log("Merge test failed!");
         return false;
     }
 }
@@ -303,88 +316,65 @@ function createCluster(rel) {
 
     var cluster = new Cluster(rel.boxA, rel.boxB);
 
-    globals.clusters.push(cluster);
+    globals.clusters[cluster.id] = cluster;
     
+}
+
+function createClusters(relations) {
+
+    while(relations.length > 0) {
+        rel = relations[0];
+        relations = relations.slice(1);
+    
+
+
+        if(!mergeTest(rel)) {
+            continue;
+        }
+
+        createCluster(rel);
+    }
+}
+
+function createSvgRepresentation() {
+    var boxes = Object.values(globals.boxesMap);
+    var clusters = Object.values(globals.clusters);
+    var document = {width: globals.pageWidth, height: globals.pageHeight};
+    webPageCreator.runServer({
+        boxes: boxes, 
+        clusters: clusters, 
+        document: document
+    });
 
 }
 
+function removeContainers() {
+    var boxes = Object.values(globals.boxesMap);
+    var selector, inside, box;
+
+    for (let i = 0; i < boxes.length; i++) {
+        box = boxes[i];
+        selector = {minX: box.left+1, minY: box.top+1, maxX: box.right-1, maxY: box.bottom-1};
+        inside = globals.tree.search(selector);
+        if(inside.length > 1) {
+            delete globals.boxesMap[box.id];
+            globals.tree.remove(box);
+        }
+    }
+}
 
 function process(extracted) {
 
     assignGlobals(extracted);
 
-    console.time("clustering");
-    /************************************************************************ */
+    console.time("createClusters");
+        removeContainers();
+        var uniqueRelations = findAllRelations();
+        createClusters(uniqueRelations);
+    console.timeEnd("createClusters");
 
-    // console.time("map");
-    var boxes = Object.values(extracted.boxesMap);
-    var boxesCount = boxes.length;
-        for (let i = 0; i < boxesCount; i++) {
-            findDirectNeighbours(boxes[i]);
-        }
-    // console.timeEnd("map");
-    // Object.values(extracted.boxesMap).forEach(box => {
-    //     findDirectNeighbours(box);
-    // });
-
-    // extracted.boxes.forEach(box => {
-    //     findDirectNeighbours(box);
-    // });
-
-    // console.time("arr");
-    // var boxes = extracted.boxes;
-    // var boxesCount = boxes.length;
-    //     for (let i = 0; i < boxesCount; i++) {
-    //         findDirectNeighbours(boxes[i]);
-    //     }
-    // console.timeEnd("arr");
-    // for (let i = 0; i < globals.allRelations.length; i++) {
-    //     var rel = globals.allRelations[i];
-    //     rel.calculateRelativeDistance();
-    //     rel.calculateShapeSimilarity();
-    //     rel.calculateColorSimilarity();
-    //     rel.calculateBaseSimilarity();
-    // }
-
-    var uniqrels = Object.values(globals.uniqueRelations);
-
-    for (let i = 0; i < uniqrels.length; i++) {
-        var rel = uniqrels[i];
-        rel.calculateRelativeDistance();
-        rel.calculateShapeSimilarity();
-        rel.calculateColorSimilarity();
-        rel.calculateBaseSimilarity();
-    }
+    createSvgRepresentation();
     
-    // console.log(uniqrels.map(rel => rel.similarity));
-    // console.log("******************************************");
-    sort(uniqrels).asc(rel => rel.similarity);
-    // console.log(uniqrels.map(rel => rel.similarity));
-    // console.log(globals.boxes.map(b=>b.relations));
-
-    // while(uniqrels.length > 0) {
-    //     rel = uniqrels[0];
-    //     uniqrels = uniqrels.slice(1);
-    
-    //     if(mergeTest(rel)) {
-    //         createCluster(rel);
-    //     }
-    // }
-
-    // console.log(globals.clusters[0]);
-    // 
-    // console.log("Areas count: ", globals.boxes.length);
-    // console.log("Unique relations count:", uniqrels.length);
-    // console.log("All relations count:", globals.allRelations.length);
-
-
-    console.timeEnd("clustering");
-    /************************************************************************ */
-    
-    // console.log("boxesmap size: ", Object.keys(extracted.boxesMap).length);
-    // console.log("boxes size: ", extracted.boxes.length);
-    
+    // console.log(globals.clusters);
+    // console.log(Object.values(globals.boxesMap)[0]);
 }
-
-
-

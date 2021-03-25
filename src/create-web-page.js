@@ -11,7 +11,7 @@ function runServer(data) {
 
     // Create box representation of webpage data
     var html = buildHtml(req, data);
-  
+
     // Create http head
     res.writeHead(200, {
       'Content-Type': 'text/html',
@@ -44,22 +44,7 @@ function runServer(data) {
 }
 
 // Create visual (SVG) representation of given box structure
-// function createSvgBox(box) {
-//   var bbox = JSON.parse(box.bbox);
-
-//   svg.rect({
-//     x: bbox.x,
-//     y: bbox.y,
-//     width: bbox.width,
-//     height: bbox.height,
-//     fill: box.color,
-//     padding:0,
-//     margin:0
-//   });
-// }
-
 function createSvgBox(box) {
-  // var box = JSON.parse(box);
 
   svg.rect({
     x: box.left,
@@ -72,6 +57,25 @@ function createSvgBox(box) {
   });
 }
 
+function createSvgClusterBox(cluster) {
+  var width = cluster.right - cluster.left;
+  var height = cluster.bottom - cluster.top;
+  
+  // console.log(cluster.right, cluster);
+
+  svg.rect({
+    x: cluster.left,
+    y: cluster.top,
+    width: width,
+    height: height,
+    fill: 'none',
+    stroke:'#FF0000',
+    'stroke-width': 3,
+    padding:0,
+    margin:0
+  });
+
+}
 
 // Create box representation of webpage nodes
 function buildHtml(req, data) {
@@ -82,7 +86,11 @@ function buildHtml(req, data) {
   svg.height(data.document.height);
 
   data.boxes.forEach(box => {
-   createSvgBox(box);  
+    createSvgBox(box);  
+  });
+
+  data.clusters.forEach(cluster => {
+    createSvgClusterBox(cluster);
   });
 
   return `<!DOCTYPE html>

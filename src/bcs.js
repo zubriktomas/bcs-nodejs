@@ -31,9 +31,9 @@ const { chromium } = require('playwright');
 
   // Load webpage for segmentation process given by input argument
   // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'networkidle2'});
-  await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
+  // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
   // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
-  // await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
+  await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
   // await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
   // await page.goto('http://localhost:8080/1.html', {waitUntil: 'domcontentloaded'});
 
@@ -50,7 +50,7 @@ const { chromium } = require('playwright');
     const t1 = performance.now();
 
     return {
-      boxes: boxes.boxes,
+      boxes: Object.values(boxes.boxesMap),
       boxesMap: boxes.boxesMap,
       document: {
         height: document.body.scrollHeight, 
@@ -79,7 +79,7 @@ const { chromium } = require('playwright');
   // console.log(extracted);
 
   // Visualize box tree representation of webpage and take screenshot
-  webPageCreator.runServer(extracted);
+  // webPageCreator.runServer(extracted);
   
   // console.log(extracted);
 

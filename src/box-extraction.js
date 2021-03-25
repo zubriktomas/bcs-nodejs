@@ -71,27 +71,23 @@ class Box {
   */
   async function extractBoxes() {
 
-    var boxes = [];
     var boxesMap = {};
+    
     await extract(document.body);
-    // return getValidBoxes(boxes);
-    return {boxes:boxes, boxesMap: boxesMap};
+    return {boxesMap: boxesMap};
 
-    /**
-     * 
-     * @param {Box[]} boxes 
-     * @returns 
-     */
-    function getValidBoxes(boxes) {
-      var validBoxes = [];
-      var boxesCount = boxes.length;
+    function getValidBoxes(boxesMap) {
+      var validBoxesMap = {};
+      var boxes = Object.values(boxesMap);
+      var box, boxesCount = boxes.length;
 
       for (let i = 0; i < boxesCount; i++) {
         if(!boxes[i].containsAny(boxes)) {
-          validBoxes.push(boxes[i]);
+          box = boxes[i];
+          validBoxesMap[box.id] = box;
         }
       }
-      return validBoxes;
+      return validBoxesMap;
     }
   
     /**
@@ -104,8 +100,6 @@ class Box {
       if(isTextNode(node)) 
       {
         var textBoxes = getTextBoxes(node);
-        boxes = boxes.concat(textBoxes);
-
         textBoxes.forEach(textBox => {
           boxesMap[textBox.id] = textBox;
         });
@@ -113,8 +107,6 @@ class Box {
       else if(isImageNode(node))
       {
         var imageBox = await getImageBox(node);
-        boxes.push(imageBox);
-
         boxesMap[imageBox.id] = imageBox;
       }
       else {
@@ -132,22 +124,16 @@ class Box {
             return;
           } else if(isTextNode(smallest)) {
             var textBoxes = getTextBoxes(smallest);
-            boxes = boxes.concat(textBoxes);
-
             textBoxes.forEach(textBox => {
               boxesMap[textBox.id] = textBox;
             });
 
           } else if(isImageNode(smallest)) {
             var imageBox = await getImageBox(smallest);
-            boxes.push(imageBox);
-
             boxesMap[imageBox.id] = imageBox;
 
           } else if(isElementNode(smallest)) {
             var elementBox = await getElementBox(smallest);
-            boxes.push(elementBox);
-
             boxesMap[elementBox.id] = elementBox;
           }
   
