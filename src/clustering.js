@@ -356,7 +356,7 @@ function removeContainers() {
         box = boxes[i];
         selector = {minX: box.left+1, minY: box.top+1, maxX: box.right-1, maxY: box.bottom-1};
         inside = globals.tree.search(selector);
-        if(inside.length > 1) {
+        if(inside.length > 1) { //maybe bigger overlays
             delete globals.boxesMap[box.id];
             globals.tree.remove(box);
         }
