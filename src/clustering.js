@@ -6,6 +6,7 @@ module.exports.process = process;
 var globals = {};
 globals.allRelations = [];
 globals.uniqueRelations = {};
+globals.clusters = [];
 
 class BoxRelation {
     constructor(boxA, boxB, direction) {
@@ -117,6 +118,45 @@ class MyRBush extends RBush {
     compareMinY(a, b) { return a.top - b.top; }
 }
 
+class Cluster {
+    constructor(boxA, boxB) {
+        this.left = Math.min(boxA.left, boxB.left);
+        this.top = Math.min(boxA.top, boxB.top);
+        this.right = Math.max(boxA.right, boxB.right);
+        this.bottom = Math.max(boxA.bottom, boxB.bottom);
+        this.boxes = this.assignBoxes(boxA, boxB);
+        this.neighbours = {};
+        // this.cumulativeSimilarity =
+    }
+
+    tryMerge() {
+
+    }
+
+    recalculateCoordinates() {
+
+    }
+
+    assignBoxes(boxA, boxB) {
+        var boxes = {};
+        boxes[boxA.id] = boxA;
+        boxes[boxB.id] = boxB;
+        return boxes;
+    }
+
+    getNeighbours(boxA, boxB) {
+
+        for (let i = 0; i < boxA.neighbours.length; i++) {
+            neighbourId = boxA.neighboursIds[i];
+            if(neighbourOfA != boxA.id && neighbourOfA != boxB.id) {
+                // this.neighbours.push(globals.boxes);
+                this.neighboursIds[neighbourId] = neighbourId;
+            }
+        }
+
+    }
+}
+
 /* Selector Direction Enum JavaScript best practice */
 const SelectorDirection = Object.freeze({"right":"right", "down":"down", "left":"left", "up":"up", "vertical": 5, "horizontal": 6});
 
@@ -126,14 +166,17 @@ function createMyRBush(boxes) {
     return tree;
 }
 
+function findRelationsRight(box, info) {
+}
+
 // It is expected to find one, but possibly multiple
 function findNeighbours(box, direction) {
-    var selector, neighbours = [], directNeighbours = [];
+    var selector, neighbours = [];
 
     const tree = globals.tree;
     const pageWidth = globals.pageWidth;
     const pageHeight = globals.pageHeight;
-    const selectorWidth = 100;
+    const selectorWidth = 50;
     const selectorHeight = 50;
 
     if(direction == SelectorDirection.right){
@@ -178,61 +221,48 @@ function findNeighbours(box, direction) {
         }
     }
 
-    var rel, relations = []; shortestDistance = pageWidth + pageHeight;
+    var rel, tmpRelations = [], shortestDistance = pageWidth + pageHeight;
 
     for (let i = 0; i < neighbours.length; i++) {
         rel = new BoxRelation(box, neighbours[i], direction);
 
-        relations.push(rel);
+        tmpRelations.push(rel);
         if(rel.absoluteDistance < shortestDistance) {
             shortestDistance = rel.absoluteDistance;
         }
-
-       
     }
 
-    for (let i = 0; i < relations.length; i++) {
-        rel = relations[i];
+    for (let i = 0; i < tmpRelations.length; i++) {
+        rel = tmpRelations[i];
         
         if(rel.absoluteDistance == shortestDistance) {
-            globals.uniqueRelationsIds.add(rel.id);
             globals.uniqueRelations[rel.id] = rel;
 
-            directNeighbours.push(rel.boxB);
-            box.relations.push(rel);
-            globals.allRelations.push(rel);
+            box.relationsIds.push(rel.id);
+            box.neighboursIds.push(rel.boxB.id);
 
+            // !!! Uneffective !!! 
+            // box.relations[rel.id] = rel;
+            // // globals.allRelations.push(rel);
+            // if(box.id == rel.boxA.id) {
+            //     box.neighbours[rel.boxB.id] = rel.boxB;
+            // } else {
+            //     box.neighbours[rel.boxA.id] = rel.boxA;
+            // }
 
             if(rel.absoluteDistance > box.maxNeighbourDistance) {
                 box.maxNeighbourDistance = rel.absoluteDistance;
             }
         }
-
-        
     }
-
-    return directNeighbours;
 }
 
 function findDirectNeighbours(box) {
 
-    var r = [], d = [];
-
-    r = findNeighbours(box, SelectorDirection.right);    
-    d = findNeighbours(box, SelectorDirection.down);
-    l = findNeighbours(box, SelectorDirection.left);
-    u = findNeighbours(box, SelectorDirection.up);
-
-    directNeighbours = [];
-    directNeighbours = directNeighbours.concat(r);
-    directNeighbours = directNeighbours.concat(d);
-    directNeighbours = directNeighbours.concat(l);
-    directNeighbours = directNeighbours.concat(u);
-
-
-    // console.log(box.id);
-    // console.log(directNeighbours.map(x => x.id));
-    // console.log("\n\n");
+    findNeighbours(box, SelectorDirection.right);    
+    findNeighbours(box, SelectorDirection.down);
+    findNeighbours(box, SelectorDirection.left);
+    findNeighbours(box, SelectorDirection.up);
 }
 
 function getRgbFromString(rgbString) {
@@ -250,72 +280,110 @@ function getRgbFromString(rgbString) {
     return rgb;
 }
 
-
-function process(extracted) {
-
-    /* Create R*-Tree from boxes */
+function assignGlobals(extracted) {
     globals.tree = createMyRBush(extracted.boxes);
     globals.boxes = extracted.boxes;
     globals.pageWidth = extracted.document.width;
     globals.pageHeight = extracted.document.height;
+}
 
-    const boxesCount = globals.boxes.length;
 
-    console.time("findDirectNeighbours");
+function mergeTest(rel) {
 
-    for (let i = 0; i < boxesCount; i++) {
-        var box = globals.boxes[i];
-        findDirectNeighbours(box);    
+    var threshold = 0.5;
+
+    if(rel.similarity < threshold) {
+        return true;
+    } else {
+        return false;
     }
+}
 
-    const relationsCount = globals.allRelations.length;
+function createCluster(rel) {
 
+    var cluster = new Cluster(rel.boxA, rel.boxB);
+
+    globals.clusters.push(cluster);
     
-    for (let i = 0; i < relationsCount; i++) {
-        var rel = globals.allRelations[i];
+
+}
+
+
+function process(extracted) {
+
+    assignGlobals(extracted);
+
+    console.time("clustering");
+    /************************************************************************ */
+
+    // console.time("map");
+    var boxes = Object.values(extracted.boxesMap);
+    var boxesCount = boxes.length;
+        for (let i = 0; i < boxesCount; i++) {
+            findDirectNeighbours(boxes[i]);
+        }
+    // console.timeEnd("map");
+    // Object.values(extracted.boxesMap).forEach(box => {
+    //     findDirectNeighbours(box);
+    // });
+
+    // extracted.boxes.forEach(box => {
+    //     findDirectNeighbours(box);
+    // });
+
+    // console.time("arr");
+    // var boxes = extracted.boxes;
+    // var boxesCount = boxes.length;
+    //     for (let i = 0; i < boxesCount; i++) {
+    //         findDirectNeighbours(boxes[i]);
+    //     }
+    // console.timeEnd("arr");
+    // for (let i = 0; i < globals.allRelations.length; i++) {
+    //     var rel = globals.allRelations[i];
+    //     rel.calculateRelativeDistance();
+    //     rel.calculateShapeSimilarity();
+    //     rel.calculateColorSimilarity();
+    //     rel.calculateBaseSimilarity();
+    // }
+
+    var uniqrels = Object.values(globals.uniqueRelations);
+
+    for (let i = 0; i < uniqrels.length; i++) {
+        var rel = uniqrels[i];
         rel.calculateRelativeDistance();
         rel.calculateShapeSimilarity();
         rel.calculateColorSimilarity();
         rel.calculateBaseSimilarity();
     }
     
-    var bestSimilarity = 1;
-    var theMostSimilarPair = null;
-    for (let i = 0; i < relationsCount; i++) {
-        var rel = globals.allRelations[i];
-
-        if(rel.similarity < bestSimilarity) {
-            bestSimilarity = rel.similarity;
-            theMostSimilarPair = rel;
-        }
-    }
-
-    // console.log("The most similar are: ");
-    // console.log(theMostSimilarPair.boxA.id);
-    // console.log(theMostSimilarPair.boxB.id);
-  
-    Object.keys(globals.uniqueRelations).forEach(relId => {
-        console.log(globals.uniqueRelations[relId].similarity);
-    });
-
-    
-    console.log("\_\_\_");
-
-    var uniqrels = Object.values(globals.uniqueRelations);
+    // console.log(uniqrels.map(rel => rel.similarity));
+    // console.log("******************************************");
     sort(uniqrels).asc(rel => rel.similarity);
+    // console.log(uniqrels.map(rel => rel.similarity));
+    // console.log(globals.boxes.map(b=>b.relations));
 
-    uniqrels.forEach(rel => {
-        console.log(rel.similarity);
-    });
+    // while(uniqrels.length > 0) {
+    //     rel = uniqrels[0];
+    //     uniqrels = uniqrels.slice(1);
+    
+    //     if(mergeTest(rel)) {
+    //         createCluster(rel);
+    //     }
+    // }
 
-    console.timeEnd("findDirectNeighbours");
+    // console.log(globals.clusters[0]);
+    // 
+    // console.log("Areas count: ", globals.boxes.length);
+    // console.log("Unique relations count:", uniqrels.length);
+    // console.log("All relations count:", globals.allRelations.length);
 
-    // console.log(Object.keys(globals.uniqueRelations).length);
-    // console.log(globals.allRelations.length);
-    // console.log(globals.uniqueRelationsIds.size);
 
-
-
+    console.timeEnd("clustering");
+    /************************************************************************ */
+    
+    // console.log("boxesmap size: ", Object.keys(extracted.boxesMap).length);
+    // console.log("boxes size: ", extracted.boxes.length);
+    
 }
 
 

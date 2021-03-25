@@ -26,8 +26,10 @@ class Box {
     this.height = bbox.height;
     this.color = color;
     this.maxNeighbourDistance = 0;
-    this.relations = [];
-    this.neighbours = [];
+    this.neighboursIds = [];
+    this.relationsIds = [];
+    this.neighbours = {};
+    this.relations = {};
   }
 
   /**
@@ -70,9 +72,10 @@ class Box {
   async function extractBoxes() {
 
     var boxes = [];
+    var boxesMap = {};
     await extract(document.body);
     // return getValidBoxes(boxes);
-    return boxes;
+    return {boxes:boxes, boxesMap: boxesMap};
 
     /**
      * 
@@ -100,11 +103,19 @@ class Box {
   
       if(isTextNode(node)) 
       {
-        boxes = boxes.concat(getTextBoxes(node));
+        var textBoxes = getTextBoxes(node);
+        boxes = boxes.concat(textBoxes);
+
+        textBoxes.forEach(textBox => {
+          boxesMap[textBox.id] = textBox;
+        });
       } 
       else if(isImageNode(node))
       {
-        boxes.push(await getImageBox(node));
+        var imageBox = await getImageBox(node);
+        boxes.push(imageBox);
+
+        boxesMap[imageBox.id] = imageBox;
       }
       else {
         // Skip element unrelevant nodes
@@ -120,11 +131,24 @@ class Box {
           if(smallest == null) {
             return;
           } else if(isTextNode(smallest)) {
-            boxes = boxes.concat(getTextBoxes(smallest));
+            var textBoxes = getTextBoxes(smallest);
+            boxes = boxes.concat(textBoxes);
+
+            textBoxes.forEach(textBox => {
+              boxesMap[textBox.id] = textBox;
+            });
+
           } else if(isImageNode(smallest)) {
-            boxes.push(await getImageBox(smallest));
+            var imageBox = await getImageBox(smallest);
+            boxes.push(imageBox);
+
+            boxesMap[imageBox.id] = imageBox;
+
           } else if(isElementNode(smallest)) {
-            boxes.push(await getElementBox(smallest));
+            var elementBox = await getElementBox(smallest);
+            boxes.push(elementBox);
+
+            boxesMap[elementBox.id] = elementBox;
           }
   
         } else {
@@ -179,7 +203,7 @@ function getBgImgColor(img) {
   assert(isImageNode(img), "Function getBgImgColor() applicable only on imageNodes!");
 
   const fac = new FastAverageColor();
-  var imageColor = fac.getColor(img);
+  var imageColor = fac.getColor(img.src);
   return imageColor.rgb;
 }
 
@@ -193,92 +217,14 @@ function getBgColor(node) {
   return getStyle(node).backgroundColor;
 }
 
-/**
- * Creates box from text node and adds it into the ouput array.
- * @param {Node} textNode 
- */
-function getTextBoxes(textNode) {
 
-  assert(isTextNode(textNode), "Parameter in function saveTextBox() has to be TextNode!");
-
-  var color, bboxes, textBoxes=[];
-
-  // Every text box's representing color is parent's color of text
-  color = getStyle(textNode.parentElement).color;
-  bboxes = getBoundingBoxes(textNode);
-  
-  // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
-  for(let i=0; i < bboxes.length; i++) {
-    // textBoxes.push({color: color, bbox: bboxes[i]})
-    textBoxes.push(new Box(bboxes[i], color));
-  }      
-
-  return textBoxes;
-}
-
-/**
- * 
- * @param {Node} textNode 
- * @returns {DOMRect[]} array
- */
-function getBoundingBoxes(textNode) {
-  assert(isTextNode(textNode));
-  
-  // Maybe should be deleted
-  const isInvalidbbox = (bbox) => {
-    var bboxParent = getBoundingBox(textNode.parentElement);
-
-    if(bboxParent.left > bbox.left || bboxParent.top > bbox.top || bboxParent.bottom < bbox.bottom || bboxParent.right < bbox.right){
-      return true;
-    }
-    else if(bbox.left < 0 || bbox.top < 0 || bbox.bottom < 0 || bbox.right < 0 || bbox.width==0 || bbox.height ==0) {
-      return true;
-    } else {
-      return false;
-    }
-  };
-
-  var range, rects, rectsLength, bbox, bboxes = [];
-
-  range = document.createRange();
-  range.selectNodeContents(textNode);
-
-  if(isInvalidbbox(range.getBoundingClientRect())) {
-    return [];
-  }
-
-
-  rects = range.getClientRects();  
-  rectsLength = rects.length;
-
-  // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
-  for(let i=0;  i < rectsLength; i++) {
-    bbox=rects[i];
-    // if(!(isInvalidbbox(bbox))) {
-      bboxes.push(bbox);
-    // }
-  }      
-  return bboxes;
-}
 
 /**
  * 
  * @param {*} node 
  * @returns 
  */
-function getBoundingBox(node) {
-  assert(isElementNode(node));
-
-  var bbox = node.getBoundingClientRect();
-  return bbox;
-}
-
-/**
- * 
- * @param {*} node 
- * @returns 
- */
-async function getElementBox(node) {
+ async function getElementBox(node) {
 
   assert(isElementNode(node), "Parameter in function getElementBox() has to be ElementNode!");
 
@@ -308,13 +254,99 @@ async function getImageBox(node) {
   
   bbox = getBoundingBox(node);
   
-  // if((color = getBgImgColor(node)) == "#000000") {
+  if((color = getBgImgColor(node)) == "rgb(0,0,0)") {
       color = await getBgImgColorAsync(node);
-  // }
+  }
     
   return new Box(bbox, color);
 }
  
+
+/**
+ * Creates box from text node and adds it into the ouput array.
+ * @param {Node} textNode 
+ */
+function getTextBoxes(textNode) {
+
+  assert(isTextNode(textNode), "Parameter in function saveTextBox() has to be TextNode!");
+
+  var color, bboxes, textBoxes=[];
+
+  // Every text box's representing color is parent's color of text
+  color = getStyle(textNode.parentElement).color;
+  bboxes = getBoundingBoxes(textNode);
+  
+  // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
+  for(let i=0; i < bboxes.length; i++) {
+    // textBoxes.push({color: color, bbox: bboxes[i]})
+    textBoxes.push(new Box(bboxes[i], color));
+  }      
+
+  return textBoxes;
+}
+
+
+/**
+ * 
+ * @param {*} node 
+ * @returns 
+ */
+ function getBoundingBox(node) {
+  assert(isElementNode(node));
+
+  var bbox = node.getBoundingClientRect();
+  return bbox;
+}
+
+
+/**
+ * 
+ * @param {Node} textNode 
+ * @returns {DOMRect[]} array
+ */
+function getBoundingBoxes(textNode) {
+  assert(isTextNode(textNode));
+  
+  // Maybe should be deleted
+  const isInvalidbbox = (bbox) => {
+    var bboxParent = getBoundingBox(textNode.parentElement);
+
+    // if(bboxParent.left > bbox.left || bboxParent.top > bbox.top || bboxParent.bottom < bbox.bottom || bboxParent.right < bbox.right){
+    if(bboxParent.width < bbox.width && bboxParent.height < bbox.height) {
+      return true;
+    }
+    else if(bbox.left < 0 || bbox.top < 0 || bbox.bottom < 0 || bbox.right < 0 || bbox.width==0 || bbox.height ==0) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  var range, rects, rectsLength, bbox, bboxes = [];
+
+  range = document.createRange();
+  //POZOR!!! selectNode vs. selectNodeContents !!!
+  range.selectNodeContents(textNode);
+
+  if(isInvalidbbox(range.getBoundingClientRect())) {
+    return [];
+  }
+
+
+  rects = range.getClientRects();  
+  rectsLength = rects.length;
+
+  // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
+  for(let i=0;  i < rectsLength; i++) {
+    bbox=rects[i];
+    // if(!(isInvalidbbox(bbox))) {
+      bboxes.push(bbox);
+    // }
+  }      
+  return bboxes;
+}
+
+
   /**
    * Check if Element has transparent background
    * @param {HTML Element} element 

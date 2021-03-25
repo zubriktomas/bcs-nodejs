@@ -31,10 +31,11 @@ const { chromium } = require('playwright');
 
   // Load webpage for segmentation process given by input argument
   // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'networkidle2'});
-  // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
+  await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
   // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
-  await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
+  // await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
   // await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
+  // await page.goto('http://localhost:8080/1.html', {waitUntil: 'domcontentloaded'});
 
   // Add JavaScript files into webpage for execution and processing in browser context
   await page.addScriptTag({ path: './src/helper-functions.js'});
@@ -44,12 +45,13 @@ const { chromium } = require('playwright');
   // Box Extraction Process - JavaScript code evaluated in web browser context
   const extracted = await page.evaluate(async () => {
 
-    var t0 = performance.now();
-    var boxes = await extractBoxes();
-    var t1 = performance.now();
+    const t0 = performance.now();
+    const boxes = await extractBoxes();
+    const t1 = performance.now();
 
     return {
-      boxes: boxes,
+      boxes: boxes.boxes,
+      boxesMap: boxes.boxesMap,
       document: {
         height: document.body.scrollHeight, 
         width: document.body.scrollWidth 
@@ -69,14 +71,15 @@ const { chromium } = require('playwright');
   // Close browser instance (no longer needed)
   await browser.close();
 
-  // console.log("Extraction time:", extracted.time, "ms");
+  console.log("Extraction time:", extracted.time, "ms");
+
   clustering.process(extracted);
 
   // Extracted boxes can be used in next processing step
   // console.log(extracted);
 
   // Visualize box tree representation of webpage and take screenshot
-  // webPageCreator.runServer(extracted);
+  webPageCreator.runServer(extracted);
   
   // console.log(extracted);
 
