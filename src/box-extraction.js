@@ -18,6 +18,7 @@ class Box {
 
   constructor(bbox, color) {
     this.id = `(t: ${bbox.top}, l:${bbox.left}, b:${bbox.bottom}, r:${bbox.right}, c:${color})`;
+    this.type = 'box';
     this.left = bbox.left;
     this.right = bbox.right;
     this.top = bbox.top;

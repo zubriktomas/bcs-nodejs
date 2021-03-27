@@ -125,10 +125,31 @@ class BoxRelation {
     }
 }
 
+const EntityType = Object.freeze({box: 'box', cluster: 'cluster'})
+
 class MyRBush extends RBush {
-    toBBox(entity) { return {minX: entity.left, minY: entity.top, maxX: entity.right, maxY: entity.bottom, id:entity.id}; }
+    toBBox(entity) { return {minX: entity.left, minY: entity.top, maxX: entity.right, maxY: entity.bottom, id:entity.id, type: entity.type}; }
     compareMinX(a, b) { return a.left - b.left; }
     compareMinY(a, b) { return a.top - b.top; }
+}
+
+/* Selector Direction Enum JavaScript best practice */
+const SelectorDirection = Object.freeze({"right":"right", "down":"down", "left":"left", "up":"up"});
+
+class Selector {
+    constructor(minX, minY, maxX, maxY) {
+        this.minX = minX;
+        this.minY = minY;
+        this.maxX = maxX;
+        this.maxY = maxY;
+    }
+
+    narrowBy1Px() {
+        this.minX += 1;
+        this.minY += 1;
+        this.maxX -= 1;
+        this.maxY -= 1;
+    }
 }
 
 class Cluster {
@@ -138,8 +159,10 @@ class Cluster {
         this.right = Math.max(boxA.right, boxB.right);
         this.bottom = Math.max(boxA.bottom, boxB.bottom);
         this.id = `(t: ${this.top}, l:${this.left}, b:${this.bottom}, r:${this.right})`;
+        this.type = EntityType.cluster;
         this.boxes = this.assignBoxes(boxA, boxB);
         this.neighbours = {};
+        this.overlappingEntities = this.getOverlappingEntities();
         // this.cumulativeSimilarity =
     }
 
@@ -166,12 +189,36 @@ class Cluster {
                 this.neighboursIds[neighbourId] = neighbourId;
             }
         }
+    }
 
+    getOverlappingEntities() {
+
+        const tree = globals.tree;
+        
+        /* Search entities in Rtree on coordinates specified by cluster itself */
+        var overlappingEntities = tree.search(this);
+
+        return overlappingEntities;
+    }
+
+    overlapsAnyCluster() {
+   
+        /* Cluster Candidate is not in the tree yet, it is not needed to check its ID */
+        var overlappingCluster = this.overlappingEntities.find(entity => entity.type == EntityType.cluster);
+    
+        /* If it is not undefined, then return true */
+        return overlappingCluster ? true : false;
+    }
+
+    overlapsAnyBox() {
+    
+        /* Find all overlapping boxes, except those which constitute the cluster itself */
+        var overlappingBoxes = this.overlappingEntities.filter(entity => entity.type == EntityType.box && !(this.boxes.hasOwnProperty(entity.id)));
+    
+        /* If it is not empty, then return true */
+        return overlappingBoxes.length ? true : false;
     }
 }
-
-/* Selector Direction Enum JavaScript best practice */
-const SelectorDirection = Object.freeze({"right":"right", "down":"down", "left":"left", "up":"up", "vertical": 5, "horizontal": 6});
 
 function createMyRBush(boxes) {
     const tree = new MyRBush();
@@ -190,9 +237,9 @@ function findNeighbours(box, direction) {
     const selectorHeight = 50;
 
     if(direction == SelectorDirection.right){
-        for (let i = box.right + 1 + selectorWidth; i < pageWidth + selectorWidth; i+=selectorWidth) {
+        for (let maxX = box.right + 1 + selectorWidth; maxX < pageWidth + selectorWidth; maxX+=selectorWidth) {
         
-            selector = {minX: box.right+1, minY: box.top+1, maxX: i, maxY: box.bottom-1};
+            selector = new Selector(box.right+1, box.top+1, maxX, box.bottom-1);
             neighbours = tree.search(selector);    
     
             if(neighbours.length) {
@@ -200,9 +247,9 @@ function findNeighbours(box, direction) {
             }
         }
     } else if (direction == SelectorDirection.down) {
-        for (let i = box.bottom + 1 + selectorHeight; i < pageHeight + selectorHeight; i+=selectorHeight) {
+        for (let maxY = box.bottom + 1 + selectorHeight; maxY < pageHeight + selectorHeight; maxY+=selectorHeight) {
         
-            selector = {minX: box.left+1, minY: box.bottom+1, maxX: box.right-1, maxY: i};
+            selector = new Selector(box.left+1, box.bottom+1, box.right-1, maxY);
             neighbours = tree.search(selector);    
     
             if(neighbours.length) {
@@ -210,9 +257,9 @@ function findNeighbours(box, direction) {
             }
         }
     } else if (direction == SelectorDirection.left) {
-        for (let i = box.left - 1 - selectorWidth; i > 0 - selectorWidth; i-=selectorWidth) {
+        for (let minX = box.left - 1 - selectorWidth; minX > 0 - selectorWidth; minX-=selectorWidth) {
         
-            selector = {minX: i, minY: box.top + 1, maxX: box.left-1 , maxY: box.bottom-1};
+            selector = new Selector(minX, box.top + 1, box.left-1 , box.bottom-1);
             neighbours = tree.search(selector);    
     
             if(neighbours.length) {
@@ -220,9 +267,9 @@ function findNeighbours(box, direction) {
             }
         }
     } else if (direction == SelectorDirection.up) {
-        for (let i = box.top - 1 - selectorHeight; i > 0 - selectorHeight; i-=selectorHeight) {
+        for (let minY = box.top - 1 - selectorHeight; minY > 0 - selectorHeight; minY-=selectorHeight) {
         
-            selector = {minX: box.left + 1, minY: i, maxX: box.right - 1 , maxY: box.top - 1};
+            selector = new Selector(box.left + 1, minY, box.right - 1, box.top - 1);
             neighbours = tree.search(selector);    
     
             if(neighbours.length) {
@@ -282,6 +329,7 @@ function findAllRelations() {
         rel.calculateShapeSimilarity();
         rel.calculateColorSimilarity();
         rel.calculateBaseSimilarity();
+        globals.uniqueRelations[rel.id] = rel;
     }
     
     sort(uniqueRelations).asc(rel => rel.similarity);
@@ -298,41 +346,27 @@ function assignGlobals(extracted) {
     globals.clusters = {};
 }
 
-
-function mergeTest(rel) {
-
-    var threshold = 0.5;
-
-    if(rel.similarity < threshold) {
-        // console.log("Merge test passed!");
-        return true;
-    } else {
-        // console.log("Merge test failed!");
-        return false;
-    }
-}
-
-function createCluster(rel) {
-
-    var cluster = new Cluster(rel.boxA, rel.boxB);
-
-    globals.clusters[cluster.id] = cluster;
-    
-}
-
 function createClusters(relations) {
 
     while(relations.length > 0) {
         rel = relations[0];
-        relations = relations.slice(1);
+        relations.shift();
     
 
-
-        if(!mergeTest(rel)) {
+        if(rel.similarity > 0.5) {
             continue;
         }
 
-        createCluster(rel);
+        var clusterCandidate = new Cluster(rel.boxA, rel.boxB);
+
+        if(clusterCandidate.overlapsAnyCluster()) {
+            continue;
+        }
+
+        if(clusterCandidate.overlapsAnyBox()) { 
+            console.log("Cluster", clusterCandidate.id, "overlaps some other box!");
+        }
+
     }
 }
 
@@ -348,10 +382,22 @@ function createSvgRepresentation() {
 
 }
 
+/* TODO refactoring */
 function removeContainers() {
     var boxes = Object.values(globals.boxesMap);
     var selector, inside, box;
 
+    for (let i = 0; i < boxes.length; i++) {
+        box = boxes[i];
+        selector = {minX: box.left+1, minY: box.top+1, maxX: box.right-1, maxY: box.bottom-1};
+        inside = globals.tree.search(selector);
+        if(inside.length > 2) { //maybe bigger overlays
+            delete globals.boxesMap[box.id];
+            globals.tree.remove(box);
+        }
+    }
+
+    boxes = Object.values(globals.boxesMap);
     for (let i = 0; i < boxes.length; i++) {
         box = boxes[i];
         selector = {minX: box.left+1, minY: box.top+1, maxX: box.right-1, maxY: box.bottom-1};
@@ -361,6 +407,9 @@ function removeContainers() {
             globals.tree.remove(box);
         }
     }
+
+
+
 }
 
 function process(extracted) {
@@ -369,8 +418,8 @@ function process(extracted) {
 
     console.time("createClusters");
         removeContainers();
-        var uniqueRelations = findAllRelations();
-        createClusters(uniqueRelations);
+        var relations = findAllRelations();
+        createClusters(relations);
     console.timeEnd("createClusters");
 
     createSvgRepresentation();
