@@ -118,14 +118,11 @@ class ClusteringManager {
                 break;
             } 
               
-            // clusterCandidate.removeBoxesFromUnclusteredSet();
-            // clusterCandidate.recalculateNeighbours();
-            // clusterCandidate.commit();
-            // console.log(Object.values(clusterCandidate.neighbours).map(n => n.id));
-
-
             // this.recalcNeighbours(clusterCandidate, rel);
-            // this.clusters[clusterCandidate.id] = clusterCandidate;
+            clusterCandidate.assignBoxes(rel.entityA, rel.entityB);
+
+            this.recalcNeighbours(clusterCandidate);
+
             this.entities.set(clusterCandidate.id, clusterCandidate);
 
             /* CREATE JUST FIRST CLUSTER AND QUIT !!!!!!! */
@@ -134,40 +131,52 @@ class ClusteringManager {
         }
     }
 
-    recalcNeighbours(cc, rel) {
+    recalcNeighbours(cc) {
 
-        /* Get ID of first entity in relation */
-        var entityAId = rel.entityA.id;
+        var m = new Map();
 
-        /* Get ID of second entity in relation */
-        var entityBId = rel.entityB.id;
+        for (const box of cc.boxes.values()) {
+            for (const neighbour of box.neighbours.keys()) { // namiesto FORALL!!!
+                if(!cc.boxes.has(neighbour.id)) {
+                    console.log(neighbour.id);
+                    m.set(neighbour.id, m.has(neighbour.id) ? m.get(neighbour.id)+1 : 1);
+                }
+            }
+        }
 
-        /* Delete each others' neighbour  */
-        delete this.boxes[entityAId].neighbours[entityBId];
-        delete this.boxes[entityBId].neighbours[entityAId];
+        console.log(m);
+        // /* Get ID of first entity in relation */
+        // var entityAId = rel.entityA.id;
 
-        /* Get  */
-        var neighboursIdsA = Object.keys(this.boxes[entityAId].neighbours);
-        var neighboursIdsB = Object.keys(this.boxes[entityBId].neighbours);
+        // /* Get ID of second entity in relation */
+        // var entityBId = rel.entityB.id;
 
-        neighboursIdsA.forEach(neighbourId => {
-            cc.neighbours[neighbourId] = this.boxes[neighbourId];
-            this.boxes[neighbourId].neighbours[cc.id] = cc;
-        });
+        // /* Delete each others' neighbour  */
+        // delete this.boxes[entityAId].neighbours[entityBId];
+        // delete this.boxes[entityBId].neighbours[entityAId];
 
-        neighboursIdsB.forEach(neighbourId => {
-            cc.neighbours[neighbourId] = this.boxes[neighbourId];
-            this.boxes[neighbourId].neighbours[cc.id] = cc;
-        });
+        // /* Get  */
+        // var neighboursIdsA = Object.keys(this.boxes[entityAId].neighbours);
+        // var neighboursIdsB = Object.keys(this.boxes[entityBId].neighbours);
 
-        var neighboursIdsCC = Object.keys(cc.neighbours);
+        // neighboursIdsA.forEach(neighbourId => {
+        //     cc.neighbours[neighbourId] = this.boxes[neighbourId];
+        //     this.boxes[neighbourId].neighbours[cc.id] = cc;
+        // });
 
-        this.boxes[entityAId].neighbours[cc.id] = cc;
-        this.boxes[entityBId].neighbours[cc.id] = cc;
+        // neighboursIdsB.forEach(neighbourId => {
+        //     cc.neighbours[neighbourId] = this.boxes[neighbourId];
+        //     this.boxes[neighbourId].neighbours[cc.id] = cc;
+        // });
 
-        console.log(neighboursIdsA);
-        console.log(neighboursIdsB);
-        console.log(neighboursIdsCC);
+        // var neighboursIdsCC = Object.keys(cc.neighbours);
+
+        // this.boxes[entityAId].neighbours[cc.id] = cc;
+        // this.boxes[entityBId].neighbours[cc.id] = cc;
+
+        // console.log(neighboursIdsA);
+        // console.log(neighboursIdsB);
+        // console.log(neighboursIdsCC);
 
     }
 
@@ -270,6 +279,6 @@ function process(extracted) {
     cm.enhanceEveryBox();
     cm.findAllRelations();
     cm.createClusters();
-    
+
     cm.vizualize();
 }

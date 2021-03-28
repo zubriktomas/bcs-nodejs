@@ -14,14 +14,18 @@ class Cluster {
         this.bottom = Math.max(entityA.bottom, entityB.bottom);
         this.id = `(t: ${this.top}, l:${this.left}, b:${this.bottom}, r:${this.right})`;
         this.type = 'cluster';
+
+        this.maxNeighbourDistance = 0;
         this.neighbours = new Map();
-        this.boxes = null;
+        
+        this.boxes = new Map();
+
         this.overlappingEntities = null;
     }
 
     assignBoxes(entityA, entityB) {
-        this.boxes[entityA.id] = entityA;
-        this.boxes[entityB.id] = entityB;
+        this.boxes.set(entityA.id, entityA);
+        this.boxes.set(entityB.id, entityB);
     }
 
     getOverlappingEntities(tree) {
