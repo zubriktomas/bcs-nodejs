@@ -6,91 +6,16 @@
  * Description: Functions useful for process of node extraction.
  */
 
-/**
- * Box Structure
- */
-class Box {
-  /**
-   * 
-   * @param {DOMRect} bbox 
-   * @param {string} color 
-   */
-
-  constructor(bbox, color) {
-    this.id = `(t: ${bbox.top}, l:${bbox.left}, b:${bbox.bottom}, r:${bbox.right}, c:${color})`;
-    this.type = 'box';
-    this.left = bbox.left;
-    this.right = bbox.right;
-    this.top = bbox.top;
-    this.bottom = bbox.bottom;
-    this.width = bbox.width;
-    this.height = bbox.height;
-    this.color = color;
-    this.maxNeighbourDistance = 0;
-    this.neighboursIds = [];
-    this.relationsIds = [];
-    this.neighbours = {};
-    this.relations = {};
-  }
-
-  /**
-   * 
-   * @param {*} box 
-   * @returns 
-   */
-  contains(box) {
-    return this.top <= box.top && this.left <= box.left &&
-            this.bottom >= box.bottom && this.right >= box.right;
-  }
-
-  /**
-   * 
-   * @param {*} boxes 
-   * @returns 
-   */
-  containsAny(boxes) {
-    var boxIndex = boxes.indexOf(this);
-    var boxesCount = boxes.length;
-
-    for (let i = 0; i < boxesCount; i++) {
-      if(boxIndex == i) {
-        continue;
-      }
-
-      if(this.contains(boxes[i])){
-        return true;
-      }
-    }
-
-    return false;
-  }
-}
-
  /**
   * Extracts all relevant boxes from given web page
   * @returns boxes
   */
-  async function extractBoxes() {
+  async function extractBoxes(node) {
 
-    var boxesMap = {};
-    
-    await extract(document.body);
-    return {boxesMap: boxesMap};
+    var boxes = {};
+    await extract(node);
+    return boxes;
 
-    function getValidBoxes(boxesMap) {
-      var validBoxesMap = {};
-      var boxes = Object.values(boxesMap);
-      var box, boxesCount = boxes.length;
-
-      for (let i = 0; i < boxesCount; i++) {
-        if(!boxes[i].containsAny(boxes)) {
-          box = boxes[i];
-          validBoxesMap[box.id] = box;
-        }
-      }
-      return validBoxesMap;
-    }
-  
     /**
      * 
      * @param {Node} node 
@@ -102,13 +27,13 @@ class Box {
       {
         var textBoxes = getTextBoxes(node);
         textBoxes.forEach(textBox => {
-          boxesMap[textBox.id] = textBox;
+          boxes[textBox.id] = textBox;
         });
       } 
       else if(isImageNode(node))
       {
         var imageBox = await getImageBox(node);
-        boxesMap[imageBox.id] = imageBox;
+        boxes[imageBox.id] = imageBox;
       }
       else {
         // Skip element unrelevant nodes
@@ -126,16 +51,16 @@ class Box {
           } else if(isTextNode(smallest)) {
             var textBoxes = getTextBoxes(smallest);
             textBoxes.forEach(textBox => {
-              boxesMap[textBox.id] = textBox;
+              boxes[textBox.id] = textBox;
             });
 
           } else if(isImageNode(smallest)) {
             var imageBox = await getImageBox(smallest);
-            boxesMap[imageBox.id] = imageBox;
+            boxes[imageBox.id] = imageBox;
 
           } else if(isElementNode(smallest)) {
             var elementBox = await getElementBox(smallest);
-            boxesMap[elementBox.id] = elementBox;
+            boxes[elementBox.id] = elementBox;
           }
   
         } else {
@@ -203,7 +128,6 @@ function getBgImgColor(img) {
 function getBgColor(node) {
   return getStyle(node).backgroundColor;
 }
-
 
 
 /**
@@ -557,3 +481,19 @@ function getBoundingBoxes(textNode) {
           return lastChild;
       }
   }
+
+
+  /**
+ * Get computed style of HTML Element
+ * @param {HTML Element} element 
+ * @returns 
+ */
+function getStyle(element) { 
+  return element.currentStyle || window.getComputedStyle(element, false);
+}
+
+function assert(condition, message) {
+  if (!condition){
+    throw Error('Assert failed: ' + (message || ''));
+  }
+}

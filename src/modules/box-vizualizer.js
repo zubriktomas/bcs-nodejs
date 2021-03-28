@@ -1,16 +1,25 @@
+/**
+ * Project: Box Clustering Segmentation in Node.js
+ * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
+ * Year: 2021
+ * License:  GNU GPLv3
+ * Description: Main function program block
+ */
+
+
 const http = require('http');
 const svg = require('svg-builder');
 const { chromium } = require('playwright');
 
-module.exports.runServer = runServer;
+module.exports.createSvgRepresentation = createSvgRepresentation;
 
-function runServer(data) {
+function createSvgRepresentation(data) {
 
   // Create new http server
   const server = http.createServer((req, res) => {
 
     // Create box representation of webpage data
-    var html = buildHtml(req, data);
+    var html = buildSvg(req, data);
 
     // Create http head
     res.writeHead(200, {
@@ -61,15 +70,13 @@ function createSvgClusterBox(cluster) {
   var width = cluster.right - cluster.left;
   var height = cluster.bottom - cluster.top;
   
-  // console.log(cluster.right, cluster);
-
   svg.rect({
     x: cluster.left,
     y: cluster.top,
     width: width,
     height: height,
     fill: 'none',
-    stroke:'#FF0000',
+    stroke:'#FF0000', // red
     'stroke-width': 3,
     padding:0,
     margin:0
@@ -78,20 +85,28 @@ function createSvgClusterBox(cluster) {
 }
 
 // Create box representation of webpage nodes
-function buildHtml(req, data) {
+function buildSvg(req, data) {
 
-  var header = `<style> body { margin: 0; padding:0; } </style>`;
+  var boxes, clusters, header;
+  
+  header = `<style> body { margin: 0; padding:0; } </style>`;
 
   svg.width(data.document.width);
   svg.height(data.document.height);
 
-  data.boxes.forEach(box => {
-    createSvgBox(box);  
-  });
+  if(data.hasOwnProperty('boxes')){
+    boxes = Array.isArray(data.boxes) ? data.boxes : Object.values(data.boxes);
+    boxes.forEach(box => {
+      createSvgBox(box);  
+    });
+  }
 
-  data.clusters.forEach(cluster => {
-    createSvgClusterBox(cluster);
-  });
+  if(data.hasOwnProperty('clusters')) {
+    clusters = Array.isArray(data.clusters) ? data.clusters : Object.values(data.clusters);
+    clusters.forEach(cluster => {
+      createSvgClusterBox(cluster);
+    });
+  }
 
   return `<!DOCTYPE html>
             <head> 

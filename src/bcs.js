@@ -6,11 +6,11 @@
  * Description: Main function program block
  */
 
-// Import webpage box creator
-const webPageCreator = require('./create-web-page');
+// Import box vizualizer
+const vizualizer = require('./modules/box-vizualizer');
 
 // Import clustering module
-const clustering = require('./clustering');
+const clustering = require('./modules/clustering');
 
 // Import playwright
 const { chromium } = require('playwright');
@@ -38,51 +38,41 @@ const { chromium } = require('playwright');
   // await page.goto('http://localhost:8080/1.html', {waitUntil: 'domcontentloaded'});
 
   // Add JavaScript files into webpage for execution and processing in browser context
-  await page.addScriptTag({ path: './src/helper-functions.js'});
-  await page.addScriptTag({ path: './src/box-extraction.js'});
+  await page.addScriptTag({ path: './src/structures/Box.js'});
+  await page.addScriptTag({ path: './src/modules/box-extraction.js'});
   await page.addScriptTag({ url: 'https://unpkg.com/fast-average-color/dist/index.min.js'});
 
   // Box Extraction Process - JavaScript code evaluated in web browser context
   const extracted = await page.evaluate(async () => {
 
     const t0 = performance.now();
-    const boxes = await extractBoxes();
+    const boxes = await extractBoxes(document.body);
     const t1 = performance.now();
 
     return {
-      boxes: Object.values(boxes.boxesMap),
-      boxesMap: boxes.boxesMap,
+      boxes: boxes,
       document: {
         height: document.body.scrollHeight, 
         width: document.body.scrollWidth 
       }, 
-      boxesCount: boxes.length,
       time: t1-t0
     };
   });
 
-  // Capture screenshot of webpage in PNG format
+  /* Capture screenshot of webpage in PNG format */
   // await page.screenshot({ path: './output/webpage.png', fullPage: true });
 
-  // Capture screenshot of webpage in PDF format
-  // await page.emulateMedia({media:"screen"});
-  // await page.pdf({path:'./output/webpage.pdf', fullPage:true});
-
-  // Close browser instance (no longer needed)
+  /* Close browser instance (no longer needed) */
   await browser.close();
 
   console.log("Extraction time:", extracted.time, "ms");
 
+  /* Start Clustering Process */
   clustering.process(extracted);
 
-  // Extracted boxes can be used in next processing step
-  // console.log(extracted);
-
-  // Visualize box tree representation of webpage and take screenshot
-  // webPageCreator.runServer(extracted);
+  /* Visualize box tree representation of webpage and take screenshot */
+  // vizualizer.createSvgRepresentation(extracted);
   
-  // console.log(extracted);
-
   // BCS has finished successfully!
   console.log("BCS has finished successfully!");
 
