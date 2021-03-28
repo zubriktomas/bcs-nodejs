@@ -14,8 +14,7 @@ class Cluster {
         this.bottom = Math.max(entityA.bottom, entityB.bottom);
         this.id = `(t: ${this.top}, l:${this.left}, b:${this.bottom}, r:${this.right})`;
         this.type = 'cluster';
-        this.neighbours = {};
-        this.relations = {};
+        this.neighbours = new Map();
         this.boxes = null;
         this.overlappingEntities = null;
     }

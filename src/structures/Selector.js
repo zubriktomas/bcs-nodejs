@@ -19,6 +19,7 @@ class Selector {
         this.minY += 1;
         this.maxX -= 1;
         this.maxY -= 1;
+        return this;
     }
 }
 

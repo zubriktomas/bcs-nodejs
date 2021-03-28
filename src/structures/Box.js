@@ -22,8 +22,10 @@
       this.type = 'box';
       
       this.maxNeighbourDistance = 0;
-      this.neighbours = {};
-      this.relations = {};
+      this.neighbours = new Map(); // cannot serialize from browser context, must reinitialize in Node.js!
+
+      // this.neighbours = {};
+      // this.relations = {};
     }
 
    

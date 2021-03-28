@@ -25,82 +25,73 @@ class ClusteringManager {
             width: extracted.document.width
         };
         
+        // this.boxes = extracted.boxes; 
+        this.entities = new Map(Object.entries(extracted.boxes)); // entityId => entity
+        this.relations = new Map();
+
         /* Dynamically changed throughout the segmentation process */
-        this.boxes = extracted.boxes; 
         this.tree = this.createRTree();
-        this.relations = {};
-        this.clusters = {};
     }
 
     createRTree() {
         const tree = new RTree();
-        tree.load(Object.values(this.boxes));
+        tree.load(Array.from(this.entities.values()));
         return tree;
     }
 
     removeContainers() {
-        var boxes = Object.values(this.boxes);
-        var selector, inside, box;
+        var selector, overlapping;
     
-        for (let i = 0; i < boxes.length; i++) {
-            box = boxes[i];
-            selector = {minX: box.left+1, minY: box.top+1, maxX: box.right-1, maxY: box.bottom-1};
-            inside = this.tree.search(selector);
-            if(inside.length > 2) { //maybe bigger overlays
-                delete this.boxes[box.id];
+        for (let box of this.entities.values()) {
+            selector = (new Selector(box.left, box.top, box.right, box.bottom)).narrowBy1Px();
+            overlapping = this.tree.search(selector);
+            if(overlapping.length > 2) { 
+                this.entities.delete(box.id);
                 this.tree.remove(box);
             }
         }
-    
-        boxes = Object.values(this.boxes);
-        for (let i = 0; i < boxes.length; i++) {
-            box = boxes[i];
-            selector = {minX: box.left+1, minY: box.top+1, maxX: box.right-1, maxY: box.bottom-1};
-            inside = this.tree.search(selector);
-            if(inside.length > 1) { //maybe bigger overlays
-                this.boxes[box.id];
+
+        for (let box of this.entities.values()) {
+            selector = (new Selector(box.left, box.top, box.right, box.bottom)).narrowBy1Px();
+            overlapping = this.tree.search(selector);
+            if(overlapping.length > 1) { 
+                this.entities.delete(box.id);
                 this.tree.remove(box);
             }
         }
     }
 
     findAllRelations() {
-        var box, boxes = Object.values(this.boxes);
-        var boxesCount = boxes.length;
     
-        for (let i = 0; i < boxesCount; i++) {
-            box = boxes[i];
+        for (let box of this.entities.values()) {
             box.findDirectNeighbours(this, SelectorDirection.right);    
             box.findDirectNeighbours(this, SelectorDirection.down);
             box.findDirectNeighbours(this, SelectorDirection.left);
             box.findDirectNeighbours(this, SelectorDirection.up);
-            this.boxes[box.id] = box;
         }
-    
-        var relations = Object.values(this.relations);
-        for (let i = 0; i < relations.length; i++) {
-            var rel = relations[i];
-            rel.calculateRelativeDistance();
-            rel.calculateShapeSimilarity();
-            rel.calculateColorSimilarity();
-            rel.calculateBaseSimilarity();
-            this.relations[rel.id] = rel;
-            this.boxes[rel.entityA.id].relations[rel.id] = rel;
+
+        for (let box of this.entities.values()) {
+            for (let relation of box.neighbours.values()) {
+                relation.calculateRelativeDistance();
+                relation.calculateShapeSimilarity();
+                relation.calculateColorSimilarity();
+                relation.calculateBaseSimilarity();
+                this.relations.set(relation.id, relation);
+            }
         }
-        // console.log(Object.values(this.relations)[0]);
     }
 
-    addMethodForEveryBox() {
-        var boxes = Object.values(this.boxes);
+    enhanceEveryBox() {
 
-        boxes.forEach(box => {
+        for (let box of this.entities.values()) {
             box.findDirectNeighbours = findDirectNeighbours;
-        });
+            box.neighbours = new Map();
+        }
     }
 
     createClusters() {
 
-        var rel, relations = Object.values(this.relations);
+        var rel, relations = Array.from(this.relations.values());
         sort(relations).asc(rel => rel.similarity);
 
         /* Main Clustering Loop */
@@ -133,8 +124,9 @@ class ClusteringManager {
             // console.log(Object.values(clusterCandidate.neighbours).map(n => n.id));
 
 
-            this.recalcNeighbours(clusterCandidate, rel);
-            this.clusters[clusterCandidate.id] = clusterCandidate;
+            // this.recalcNeighbours(clusterCandidate, rel);
+            // this.clusters[clusterCandidate.id] = clusterCandidate;
+            this.entities.set(clusterCandidate.id, clusterCandidate);
 
             /* CREATE JUST FIRST CLUSTER AND QUIT !!!!!!! */
             break;
@@ -144,6 +136,55 @@ class ClusteringManager {
 
     recalcNeighbours(cc, rel) {
 
+        /* Get ID of first entity in relation */
+        var entityAId = rel.entityA.id;
+
+        /* Get ID of second entity in relation */
+        var entityBId = rel.entityB.id;
+
+        /* Delete each others' neighbour  */
+        delete this.boxes[entityAId].neighbours[entityBId];
+        delete this.boxes[entityBId].neighbours[entityAId];
+
+        /* Get  */
+        var neighboursIdsA = Object.keys(this.boxes[entityAId].neighbours);
+        var neighboursIdsB = Object.keys(this.boxes[entityBId].neighbours);
+
+        neighboursIdsA.forEach(neighbourId => {
+            cc.neighbours[neighbourId] = this.boxes[neighbourId];
+            this.boxes[neighbourId].neighbours[cc.id] = cc;
+        });
+
+        neighboursIdsB.forEach(neighbourId => {
+            cc.neighbours[neighbourId] = this.boxes[neighbourId];
+            this.boxes[neighbourId].neighbours[cc.id] = cc;
+        });
+
+        var neighboursIdsCC = Object.keys(cc.neighbours);
+
+        this.boxes[entityAId].neighbours[cc.id] = cc;
+        this.boxes[entityBId].neighbours[cc.id] = cc;
+
+        console.log(neighboursIdsA);
+        console.log(neighboursIdsB);
+        console.log(neighboursIdsCC);
+
+    }
+
+    vizualize() {
+        var clusters = [], boxes = [];
+        for (const entity of this.entities.values()) {
+            if(entity.type == 'box') boxes.push(entity);
+            if(entity.type == 'cluster') clusters.push(entity);
+        }
+        vizualizer.createSvgRepresentation({
+            boxes: boxes, 
+            clusters: clusters,
+            document: {
+                width: this.pageDims.width,
+                height: this.pageDims.height
+            }
+        });
     }
 }
 
@@ -160,11 +201,12 @@ function findDirectNeighbours(cm, direction) {
     const selectorHeight = 50;
 
     if(direction == SelectorDirection.right){
+        
         for (let maxX = box.right + 1 + selectorWidth; maxX < pageWidth + selectorWidth; maxX+=selectorWidth) {
             
             selector = new Selector(box.right+1, box.top+1, maxX, box.bottom-1);
             neighbours = tree.search(selector);    
-
+            
             if(neighbours.length) {
                 break;
             }
@@ -202,49 +244,32 @@ function findDirectNeighbours(cm, direction) {
     }
 
     var tmpRelations = [], shortestDistance = pageWidth + pageHeight;
-    var rel;
-    for (let i = 0; i < neighbours.length; i++) {
-        rel = new Relation(box, neighbours[i], direction);
 
+    for (const neighbour of neighbours) {
+        var rel = new Relation(box, neighbour, direction);
         if(rel.absoluteDistance < shortestDistance) {
             tmpRelations.push(rel);
             shortestDistance = rel.absoluteDistance;
         }
     }
 
-    for (let i = 0; i < tmpRelations.length; i++) {
-        rel = tmpRelations[i];
-        
-        cm.relations[rel.id] = rel;
-        box.relations[rel.id] = rel;
-        box.neighbours[rel.entityB.id] = rel.entityB;
-
+    for (const rel of tmpRelations) {
         if(rel.absoluteDistance == shortestDistance) {
-
+            box.neighbours.set(rel.entityB, rel);
             if(rel.absoluteDistance > box.maxNeighbourDistance) {
                 box.maxNeighbourDistance = rel.absoluteDistance;
             }
         }
-      }
+    }
   }
-
 
 function process(extracted) {
 
-    cm = new ClusteringManager(extracted);
+    var cm = new ClusteringManager(extracted);
     cm.removeContainers();
-    cm.addMethodForEveryBox();
+    cm.enhanceEveryBox();
     cm.findAllRelations();
-
-    var boxes = Object.values(cm.boxes);
-
-    for (let i = 0; i < boxes.length; i++) {
-        if(i == 0){
-            // console.log(boxes[i].color, Object.values(boxes[i].neighbours).length);
-            // console.log(boxes[i]);
-        }
-    }
-
     cm.createClusters();
-    vizualizer.createSvgRepresentation({boxes: extracted.boxes, document: extracted.document, clusters: cm.clusters});
+    
+    cm.vizualize();
 }
