@@ -12,8 +12,10 @@ const Cluster = require('../structures/Cluster');
 const RTree = require('../structures/RTree');
 const Relation = require('../structures/Relation');
 const { Selector, SelectorDirection } = require('../structures/Selector');
+const EntityType = require('../structures/EntityType');
 
 module.exports.process = process;
+
 
 class ClusteringManager {
 
@@ -26,7 +28,8 @@ class ClusteringManager {
         };
         
         // this.boxes = extracted.boxes; 
-        this.entities = new Map(Object.entries(extracted.boxes)); // entityId => entity
+        this.boxes = new Map(Object.entries(extracted.boxes)); // entityId => entity
+        this.clusters = new Map();
         this.relations = new Map();
 
         /* Dynamically changed throughout the segmentation process */
@@ -35,27 +38,27 @@ class ClusteringManager {
 
     createRTree() {
         const tree = new RTree();
-        tree.load(Array.from(this.entities.values()));
+        tree.load(Array.from(this.boxes.values()));
         return tree;
     }
 
     removeContainers() {
         var selector, overlapping;
     
-        for (let box of this.entities.values()) {
+        for (let box of this.boxes.values()) {
             selector = (new Selector(box.left, box.top, box.right, box.bottom)).narrowBy1Px();
             overlapping = this.tree.search(selector);
             if(overlapping.length > 2) { 
-                this.entities.delete(box.id);
+                this.boxes.delete(box.id);
                 this.tree.remove(box);
             }
         }
 
-        for (let box of this.entities.values()) {
+        for (let box of this.boxes.values()) {
             selector = (new Selector(box.left, box.top, box.right, box.bottom)).narrowBy1Px();
             overlapping = this.tree.search(selector);
             if(overlapping.length > 1) { 
-                this.entities.delete(box.id);
+                this.boxes.delete(box.id);
                 this.tree.remove(box);
             }
         }
@@ -63,29 +66,28 @@ class ClusteringManager {
 
     findAllRelations() {
     
-        for (let box of this.entities.values()) {
+        for (let box of this.boxes.values()) {
             box.findDirectNeighbours(this, SelectorDirection.right);    
             box.findDirectNeighbours(this, SelectorDirection.down);
             box.findDirectNeighbours(this, SelectorDirection.left);
             box.findDirectNeighbours(this, SelectorDirection.up);
         }
 
-        for (let box of this.entities.values()) {
-            for (let relation of box.neighbours.values()) {
-                relation.calculateRelativeDistance();
-                relation.calculateShapeSimilarity();
-                relation.calculateColorSimilarity();
-                relation.calculateBaseSimilarity();
-                this.relations.set(relation.id, relation);
-            }
+        for (let relation of this.relations.values()) {
+            relation.calcSimilarity();
         }
     }
 
     enhanceEveryBox() {
 
-        for (let box of this.entities.values()) {
+        for (let box of this.boxes.values()) {
             box.findDirectNeighbours = findDirectNeighbours;
+            box.hasDirectNeighbour = function (otherBox) {
+                return box.neighbours.has(otherBox.id);
+            };
             box.neighbours = new Map();
+            box.boxes = new Map();
+            box.toString = toString;
         }
     }
 
@@ -103,27 +105,50 @@ class ClusteringManager {
             relations.shift();
         
             if(rel.similarity > 0.5) {
+                console.log("Attention: rel.similarity > 0.5");
                 continue;
             }
     
-            var clusterCandidate = new Cluster(rel.entityA, rel.entityB);
-            clusterCandidate.getOverlappingEntities(this.tree);
+            var cc = new Cluster(rel.entityA, rel.entityB);
+
+
+            console.log(cc.id);
+
+            var overlapping = cc.getOverlappingEntities(this.tree);
     
-            if(clusterCandidate.overlapsAnyCluster()) {
+            if(cc.overlapsAnyCluster(overlapping)) {
+                console.log("CC overlaps any cluster");
                 continue;
             }
     
-            if(clusterCandidate.overlapsAnyBox()) { 
-                console.log("Cluster", clusterCandidate.id, "overlaps some other box!");
+            if(cc.overlapsAnyBox(overlapping)) { 
+                console.log("Cluster", cc.id, "overlaps some other box!, what to do now? ");
                 break;
             } 
-              
-            // this.recalcNeighbours(clusterCandidate, rel);
-            clusterCandidate.assignBoxes(rel.entityA, rel.entityB);
+            
+            // console.log(this.toString());
 
-            this.recalcNeighbours(clusterCandidate);
+            // for (const box of this.boxes.values()) {
+            //     console.log(box.toString());
+            // }
+            
 
-            this.entities.set(clusterCandidate.id, clusterCandidate);
+            cc.addBoxes(rel.entityA);
+            cc.addBoxes(rel.entityB);
+            
+            this.recalcBoxes(rel);
+            this.recalcClusters(rel);
+            this.recalcNeighboursAndRelations(cc);
+
+            this.clusters.set(cc.id, cc);
+
+
+            // console.log(this.toString());
+
+            // for (const box of this.boxes.values()) {
+            //     console.log(box.toString());
+            // }
+
 
             /* CREATE JUST FIRST CLUSTER AND QUIT !!!!!!! */
             break;
@@ -131,58 +156,52 @@ class ClusteringManager {
         }
     }
 
-    recalcNeighbours(cc) {
+    recalcBoxes(rel) {
 
-        var m = new Map();
+        // If entity is cluster, delete has no effect
+        this.boxes.delete(rel.entityA.id);
+        this.boxes.delete(rel.entityB.id);
+    }
 
-        for (const box of cc.boxes.values()) {
-            for (const neighbour of box.neighbours.keys()) { // namiesto FORALL!!!
-                if(!cc.boxes.has(neighbour.id)) {
-                    console.log(neighbour.id);
-                    m.set(neighbour.id, m.has(neighbour.id) ? m.get(neighbour.id)+1 : 1);
-                }
-            }
+    recalcClusters(rel) {
+        // If entity is box, delete has no effect
+        this.clusters.delete(rel.entityA.id);
+        this.clusters.delete(rel.entityB.id);
+    }
+
+    recalcRelations(rel) {
+
+        for (const relation of rel.entityA.neighbours.values()) {
+            this.relations.delete(relation.id);
         }
 
-        console.log(m);
-        // /* Get ID of first entity in relation */
-        // var entityAId = rel.entityA.id;
+        for (const relation of rel.entityB.neighbours.values()) {
+            this.relations.delete(relation.id);
+        }
+    }
 
-        // /* Get ID of second entity in relation */
-        // var entityBId = rel.entityB.id;
+    recalcNeighboursAndRelations(cc) {
 
-        // /* Delete each others' neighbour  */
-        // delete this.boxes[entityAId].neighbours[entityBId];
-        // delete this.boxes[entityBId].neighbours[entityAId];
+        cc.addNeighboursAndRelations();
 
-        // /* Get  */
-        // var neighboursIdsA = Object.keys(this.boxes[entityAId].neighbours);
-        // var neighboursIdsB = Object.keys(this.boxes[entityBId].neighbours);
+        for (const [ccNeighbour, ccRel] of cc.neighbours.entries()) {
+            ccNeighbour.neighbours.set(cc, ccRel);
+            this.relations.set(ccRel);
+        }
 
-        // neighboursIdsA.forEach(neighbourId => {
-        //     cc.neighbours[neighbourId] = this.boxes[neighbourId];
-        //     this.boxes[neighbourId].neighbours[cc.id] = cc;
-        // });
-
-        // neighboursIdsB.forEach(neighbourId => {
-        //     cc.neighbours[neighbourId] = this.boxes[neighbourId];
-        //     this.boxes[neighbourId].neighbours[cc.id] = cc;
-        // });
-
-        // var neighboursIdsCC = Object.keys(cc.neighbours);
-
-        // this.boxes[entityAId].neighbours[cc.id] = cc;
-        // this.boxes[entityBId].neighbours[cc.id] = cc;
-
-        // console.log(neighboursIdsA);
-        // console.log(neighboursIdsB);
-        // console.log(neighboursIdsCC);
+        // for (const box of cc.boxes.values()) {
+        //     for (const rel of this.relations.values()) {
+        //         if(box == rel.entityA || box == rel.entityB) {
+        //             this.relations.delete(rel.id);
+        //         }                
+        //     }
+        // }
 
     }
 
     vizualize() {
         var clusters = [], boxes = [];
-        for (const entity of this.entities.values()) {
+        for (const entity of this.boxes.values()) {
             if(entity.type == 'box') boxes.push(entity);
             if(entity.type == 'cluster') clusters.push(entity);
         }
@@ -194,6 +213,11 @@ class ClusteringManager {
                 height: this.pageDims.height
             }
         });
+    }
+
+    toString() {
+        var cmString = `\n |B|: ${this.boxes.size}\n |C|: ${this.clusters.size}\n |R|: ${this.relations.size}\n`;
+        return cmString;
     }
 }
 
@@ -264,13 +288,21 @@ function findDirectNeighbours(cm, direction) {
 
     for (const rel of tmpRelations) {
         if(rel.absoluteDistance == shortestDistance) {
-            box.neighbours.set(rel.entityB, rel);
+
+            cm.relations.set(rel.id, rel);
+            box.neighbours.set(rel.entityB, cm.relations.get(rel.id));
+
             if(rel.absoluteDistance > box.maxNeighbourDistance) {
                 box.maxNeighbourDistance = rel.absoluteDistance;
             }
         }
     }
   }
+
+function toString() {
+    var boxString = `\n Box: ${this.color} \n |Neighbours|: ${this.neighbours.size}`;
+    return boxString;
+}
 
 function process(extracted) {
 
@@ -279,6 +311,5 @@ function process(extracted) {
     cm.enhanceEveryBox();
     cm.findAllRelations();
     cm.createClusters();
-
     cm.vizualize();
 }

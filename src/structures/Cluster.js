@@ -6,26 +6,88 @@
  * Description: Functions useful for process of node extraction.
  */
 
+const {EntityType, isCluster, isBox} = require('../structures/EntityType');
+const Relation = require('./Relation');
+
 class Cluster {
     constructor(entityA, entityB) {
-        this.left = Math.min(entityA.left, entityB.left);
-        this.top = Math.min(entityA.top, entityB.top);
-        this.right = Math.max(entityA.right, entityB.right);
-        this.bottom = Math.max(entityA.bottom, entityB.bottom);
-        this.id = `(t: ${this.top}, l:${this.left}, b:${this.bottom}, r:${this.right})`;
-        this.type = 'cluster';
+        this.left = Number.MAX_SAFE_INTEGER;
+        this.top = Number.MAX_SAFE_INTEGER;
+        this.right = Number.MIN_SAFE_INTEGER;
+        this.bottom = Number.MIN_SAFE_INTEGER;
+
+        this.id = this.generateId(entityA, entityB);
+        this.type = EntityType.cluster;
 
         this.maxNeighbourDistance = 0;
         this.neighbours = new Map();
         
         this.boxes = new Map();
-
-        this.overlappingEntities = null;
     }
 
-    assignBoxes(entityA, entityB) {
-        this.boxes.set(entityA.id, entityA);
-        this.boxes.set(entityB.id, entityB);
+    generateId(entityA, entityB) {
+
+        this.recalcCoordinates(entityA);
+        this.recalcCoordinates(entityB);
+
+        return `(t: ${this.top}, l:${this.left}, b:${this.bottom}, r:${this.right})`;
+    }
+
+    recalcCoordinates(entity) {
+        var left, top, bottom, right;
+
+        if(isBox(entity)) {
+            left = Math.min(this.left, entity.left);
+            top = Math.min(this.top, entity.top);
+            bottom = Math.max(this.bottom, entity.bottom);
+            right = Math.max(this.right, entity.right);
+            console.log(top);
+        } else {
+            for (const box of entity.boxes.values()) {
+                left = Math.min(this.left, box.left);
+                top = Math.min(this.top, box.top);
+                bottom = Math.max(this.bottom, box.bottom);
+                right = Math.max(this.right, box.right);
+            }
+        }
+
+        this.left = left;
+        this.top = top;
+        this.bottom = bottom;
+        this.right = right;
+    }
+
+    addBoxes(entity) {
+
+        if(isCluster(entity)) {
+            for (const box of entity.boxes.values()) {
+                this.boxes.set(box.id, box);
+            }
+        } else {
+            this.boxes.set(entity.id, entity);
+        }
+    }
+
+    getBoxes() {
+        return this.boxes;
+
+    }
+
+    addNeighboursAndRelations() {
+
+        for (const box of this.boxes.values()) {
+            for (const bNeighbour of box.neighbours.keys()) { // namiesto FORALL!!!
+                if(!this.boxes.has(bNeighbour.id)) {
+                    var rel = new Relation(this, bNeighbour);
+                    rel.calcSimilarity();
+                    this.neighbours.set(bNeighbour, rel);
+                } 
+            }
+        }
+    }
+
+    addRelations() {
+
     }
 
     getOverlappingEntities(tree) {
@@ -33,62 +95,28 @@ class Cluster {
         /* Search entities in Rtree on coordinates specified by cluster itself */
         var overlappingEntities = tree.search(this);
 
-        this.overlappingEntities = overlappingEntities;
+        return overlappingEntities;
     }
 
-    overlapsAnyCluster() {
+    overlapsAnyCluster(overlapping) {
    
         /* Cluster Candidate is not in the tree yet, it is not needed to check its ID */
-        var overlappingCluster = this.overlappingEntities.find(entity => entity.type == EntityType.cluster);
+        var overlappingCluster = overlapping.find(entity => entity.type == EntityType.cluster);
     
         /* If it is not undefined, then return true */
         return overlappingCluster ? true : false;
     }
 
-    overlapsAnyBox() {
+    overlapsAnyBox(overlapping) {
     
         /* Find all overlapping boxes, except those which constitute the cluster itself */
-        var overlappingBoxes = this.overlappingEntities.filter(entity => entity.type == EntityType.box && !(this.boxes.hasOwnProperty(entity.id)));
+        var overlappingBoxes = overlapping.filter(entity => entity.type == EntityType.box && !(this.boxes.has(entity.id)));
     
         /* If it is not empty, then return true */
         return overlappingBoxes.length ? true : false;
     }
 
-    // commit() {
-
-    //     /* Add cluster to map of clusters */
-    //     globals.clusters[this.id] = this;
-
-    //     /* IMPORTANT !!! Delete all boxes constituting new cluster from tree */
-    //     /* Recalculate all relations */
-    //     /* Recalculate all neighbours */
-    // }
-
-    // removeBoxesFromUnclusteredSet() {
-    //     var clusterBoxes = Object.values(this.boxes);
-
-    //     /* Remove boxes from set of unclustered boxes */
-    //     clusterBoxes.forEach(box => {
-    //         delete globals.unclusteredBoxes[box.id];
-    //         globals.tree.remove(box);
-    //     });
-    // }
-
-
-    // recalculateNeighbours() {
-
-    //     var clusterBoxes = Object.values(this.boxes);
-
-    //     clusterBoxes.forEach(box => {
-    //         box.neighboursIds.forEach(boxNeighbourId => {
-    //             if(globals.unclusteredBoxes.hasOwnProperty(boxNeighbourId) && !this.neighbours.hasOwnProperty(boxNeighbourId)){
-    //                 this.neighbours[boxNeighbourId] = globals.unclusteredBoxes[boxNeighbourId];
-    //             } else {
-    //                 /* druha cast pocmienky pre Cluster Direct Neighbourhood */
-    //             }
-    //         });
-    //     });
-    // }
 }
+
 
 module.exports = Cluster;

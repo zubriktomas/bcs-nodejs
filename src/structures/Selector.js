@@ -3,7 +3,8 @@ const SelectorDirection = Object.freeze({
     right: 'right', 
     down: 'down', 
     left: 'left', 
-    up: 'up'
+    up: 'up',
+    other: 'other'
 });
 
 class Selector {
