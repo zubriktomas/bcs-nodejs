@@ -12,7 +12,7 @@ const Cluster = require('../structures/Cluster');
 const RTree = require('../structures/RTree');
 const Relation = require('../structures/Relation');
 const { Selector, SelectorDirection } = require('../structures/Selector');
-const EntityType = require('../structures/EntityType');
+const { EntityType, isBox, isCluster } = require('../structures/EntityType');
 
 module.exports.process = process;
 
@@ -27,7 +27,7 @@ class ClusteringManager {
             width: extracted.document.width
         };
         
-        // this.boxes = extracted.boxes; 
+        this.extractedBoxes = new Map(Object.entries(extracted.boxes));
         this.boxes = new Map(Object.entries(extracted.boxes)); // entityId => entity
         this.clusters = new Map();
         this.relations = new Map();
@@ -91,75 +91,94 @@ class ClusteringManager {
         }
     }
 
+    getBestRelation() {
+        var sim = 1, bestRel;
+        for (const rel of this.relations.values()) {
+            if(rel.similarity <= sim ) {
+                sim = rel.similarity;
+                bestRel = rel;
+            }
+        }
+        return bestRel;
+    }
+
     createClusters() {
 
-        var rel, relations = Array.from(this.relations.values());
-        sort(relations).asc(rel => rel.similarity);
+        // var rel, relations = Array.from(this.relations.values());
+        // sort(relations).asc(rel => rel.similarity);
 
         /* Main Clustering Loop */
+        var rel;
+        while(this.relations.size > 0) {
 
-        while(relations.length > 0) {
-            rel = relations[0];
-    
-            /* Remove the first element from an array, while changes array in place */
-            relations.shift();
-        
+            rel = this.getBestRelation();
+
+            // for (const rel of this.relations.values()) {
+            //     console.log(rel.similarity);
+            // }
+                
             if(rel.similarity > 0.5) {
                 console.log("Attention: rel.similarity > 0.5");
-                continue;
+                // console.log(rel.id);
+                break;
             }
-    
+            
             var cc = new Cluster(rel.entityA, rel.entityB);
-
-
-            console.log(cc.id);
-
             var overlapping = cc.getOverlappingEntities(this.tree);
-    
+            
             if(cc.overlapsAnyCluster(overlapping)) {
                 console.log("CC overlaps any cluster");
-                continue;
+                break;
             }
-    
+            
             if(cc.overlapsAnyBox(overlapping)) { 
                 console.log("Cluster", cc.id, "overlaps some other box!, what to do now? ");
                 break;
             } 
             
-            // console.log(this.toString());
-
-            // for (const box of this.boxes.values()) {
-            //     console.log(box.toString());
-            // }
-            
-
             cc.addBoxes(rel.entityA);
             cc.addBoxes(rel.entityB);
             
             this.recalcBoxes(rel);
             this.recalcClusters(rel);
+            
+            this.updateRTree(cc, rel);
+            
             this.recalcNeighboursAndRelations(cc);
-
+            
             this.clusters.set(cc.id, cc);
-
-
-            // console.log(this.toString());
-
-            // for (const box of this.boxes.values()) {
-            //     console.log(box.toString());
+            
+            // console.log();
+            // for (const rel of this.relations.values()) {
+            //     console.log(rel.toString());
             // }
 
-
-            /* CREATE JUST FIRST CLUSTER AND QUIT !!!!!!! */
             break;
-            
         }
+
+    }
+
+    updateRTree(cc, rel) {
+        var entityA, entityB;
+
+        entityA = rel.entityA;
+        entityB = rel.entityB;
+
+        if(isCluster(entityA)) {
+            this.tree.remove(entityA);
+        }
+
+        if(isCluster(entityB)) {
+            this.tree.remove(entityB);
+        }
+
+        this.tree.insert(cc);
     }
 
     recalcBoxes(rel) {
 
         // If entity is cluster, delete has no effect
-        this.boxes.delete(rel.entityA.id);
+        this.boxes.delete(rel.entityA.id);                       
         this.boxes.delete(rel.entityB.id);
     }
 
@@ -169,16 +188,16 @@ class ClusteringManager {
         this.clusters.delete(rel.entityB.id);
     }
 
-    recalcRelations(rel) {
+    // recalcRelations(rel) {
 
-        for (const relation of rel.entityA.neighbours.values()) {
-            this.relations.delete(relation.id);
-        }
+    //     for (const relation of rel.entityA.neighbours.values()) {
+    //         this.relations.delete(relation.id);
+    //     }
 
-        for (const relation of rel.entityB.neighbours.values()) {
-            this.relations.delete(relation.id);
-        }
-    }
+    //     for (const relation of rel.entityB.neighbours.values()) {
+    //         this.relations.delete(relation.id);
+    //     }
+    // }
 
     recalcNeighboursAndRelations(cc) {
 
@@ -186,24 +205,26 @@ class ClusteringManager {
 
         for (const [ccNeighbour, ccRel] of cc.neighbours.entries()) {
             ccNeighbour.neighbours.set(cc, ccRel);
-            this.relations.set(ccRel);
+            this.relations.set(ccRel.id, ccRel);
         }
 
-        // for (const box of cc.boxes.values()) {
-        //     for (const rel of this.relations.values()) {
-        //         if(box == rel.entityA || box == rel.entityB) {
-        //             this.relations.delete(rel.id);
-        //         }                
-        //     }
-        // }
+        for (const box of cc.boxes.values()) {
+            for (const bRelation of box.neighbours.values()) {
+                this.relations.delete(bRelation.id);
+            }
+        }
 
     }
 
     vizualize() {
         var clusters = [], boxes = [];
-        for (const entity of this.boxes.values()) {
-            if(entity.type == 'box') boxes.push(entity);
-            if(entity.type == 'cluster') clusters.push(entity);
+
+        for (const box of this.extractedBoxes.values()) {
+            boxes.push(box);
+        }
+
+        for (const cluster of this.clusters.values()) {
+            clusters.push(cluster);
         }
         vizualizer.createSvgRepresentation({
             boxes: boxes, 

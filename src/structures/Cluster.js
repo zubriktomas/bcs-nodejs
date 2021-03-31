@@ -41,7 +41,6 @@ class Cluster {
             top = Math.min(this.top, entity.top);
             bottom = Math.max(this.bottom, entity.bottom);
             right = Math.max(this.right, entity.right);
-            console.log(top);
         } else {
             for (const box of entity.boxes.values()) {
                 left = Math.min(this.left, box.left);
@@ -64,6 +63,7 @@ class Cluster {
                 this.boxes.set(box.id, box);
             }
         } else {
+            entity.isInCluster = true;
             this.boxes.set(entity.id, entity);
         }
     }
@@ -76,18 +76,16 @@ class Cluster {
     addNeighboursAndRelations() {
 
         for (const box of this.boxes.values()) {
-            for (const bNeighbour of box.neighbours.keys()) { // namiesto FORALL!!!
-                if(!this.boxes.has(bNeighbour.id)) {
+            for (const bNeighbour of box.neighbours.keys()) {
+                /* Create new relation between cluster and entity, if entity(box) is not in the cluster and */
+                if(!this.boxes.has(bNeighbour.id) && !this.neighbours.has(bNeighbour.id) && !bNeighbour.isInCluster) {
                     var rel = new Relation(this, bNeighbour);
+                    // console.log(rel.id, rel.absoluteDistance);
                     rel.calcSimilarity();
                     this.neighbours.set(bNeighbour, rel);
                 } 
             }
         }
-    }
-
-    addRelations() {
-
     }
 
     getOverlappingEntities(tree) {
@@ -101,7 +99,7 @@ class Cluster {
     overlapsAnyCluster(overlapping) {
    
         /* Cluster Candidate is not in the tree yet, it is not needed to check its ID */
-        var overlappingCluster = overlapping.find(entity => entity.type == EntityType.cluster);
+        var overlappingCluster = overlapping.find(entity => isCluster(entity));
     
         /* If it is not undefined, then return true */
         return overlappingCluster ? true : false;
@@ -110,10 +108,18 @@ class Cluster {
     overlapsAnyBox(overlapping) {
     
         /* Find all overlapping boxes, except those which constitute the cluster itself */
-        var overlappingBoxes = overlapping.filter(entity => entity.type == EntityType.box && !(this.boxes.has(entity.id)));
+        var overlappingBoxes = overlapping.filter(entity => isBox(entity) && !(this.boxes.has(entity.id)));
     
         /* If it is not empty, then return true */
         return overlappingBoxes.length ? true : false;
+    }
+
+    toString() {
+        var clusterString = `\n Cluster: ${this.id} \n |Neighbours|: ${this.neighbours.size}\n`;
+        for (const n of this.neighbours.keys()) {
+            clusterString += (n.id+"\n");
+        }
+        return clusterString;
     }
 
 }

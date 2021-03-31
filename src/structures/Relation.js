@@ -19,7 +19,7 @@ class Relation {
         this.direction = null;
         this.id = this.generateId(entityA, entityB, direction);
         // this.cardinality = cardinality;
-        this.absoluteDistance = this.calcAbsoluteDistance(entityA, entityB, direction);
+        this.absoluteDistance = this.calcAbsoluteDistance(entityA, entityB, this.direction);
         // this.relativeDistance = null;
         // this.shapeSimilarity = null;
         // this.colorSimilarity = null;
@@ -52,13 +52,13 @@ class Relation {
         var pov = this.calcProjectedOverlap(a,b);
 
         if(a.bottom <= b.top && pov == 'x') {
-            return SelectorDirection.up;
-        } else if (a.top >= b.bottom && pov == 'x') {
             return SelectorDirection.down;
+        } else if (a.top >= b.bottom && pov == 'x') {
+            return SelectorDirection.up;
         } else if (a.right <= b.left && pov == 'y') {
-            return SelectorDirection.left;
-        } else if (a.left >= b.right && pov == 'y') {
             return SelectorDirection.right;
+        } else if (a.left >= b.right && pov == 'y') {
+            return SelectorDirection.left;
         } else {
             return SelectorDirection.other;
         }
@@ -170,14 +170,6 @@ class Relation {
         if(isCluster(entityB)) {
             return (this.calcCumulSimilarity(entityB, entityA) / this.calcCardinality(entityB, entityA));
         }
-
-        // if(isBox(entityA) && isCluster(entityB)) {
-        //     return this.calcCumulSimilarityClusterBox(entityB, entityA);
-        // } else if (isCluster(entityA) && isBox(entityB)) {
-        //     return this.calcCumulSimilarityClusterBox(entityA, entityB);
-        // } else {
-        //     return this.calcCumulSimilarityClusterCluster(entityA, entityB);
-        // }
     }
 
     calcCardinality(cluster, entity) {
@@ -193,14 +185,15 @@ class Relation {
 
         if(isBox(entity)) {
             for (const cBox of cluster.boxes.values()) {
+                // console.log(cBox.id);
 
                 if(cBox.neighbours.has(entity)) {
                     rel = cBox.neighbours.get(entity);    
                 } else if(entity.neighbours.has(cBox)) {
                     rel = entity.neighbours.get(cBox)
                 } else {
-                    rel = new Relation(cBox, entity, null);
-                    rel.calcSimilarity();
+                    // rel = new Relation(cBox, entity, null);
+                    // rel.calcSimilarity();
                 }
 
                 // rel = cBox.neighbours.get(entity) || entity.neighbours.get(cBox) || (new Relation(cBox, entity, null)).calcSimilarity();
@@ -208,31 +201,21 @@ class Relation {
             }
         } else {
             for (const cBox of cluster.boxes.values()) {
-                cumulSimilarity += (this.calcCumulSimilarityClusterBox(entity, cBox) / this.calcCardinality(entity, cBox));
+                cumulSimilarity += (this.calcCumulSimilarity(entity, cBox) / this.calcCardinality(entity, cBox));
             }
         }
+
+        // console.log(cumulSimilarity);
 
         return cumulSimilarity;
     }
     
-    // calcCumulSimilarityClusterBox(cluster, box) {
-    //     var cumulSimilarity = 0;
-    //     var rel;
-    //     for (const cBox of cluster.boxes.values()) {
 
-    //         rel = cBox.neighbours.get(box) || box.neighbours.get(cBox) || (new Relation(cBox, box, null)).calcSimilarity();
-    //         cumulSimilarity += rel.similarity;
-    //     }
-    //     return cumulSimilarity;
-    // }
-
-    // calcCumulSimilarityClusterCluster(cluster1, cluster2) {
-    //     var cumulSimilarity = 0;
-    //     for (const box of cluster1.boxes.values()) {
-    //         cumulSimilarity += (this.calcCumulSimilarityClusterBox(cluster2, box) / this.calcCardinality(cluster2, box));
-    //     }
-    //     return cumulSimilarity / this.calcCardinality(cluster1, cluster2);
-    // }
+    toString() {
+        var relString = `\n Relation A: ${this.entityA.id} \n Relation B: ${this.entityB.id} \n Abs Distance: ${this.absoluteDistance}\n Direction:${this.direction} \n`;
+        relString += ` Similarity: ${this.similarity}\n`;
+        return relString;
+    }
 }
 
 function getRgbFromString(rgbString) {
