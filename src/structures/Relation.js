@@ -16,22 +16,17 @@ class Relation {
     constructor(entityA, entityB, direction) {
         this.entityA = entityA;
         this.entityB = entityB;
-        this.direction = null;
-        this.id = this.generateId(entityA, entityB, direction);
-        // this.cardinality = cardinality;
-        this.absoluteDistance = this.calcAbsoluteDistance(entityA, entityB, this.direction);
-        // this.relativeDistance = null;
-        // this.shapeSimilarity = null;
-        // this.colorSimilarity = null;
+        this.direction = direction || this.calcDirection(entityA, entityB);
+        this.id = this.generateId(entityA, entityB);
+        this.absoluteDistance = this.calcAbsoluteDistance(entityA, entityB);
         this.similarity = null;
+        // this.cardinality = cardinality;  // this.relativeDistance = null;        // this.shapeSimilarity = null;        // this.colorSimilarity = null;
     }
 
-    generateId(entityA, entityB, direction) {
-        direction = direction || this.calcDirection(entityA, entityB);
-        this.direction = direction;
-        if(direction == SelectorDirection.right || direction == SelectorDirection.down) {
+    generateId(entityA, entityB) {
+        if(this.direction == SelectorDirection.right || this.direction == SelectorDirection.down) {
             return entityA.id + entityB.id;
-        } else if(direction == SelectorDirection.left || direction == SelectorDirection.up) {
+        } else if(this.direction == SelectorDirection.left || this.direction == SelectorDirection.up) {
             return entityB.id + entityA.id;
         } else {
             return null;
@@ -64,15 +59,15 @@ class Relation {
         }
     }
 
-    calcAbsoluteDistance(entityA, entityB, direction) {
+    calcAbsoluteDistance(entityA, entityB) {
         var absoluteDistance;
-        if(direction == SelectorDirection.right) {
+        if(this.direction == SelectorDirection.right) {
             absoluteDistance = entityB.left - entityA.right;
-        } else if (direction == SelectorDirection.down) {
+        } else if (this.direction == SelectorDirection.down) {
             absoluteDistance = entityB.top - entityA.bottom; 
-        } else if (direction == SelectorDirection.left) {
+        } else if (this.direction == SelectorDirection.left) {
             absoluteDistance = entityA.left - entityB.right; 
-        } else if (direction == SelectorDirection.up) {
+        } else if (this.direction == SelectorDirection.up) {
             absoluteDistance = entityA.top - entityB.bottom; 
         } else {
             absoluteDistance = Infinity;
@@ -154,9 +149,12 @@ class Relation {
         var entityA = this.entityA;
         var entityB = this.entityB;
 
+        
         if(isBox(entityA) && isBox(entityB)) {
+            // console.log(entityA.color, entityB.color);
             this.similarity = this.calcBaseSimilarity(entityA, entityB);
         } else {
+            // console.log("aaaaaaaaaaaaaaaa");
             this.similarity = this.calcClusterSimilarity(entityA, entityB);
         }
     }
@@ -185,27 +183,14 @@ class Relation {
 
         if(isBox(entity)) {
             for (const cBox of cluster.boxes.values()) {
-                // console.log(cBox.id);
-
-                if(cBox.neighbours.has(entity)) {
-                    rel = cBox.neighbours.get(entity);    
-                } else if(entity.neighbours.has(cBox)) {
-                    rel = entity.neighbours.get(cBox)
-                } else {
-                    // rel = new Relation(cBox, entity, null);
-                    // rel.calcSimilarity();
-                }
-
-                // rel = cBox.neighbours.get(entity) || entity.neighbours.get(cBox) || (new Relation(cBox, entity, null)).calcSimilarity();
-                cumulSimilarity += rel.similarity;
+                rel = cBox.neighbours.get(entity) || entity.neighbours.get(cBox); // || (new Relation(cBox, entity, null)).calcSimilarity();
+                cumulSimilarity += rel ? rel.similarity : 0;
             }
         } else {
             for (const cBox of cluster.boxes.values()) {
                 cumulSimilarity += (this.calcCumulSimilarity(entity, cBox) / this.calcCardinality(entity, cBox));
             }
         }
-
-        // console.log(cumulSimilarity);
 
         return cumulSimilarity;
     }

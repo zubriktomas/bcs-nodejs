@@ -15,6 +15,10 @@ class Selector {
         this.maxY = maxY;
     }
 
+    static fromEntity(entity) {
+        return new Selector(entity.left, entity.top, entity.right, entity.bottom);
+    }
+
     narrowBy1Px() {
         this.minX += 1;
         this.minY += 1;

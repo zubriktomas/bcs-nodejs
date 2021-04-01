@@ -8,6 +8,7 @@
 
 const {EntityType, isCluster, isBox} = require('../structures/EntityType');
 const Relation = require('./Relation');
+const {Selector} = require('./Selector');
 
 class Cluster {
     constructor(entityA, entityB) {
@@ -20,9 +21,11 @@ class Cluster {
         this.type = EntityType.cluster;
 
         this.maxNeighbourDistance = 0;
-        this.neighbours = new Map();
+        this.neighbours = new Map(); // entity => relation
         
-        this.boxes = new Map();
+        this.boxes = new Map(); // boxId => box
+
+        this.debug = false;
     }
 
     generateId(entityA, entityB) {
@@ -63,7 +66,6 @@ class Cluster {
                 this.boxes.set(box.id, box);
             }
         } else {
-            entity.isInCluster = true;
             this.boxes.set(entity.id, entity);
         }
     }
@@ -75,12 +77,13 @@ class Cluster {
 
     addNeighboursAndRelations() {
 
+        // console.log(this.id);
+
         for (const box of this.boxes.values()) {
             for (const bNeighbour of box.neighbours.keys()) {
                 /* Create new relation between cluster and entity, if entity(box) is not in the cluster and */
-                if(!this.boxes.has(bNeighbour.id) && !this.neighbours.has(bNeighbour.id) && !bNeighbour.isInCluster) {
+                if(!this.boxes.has(bNeighbour.id) && !this.neighbours.has(bNeighbour) && bNeighbour.cluster) {
                     var rel = new Relation(this, bNeighbour);
-                    // console.log(rel.id, rel.absoluteDistance);
                     rel.calcSimilarity();
                     this.neighbours.set(bNeighbour, rel);
                 } 
@@ -91,25 +94,24 @@ class Cluster {
     getOverlappingEntities(tree) {
 
         /* Search entities in Rtree on coordinates specified by cluster itself */
-        var overlappingEntities = tree.search(this);
-
+        var overlappingEntities = tree.search(Selector.fromEntity(this).narrowBy1Px());
         return overlappingEntities;
     }
 
-    overlapsAnyCluster(overlapping) {
+    overlapsAnyCluster(overlapping, rel) {
    
         /* Cluster Candidate is not in the tree yet, it is not needed to check its ID */
-        var overlappingCluster = overlapping.find(entity => isCluster(entity));
+        var overlappingCluster = overlapping.find(entity => isCluster(entity) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
     
         /* If it is not undefined, then return true */
         return overlappingCluster ? true : false;
     }
 
-    overlapsAnyBox(overlapping) {
+    overlapsAnyBox(overlapping, rel) {
     
         /* Find all overlapping boxes, except those which constitute the cluster itself */
-        var overlappingBoxes = overlapping.filter(entity => isBox(entity) && !(this.boxes.has(entity.id)));
-    
+        var overlappingBoxes = overlapping.filter(entity => isBox(entity) && !(this.boxes.has(entity.id)) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
+
         /* If it is not empty, then return true */
         return overlappingBoxes.length ? true : false;
     }

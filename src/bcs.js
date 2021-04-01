@@ -60,12 +60,12 @@ const { chromium } = require('playwright');
   });
 
   /* Capture screenshot of webpage in PNG format */
-  // await page.screenshot({ path: './output/webpage.png', fullPage: true });
+  await page.screenshot({ path: './output/webpage.png', fullPage: true });
 
   /* Close browser instance (no longer needed) */
   await browser.close();
 
-  console.log("Extraction time:", extracted.time, "ms");
+  // console.log("Extraction time:", extracted.time, "ms");
 
   /* Start Clustering Process */
   clustering.process(extracted);
@@ -74,6 +74,6 @@ const { chromium } = require('playwright');
   // vizualizer.createSvgRepresentation(extracted);
   
   // BCS has finished successfully!
-  console.log("BCS has finished successfully!");
+  // console.log("BCS has finished successfully!");
 
 })();
