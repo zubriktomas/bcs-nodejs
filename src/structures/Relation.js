@@ -151,11 +151,12 @@ class Relation {
 
         
         if(isBox(entityA) && isBox(entityB)) {
-            // console.log(entityA.color, entityB.color);
+            //console.log("calcBaseSimilarity:");
             this.similarity = this.calcBaseSimilarity(entityA, entityB);
         } else {
-            // console.log("aaaaaaaaaaaaaaaa");
+            //console.log("calcClusterSimilarity", mapper(entityA.id), mapper(entityB.id));
             this.similarity = this.calcClusterSimilarity(entityA, entityB);
+            //console.log("    => ", mapper(entityA.id), mapper(entityB.id), "simil: ", this.similarity);
         }
     }
     
@@ -175,23 +176,31 @@ class Relation {
         for (const cBox of cluster.boxes.values()) {
             card = cBox.neighbours.has(entity) ? card+1 : card;
         }
-        return card;
+        // //console.log("    => ", mapper(cluster.id), mapper(entity.id), "card : ", card ? card : 1);
+        return card ? card : 1;
+
+        
     }
 
     calcCumulSimilarity(cluster, entity) {
         var rel, cumulSimilarity = 0;
 
         if(isBox(entity)) {
+            
             for (const cBox of cluster.boxes.values()) {
                 rel = cBox.neighbours.get(entity) || entity.neighbours.get(cBox); // || (new Relation(cBox, entity, null)).calcSimilarity();
                 cumulSimilarity += rel ? rel.similarity : 0;
             }
         } else {
             for (const cBox of cluster.boxes.values()) {
-                cumulSimilarity += (this.calcCumulSimilarity(entity, cBox) / this.calcCardinality(entity, cBox));
+                var sim = (this.calcCumulSimilarity(entity, cBox) / this.calcCardinality(entity, cBox));
+                //console.log("    => ", mapper(entity.id), mapper(cBox.id), "simil: ", sim);
+                //console.log();
+                cumulSimilarity += sim;
             }
         }
 
+        //console.log("    => ", mapper(cluster.id), mapper(entity.id), "cumul: ", cumulSimilarity);
         return cumulSimilarity;
     }
     
@@ -217,6 +226,26 @@ function getRgbFromString(rgbString) {
         rgb.a = parseInt(rgbArray[3]);
     }
     return rgb;
+}
+
+A = '(t: 101, l:285, b:205.4375, r:453.4375, c:rgb(1, 87, 155))';
+B = '(t: 135, l:562, b:179.21875, r:1051.21875, c:rgb(27, 94, 32))';
+C = '(t: 258, l:288, b:367.4375, r:355.4375, c:rgb(245, 127, 23))';
+D = '(t: 277, l:392, b:472.21875, r:490.21875, c:rgb(183, 28, 28))';
+E = '(t: 225, l:632, b:442.21875, r:989.21875, c:rgb(74, 20, 140))';
+
+X1 = '(t: 258, l:288, b:472.21875, r:490.21875)';
+X2 = '(t: 135, l:562, b:442.21875, r:1051.21875)';
+
+function mapper(id) {
+    if(id == A) return "A";
+    if(id == B) return "B";
+    if(id == C) return "C";
+    if(id == D) return "D";
+    if(id == E) return "E";
+    if(id == X1) return "X1";
+    if(id == X2) return "X2";
+    return "Xnew";
 }
 
 module.exports = Relation;

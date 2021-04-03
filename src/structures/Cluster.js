@@ -19,13 +19,14 @@ class Cluster {
 
         this.id = this.generateId(entityA, entityB);
         this.type = EntityType.cluster;
-
+        
         this.maxNeighbourDistance = 0;
         this.neighbours = new Map(); // entity => relation
         
         this.boxes = new Map(); // boxId => box
-
-        this.debug = false;
+        
+        this.addBoxes(entityA);
+        this.addBoxes(entityB);
     }
 
     generateId(entityA, entityB) {
@@ -75,18 +76,34 @@ class Cluster {
 
     }
 
-    addNeighboursAndRelations() {
+    addNeighbour(entity) {
+        var rel = new Relation(this, entity);
+        rel.calcSimilarity();
 
-        // console.log(this.id);
+        if(isNaN(rel.similarity)) {
+            console.log("entityA:",mapper(rel.entityA.id));
+            console.log("entityB:",mapper(rel.entityB.id));
+        }
+
+        this.neighbours.set(entity, rel);
+    }
+
+    addNeighboursAndRelations() {
 
         for (const box of this.boxes.values()) {
             for (const bNeighbour of box.neighbours.keys()) {
                 /* Create new relation between cluster and entity, if entity(box) is not in the cluster and */
-                if(!this.boxes.has(bNeighbour.id) && !this.neighbours.has(bNeighbour) && bNeighbour.cluster) {
-                    var rel = new Relation(this, bNeighbour);
-                    rel.calcSimilarity();
-                    this.neighbours.set(bNeighbour, rel);
+                if(!this.boxes.has(bNeighbour.id) && !this.neighbours.has(bNeighbour)){
+                    this.addNeighbour(bNeighbour);
                 } 
+
+                if(isCluster(bNeighbour)) {
+                    for (const x of bNeighbour.neighbours.keys()) {
+                        if(x.cluster) {
+                            bNeighbour.neighbours.delete(x);
+                        }                        
+                    }
+                }
             }
         }
     }
@@ -101,7 +118,8 @@ class Cluster {
     overlapsAnyCluster(overlapping, rel) {
    
         /* Cluster Candidate is not in the tree yet, it is not needed to check its ID */
-        var overlappingCluster = overlapping.find(entity => isCluster(entity) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
+        // var overlappingCluster = overlapping.find(entity => isCluster(entity) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
+        var overlappingCluster = overlapping.find(entity => isCluster(entity)); 
     
         /* If it is not undefined, then return true */
         return overlappingCluster ? true : false;
@@ -126,5 +144,28 @@ class Cluster {
 
 }
 
+A = '(t: 101, l:285, b:205.4375, r:453.4375, c:rgb(1, 87, 155))';
+B = '(t: 135, l:562, b:179.21875, r:1051.21875, c:rgb(27, 94, 32))';
+C = '(t: 258, l:288, b:367.4375, r:355.4375, c:rgb(245, 127, 23))';
+D = '(t: 277, l:392, b:472.21875, r:490.21875, c:rgb(183, 28, 28))';
+E = '(t: 225, l:632, b:442.21875, r:989.21875, c:rgb(74, 20, 140))';
+
+X1 = '(t: 258, l:288, b:472.21875, r:490.21875)';
+X2 = '(t: 135, l:562, b:442.21875, r:1051.21875)';
+
+function mapper(id) {
+    if(id == A) return "A";
+    if(id == B) return "B";
+    if(id == C) return "C";
+    if(id == D) return "D";
+    if(id == E) return "E";
+    if(id == X1) return "X1";
+    if(id == X2) return "X2";
+    return "Xnew";
+}
+
+function neighsRelsMapToNames(entity) {
+    return Array.from(entity.neighbours.keys()).map(n => mapper(n.id));
+}
 
 module.exports = Cluster;

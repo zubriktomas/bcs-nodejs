@@ -238,49 +238,30 @@ class ClusteringManager {
 
     createClusters() {
         
-        
-        
         var rel;
-        for (let i = 0; i < 3; i++) {
+        // for (let i = 0; i < 2; i++) {
             // this.test(i);
-        // while(this.relations.size > 0) {
+        while(this.relations.size > 0) {
 
-            this.printAll();
-            console.log("************************************************************");
+            // console.log("****************** Iteracia:", i, "**************************");
+            // this.printAll();
+            // console.log("************************************************************\n");
 
 
             rel = this.getBestRelation();
-
-            // console.log(Array.from(this.relations.values()).map(rel=>rel.similarity));
-            // console.log(rel.similarity);
-            // console.log();
-
-            /*if(isCluster(rel.entityA) && isCluster(rel.entityB)) {
-
-                console.log("Clusters");
-                console.log(rel.toString());
-
-                var a = this.clusters.get(rel.entityA.id);
-
-                var b = this.clusters.get(rel.entityB.id);
-                this.clusters.clear();
-                this.clusters.set(a.id, a);
-                // this.clusters.set(b.id, b);
-                
-                break;
-            }*/
-
+        
             if(rel.similarity > 0.5) {
-                console.log("Attention: rel.similarity > 0.5");
+                console.log("Attention: rel.similarity > 0.99");
                 // console.log(rel.id);
                 break;
             }
             
             var cc = new Cluster(rel.entityA, rel.entityB);
+
+            // cc.addBoxes(rel.entityA);
+            // cc.addBoxes(rel.entityB);
+
             var overlapping = cc.getOverlappingEntities(this.tree);
-            
-            cc.addBoxes(rel.entityA);
-            cc.addBoxes(rel.entityB);
             
             if(cc.overlapsAnyCluster(overlapping, rel)) {
                 console.log("Cluster candidate overlaps some cluster!, how is it possible?");
@@ -305,6 +286,10 @@ class ClusteringManager {
             this.recalcNeighboursAndRelations(cc);
             
             this.clusters.set(cc.id, cc);
+
+            // console.log(Array.from(this.relations.values()).map(rel=>rel.similarity));
+            // console.log(rel.similarity);
+            // console.log();
         }
 
         
@@ -344,7 +329,7 @@ class ClusteringManager {
 
     recalcNeighboursAndRelations(cc) {
         
-        for (const box of this.boxes.values()) {
+        for (const box of cc.boxes.values()) {
             box.cluster = cc;
         }
 
@@ -353,10 +338,16 @@ class ClusteringManager {
         for (const [ccNeighbour, ccRel] of cc.neighbours.entries()) {
             ccNeighbour.neighbours.set(cc, ccRel);
             this.relations.set(ccRel.id, ccRel);
+
+            if(isBox(ccNeighbour) && ccNeighbour.cluster) {
+                cc.neighbours.delete(ccNeighbour);
+                this.relations.delete(ccRel.id);
+                // console.log("Box", mapper(ccNeighbour.id), "deleted from cluster ", mapper(cc.id), "eighbours");
+            }
         }
 
         for (const box of cc.boxes.values()) {
-            box.cluster = cc;
+            // box.cluster = cc;
             for (const bRelation of box.neighbours.values()) {
                 this.relations.delete(bRelation.id);
             }

@@ -33,8 +33,8 @@ const { chromium } = require('playwright');
   // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'networkidle2'});
   // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
   // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
-  await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
-  // await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
+  // await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
+  await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
   // await page.goto('http://localhost:8080/1.html', {waitUntil: 'domcontentloaded'});
 
   // Add JavaScript files into webpage for execution and processing in browser context
