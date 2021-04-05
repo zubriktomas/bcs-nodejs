@@ -12,47 +12,57 @@ const {Selector} = require('./Selector');
 
 class Cluster {
     constructor(entityA, entityB) {
-        this.left = Number.MAX_SAFE_INTEGER;
-        this.top = Number.MAX_SAFE_INTEGER;
-        this.right = Number.MIN_SAFE_INTEGER;
-        this.bottom = Number.MIN_SAFE_INTEGER;
+        this.left = null;
+        this.top = null;
+        this.right = null;
+        this.bottom = null;
 
-        this.id = this.generateId(entityA, entityB);
         this.type = EntityType.cluster;
-        
-        this.maxNeighbourDistance = 0;
+
         this.neighbours = new Map(); // entity => relation
-        
+
         this.boxes = new Map(); // boxId => box
-        
         this.addBoxes(entityA);
         this.addBoxes(entityB);
+
+        this.recalcCoordinates();
+        this.id = this.generateId();
     }
 
-    generateId(entityA, entityB) {
-
-        this.recalcCoordinates(entityA);
-        this.recalcCoordinates(entityB);
-
+    generateId() {
+        this.id = `(t: ${this.top}, l:${this.left}, b:${this.bottom}, r:${this.right})`;
         return `(t: ${this.top}, l:${this.left}, b:${this.bottom}, r:${this.right})`;
     }
 
-    recalcCoordinates(entity) {
+    recalcCoordinates() {
         var left, top, bottom, right;
 
-        if(isBox(entity)) {
-            left = Math.min(this.left, entity.left);
-            top = Math.min(this.top, entity.top);
-            bottom = Math.max(this.bottom, entity.bottom);
-            right = Math.max(this.right, entity.right);
-        } else {
-            for (const box of entity.boxes.values()) {
-                left = Math.min(this.left, box.left);
-                top = Math.min(this.top, box.top);
-                bottom = Math.max(this.bottom, box.bottom);
-                right = Math.max(this.right, box.right);
-            }
+        left = Number.MAX_SAFE_INTEGER;
+        top = Number.MAX_SAFE_INTEGER;
+        right = Number.MIN_SAFE_INTEGER;
+        bottom = Number.MIN_SAFE_INTEGER;
+
+        for (const box of this.boxes.values()) {
+            left = Math.min(left, box.left);
+            top = Math.min(top, box.top);
+            bottom = Math.max(bottom, box.bottom);
+            right = Math.max(right, box.right);
         }
+
+
+        // if(isBox(entity)) {
+            // left = Math.min(this.left, entity.left);
+            // top = Math.min(this.top, entity.top);
+            // bottom = Math.max(this.bottom, entity.bottom);
+            // right = Math.max(this.right, entity.right);
+        // } else {
+        //     for (const box of entity.boxes.values()) {
+        //         left = Math.min(this.left, box.left);
+        //         top = Math.min(this.top, box.top);
+        //         bottom = Math.max(this.bottom, box.bottom);
+        //         right = Math.max(this.right, box.right);
+        //     }
+        // }
 
         this.left = left;
         this.top = top;
@@ -69,11 +79,6 @@ class Cluster {
         } else {
             this.boxes.set(entity.id, entity);
         }
-    }
-
-    getBoxes() {
-        return this.boxes;
-
     }
 
     addNeighbour(entity) {
@@ -97,6 +102,7 @@ class Cluster {
                     this.addNeighbour(bNeighbour);
                 } 
 
+                /** TOTO BY TU NEMALO BYT!! */
                 if(isCluster(bNeighbour)) {
                     for (const x of bNeighbour.neighbours.keys()) {
                         if(x.cluster) {
@@ -132,6 +138,15 @@ class Cluster {
 
         /* If it is not empty, then return true */
         return overlappingBoxes.length ? true : false;
+    }
+
+    containsBoxVisually(box) {
+        var topLeftInside, bottomRightInside;
+
+        topLeftInside = this.top <= box.top && this.left <= box.left;
+        bottomRightInside = this.bottom >= box.bottom && this.right >= box.right;
+
+        return topLeftInside && bottomRightInside;
     }
 
     toString() {

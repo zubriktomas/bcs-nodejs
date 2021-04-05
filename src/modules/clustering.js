@@ -66,15 +66,12 @@ class ClusteringManager {
             height: extracted.document.height,
             width: extracted.document.width
         };
-        
         this.extractedBoxes = new Map(Object.entries(extracted.boxes));
+
+        /* Dynamically changed throughout the segmentation process */
         this.boxes = new Map(Object.entries(extracted.boxes)); // entityId => entity
         this.clusters = new Map();
         this.relations = new Map();
-
-        
-
-        /* Dynamically changed throughout the segmentation process */
         this.tree = this.createRTree();
     }
 
@@ -248,82 +245,76 @@ class ClusteringManager {
             // console.log("************************************************************\n");
 
 
+            console.log(Array.from(this.relations.values()).map(rel=>rel.similarity));
+            
+
             rel = this.getBestRelation();
+
+            if(rel.similarity < 0) {
+                console.log(rel.toString());
+            }
+
+            console.log("Chosen: ", rel.similarity);
         
-            if(rel.similarity > 0.5) {
-                console.log("Attention: rel.similarity > 0.99");
+            if(rel.similarity > 0.8) {
+                console.log("Attention: rel.similarity > 0.8");
                 // console.log(rel.id);
                 break;
             }
             
             var cc = new Cluster(rel.entityA, rel.entityB);
 
-            // cc.addBoxes(rel.entityA);
-            // cc.addBoxes(rel.entityB);
-
             var overlapping = cc.getOverlappingEntities(this.tree);
             
             if(cc.overlapsAnyCluster(overlapping, rel)) {
-                console.log("Cluster candidate overlaps some cluster!, how is it possible?");
-                // this.clusters.clear();
-                // this.clusters.set(cc.id, cc);
-                this.relations.delete(rel.id);
-                continue;
+
+                var overlappingClusters = overlapping.find(entity => isCluster(entity) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
+
+                if(overlappingClusters) {
+                    console.log("Cluster candidate overlaps some cluster!, how is it possible?");
+                    this.relations.delete(rel.id);
+                    continue;
+                }
             }
             
             if(cc.overlapsAnyBox(overlapping, rel)) { 
                 console.log("Cluster", cc.id, "overlaps some other box!, what to do now? ");
-                // this.clusters.set(cc.id, cc);
-                this.relations.delete(rel.id);
-                continue;
+                var overlappingBoxes = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
+
+                if(overlappingBoxes.length == 1 && cc.containsBoxVisually(overlappingBoxes[0])) {
+                    console.log(`Cluster ${cc.id} contains 1 BOX visually! It's OK!`);
+                    console.log(overlappingBoxes.map(box=>box.id));
+                    cc.addBoxes(overlappingBoxes[0]);
+
+                } else if(overlappingBoxes.length == 2) {
+                    console.log(`Cluster ${cc.id} contains 2 BOXES visually!`);
+                    this.clusters.set(cc.id, cc);
+                    this.relations.delete(rel.id);
+                    break;
+                } else {
+                    console.log(`Cluster ${cc.id} overlaps box or contains multiple boxes!`);
+                    this.relations.delete(rel.id);
+                    continue;
+                }
+
             } 
             
-            this.recalcBoxes(rel);
-            this.recalcClusters(rel);
-            
-            this.updateRTree(cc, rel);
-            
+            this.recalcBoxesAndClusters(cc); 
             this.recalcNeighboursAndRelations(cc);
-            
             this.clusters.set(cc.id, cc);
-
-            // console.log(Array.from(this.relations.values()).map(rel=>rel.similarity));
-            // console.log(rel.similarity);
-            // console.log();
         }
-
-        
-
-
     }
     
-    recalcBoxes(rel) {
+    recalcBoxesAndClusters(cc) { 
 
-        // If entity is cluster, delete has no effect
-        this.boxes.delete(rel.entityA.id);                       
-        this.boxes.delete(rel.entityB.id);
-    }
+        for (const box of cc.boxes.values()) {
+            this.boxes.delete(box.id);
 
-    recalcClusters(rel) {
-        // If entity is box, delete has no effect
-        this.clusters.delete(rel.entityA.id);
-        this.clusters.delete(rel.entityB.id);
-    }
-
-    updateRTree(cc, rel) {
-        var entityA, entityB;
-
-        entityA = rel.entityA;
-        entityB = rel.entityB;
-
-        if(isCluster(entityA)) {
-            this.tree.remove(entityA);
+            if(box.cluster) {
+                this.clusters.delete(box.cluster.id);
+                this.tree.remove(box.cluster);
+            }
         }
-
-        if(isCluster(entityB)) {
-            this.tree.remove(entityB);
-        }
-
         this.tree.insert(cc);
     }
 
@@ -337,17 +328,23 @@ class ClusteringManager {
 
         for (const [ccNeighbour, ccRel] of cc.neighbours.entries()) {
             ccNeighbour.neighbours.set(cc, ccRel);
-            this.relations.set(ccRel.id, ccRel);
+            // this.relations.set(ccRel.id, ccRel);
 
             if(isBox(ccNeighbour) && ccNeighbour.cluster) {
                 cc.neighbours.delete(ccNeighbour);
+                // this.relations.delete(ccRel.id);
+            } else {
+                this.relations.set(ccRel.id, ccRel);
+            }
+
+            /** TOTO JE ASI CHYBNE!!! */
+            if(isCluster(ccNeighbour)) {
+                cc.neighbours.delete(ccNeighbour);
                 this.relations.delete(ccRel.id);
-                // console.log("Box", mapper(ccNeighbour.id), "deleted from cluster ", mapper(cc.id), "eighbours");
             }
         }
 
         for (const box of cc.boxes.values()) {
-            // box.cluster = cc;
             for (const bRelation of box.neighbours.values()) {
                 this.relations.delete(bRelation.id);
             }

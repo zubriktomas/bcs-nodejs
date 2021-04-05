@@ -47,7 +47,7 @@ class Relation {
         var pov = this.calcProjectedOverlap(a,b);
 
         if(a.bottom <= b.top && pov == 'x') {
-            return SelectorDirection.down;
+            return SelectorDirection.down; /* it is reversed according to paper, because we want position of selector */
         } else if (a.top >= b.bottom && pov == 'x') {
             return SelectorDirection.up;
         } else if (a.right <= b.left && pov == 'y') {
@@ -77,7 +77,7 @@ class Relation {
 
     calcRelativeDistance(boxA, boxB) {
         var relA, relB, maxdA, maxdB;
-
+        
         maxdA = boxA.maxNeighbourDistance;
         maxdB = boxB.maxNeighbourDistance;
 
@@ -99,13 +99,26 @@ class Relation {
         widthB = boxB.width;
         heightB = boxB.height;
 
+        // console.log(widthA, heightA, widthB, heightB);
+
         ratioA = widthA / heightA;
         ratioB = widthB / heightB;
+
+        ratioA = ratioA <= 1 ? heightA / widthA : ratioA;
+        ratioB = ratioA <= 1 ? heightB / widthB : ratioB;
 
         maxRatio = Math.max(ratioA, ratioB);
         minRatio = Math.min(ratioA, ratioB);
 
+        // console.log("maxRatio:",maxRatio);
+        // console.log("minRatio:",minRatio);
+        // console.log("maxratio - minratio:",maxRatio-minRatio);
+        // console.log("(Math.pow(maxRatio, 2) - 1)", (Math.pow(maxRatio, 2) - 1));
+        // console.log("( (Math.pow(maxRatio, 2) - 1) / maxRatio )", ( (Math.pow(maxRatio, 2) - 1) / maxRatio ));
+
         ratio = (maxRatio - minRatio) / ( (Math.pow(maxRatio, 2) - 1) / maxRatio );
+
+        // console.log("ratio:", ratio);
 
         // Premenne pre vypocet size
         var sizeA, sizeB, size;
@@ -133,6 +146,10 @@ class Relation {
 
     calcBaseSimilarity(boxA, boxB) {
         var relativeDistance = this.calcRelativeDistance(boxA, boxB);
+
+        console.log("reldist: ", relativeDistance);
+        // console.log("shape: ", this.calcShapeSimilarity(boxA, boxB));
+        // console.log("color: ", this.calcColorSimilarity(boxA, boxB));
 
         /* They are the same box, or are not semi-aligned */
         if(relativeDistance == 0 || relativeDistance == Infinity) {
