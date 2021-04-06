@@ -127,12 +127,12 @@ class Cluster {
                         var res2 = bNeighbour.cluster.deleteNeighbour(box.cluster);
 
                     if(res) {
-                        console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.id)} deleted!`);
+                        // console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.id)} deleted!`);
                         relDelList.set(res.id, res);
                     }
 
                     if(res2) {
-                        console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.cluster.id)} deleted!`);
+                        // console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.cluster.id)} deleted!`);
                         relDelList.set(res2.id, res2);
                     }
 
@@ -150,7 +150,7 @@ class Cluster {
 
                 /* ak je box v clustri, pridaj ako suseda cluster, inak pridaj samotny box */
                 var res = this.addNeighbour(bNeighbour.cluster ? bNeighbour.cluster : bNeighbour);
-                if(res) console.log(`entity ${mapper((bNeighbour.cluster ? bNeighbour.cluster : bNeighbour).id)} added as ${mapper(this.id)} neighbour`);
+                // if(res) console.log(`entity ${mapper((bNeighbour.cluster ? bNeighbour.cluster : bNeighbour).id)} added as ${mapper(this.id)} neighbour`);
 
                 /* Create new relation between cluster and entity, if entity(box) is not in the cluster and */
                 // if(!this.boxes.has(bNeighbour.id) && !this.neighbours.has(bNeighbour) && bNeighbour.cluster){

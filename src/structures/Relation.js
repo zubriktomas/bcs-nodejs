@@ -144,8 +144,12 @@ class Relation {
         } else if (relativeDistance >= 1) {
             return 1;
         } else {
-            var sim = (relativeDistance + this.calcShapeSimilarity(boxA, boxB) + this.calcColorSimilarity(boxA, boxB)) / 3;
-            return sim <= 1 ? sim : 1;
+            var relDist = relativeDistance;
+            var shapeSim = this.calcShapeSimilarity(boxA, boxB);
+            var colorSim = this.calcColorSimilarity(boxA, boxB);
+            var sim = (relDist*0.2 + shapeSim*0.25 + colorSim*0.1) / 3;
+            // return sim <= 1 ? sim : 1;
+            return sim;
         }
     }
 
@@ -154,13 +158,14 @@ class Relation {
         var entityA = this.entityA;
         var entityB = this.entityB;
 
-        
         if(isBox(entityA) && isBox(entityB)) {
             //console.log("calcBaseSimilarity:");
             this.similarity = this.calcBaseSimilarity(entityA, entityB);
         } else {
             //console.log("calcClusterSimilarity", mapper(entityA.id), mapper(entityB.id));
             this.similarity = this.calcClusterSimilarity(entityA, entityB);
+            // console.log(entityA.id, entityB.id, this.similarity);
+            // if(this.similarity == 0) this.similarity = 1;
             //console.log("    => ", mapper(entityA.id), mapper(entityB.id), "simil: ", this.similarity);
         }
     }
@@ -168,11 +173,14 @@ class Relation {
     calcClusterSimilarity(entityA, entityB) {
 
         if(isCluster(entityA)) {
-            console.log(mapper(entityA.id), mapper(entityB.id));
-            console.log("                                         ==>>>>>>>>>>>>>> ",this.calcCardinality(entityA, entityB));
+            
+
+            // console.log(mapper(entityA.id), mapper(entityB.id));
+            // console.log("                                         ==>>>>>>>>>>>>>> ",this.calcCardinality(entityA, entityB));
+
+            // console.log("csim:",this.calcCumulSimilarity(entityA, entityB));
 
             return (this.calcCumulSimilarity(entityA, entityB) / this.calcCardinality(entityA, entityB));
-
         }
 
         if(isCluster(entityB)) {
@@ -204,11 +212,12 @@ class Relation {
 
     calcCumulSimilarity(cluster, entity) {
         var rel, cumulSimilarity = 0;
-
         if(isBox(entity)) {
             
+            
             for (const cBox of cluster.boxes.values()) {
-                rel = cBox.neighbours.get(entity); // || entity.neighbours.get(cBox); // || (new Relation(cBox, entity, null)).calcSimilarity();
+                rel = cBox.neighbours.get(entity) || entity.neighbours.get(cBox);
+                // if(!rel) rel = (new Relation(cBox, entity, null)).calcSimilarity();
                 cumulSimilarity += rel ? rel.similarity : 0;
             }
         } else {
