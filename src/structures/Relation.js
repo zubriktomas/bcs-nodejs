@@ -168,7 +168,11 @@ class Relation {
     calcClusterSimilarity(entityA, entityB) {
 
         if(isCluster(entityA)) {
+            console.log(mapper(entityA.id), mapper(entityB.id));
+            console.log("                                         ==>>>>>>>>>>>>>> ",this.calcCardinality(entityA, entityB));
+
             return (this.calcCumulSimilarity(entityA, entityB) / this.calcCardinality(entityA, entityB));
+
         }
 
         if(isCluster(entityB)) {
@@ -177,14 +181,25 @@ class Relation {
     }
 
     calcCardinality(cluster, entity) {
-        var card = 0;
-        for (const cBox of cluster.boxes.values()) {
-            card = cBox.neighbours.has(entity) ? card+1 : card;
-        }
-        // //console.log("    => ", mapper(cluster.id), mapper(entity.id), "card : ", card ? card : 1);
-        return card ? card : 1;
 
+        var card = 0;
+
+        if(isCluster(entity)) {
+            for (const cBox of cluster.boxes.values()) {
+                for (const eBox of entity.boxes.values()) {
+                    // if(cBox.neighbours.has(eBox) || eBox.neighbours.has(cBox)) {
+                    if(cBox.neighbours.has(eBox)) {
+                        card+=1;
+                    }
+                }
+            }
+        } else {
+            for (const cBox of cluster.boxes.values()) {
+                card = cBox.neighbours.has(entity) ? card+1 : card;
+            }
+        }
         
+        return card ? card : 1;
     }
 
     calcCumulSimilarity(cluster, entity) {
@@ -193,19 +208,15 @@ class Relation {
         if(isBox(entity)) {
             
             for (const cBox of cluster.boxes.values()) {
-                rel = cBox.neighbours.get(entity) || entity.neighbours.get(cBox); // || (new Relation(cBox, entity, null)).calcSimilarity();
+                rel = cBox.neighbours.get(entity); // || entity.neighbours.get(cBox); // || (new Relation(cBox, entity, null)).calcSimilarity();
                 cumulSimilarity += rel ? rel.similarity : 0;
             }
         } else {
             for (const cBox of cluster.boxes.values()) {
                 var sim = (this.calcCumulSimilarity(entity, cBox) / this.calcCardinality(entity, cBox));
-                //console.log("    => ", mapper(entity.id), mapper(cBox.id), "simil: ", sim);
-                //console.log();
                 cumulSimilarity += sim;
             }
         }
-
-        //console.log("    => ", mapper(cluster.id), mapper(entity.id), "cumul: ", cumulSimilarity);
         return cumulSimilarity;
     }
     
@@ -241,6 +252,8 @@ E = '(t: 225, l:632, b:442.21875, r:989.21875, c:rgb(74, 20, 140))';
 
 X1 = '(t: 258, l:288, b:472.21875, r:490.21875)';
 X2 = '(t: 135, l:562, b:442.21875, r:1051.21875)';
+X3 = '(t: 101, l:285, b:472.21875, r:490.21875)';
+X4 = '(t: 101, l:285, b:472.21875, r:1051.21875)';
 
 function mapper(id) {
     if(id == A) return "A";
@@ -250,6 +263,8 @@ function mapper(id) {
     if(id == E) return "E";
     if(id == X1) return "X1";
     if(id == X2) return "X2";
+    if(id == X3) return "X3";
+    if(id == X4) return "X4";
     return "Xnew";
 }
 

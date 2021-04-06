@@ -264,7 +264,7 @@ class ClusteringManager {
         
         var rel;
 
-        // for (let i = 0; i < 3; i++) {
+        // for (let i = 0; i < 4; i++) {
         while(this.relations.size > 0) {
 
             rel = this.getBestRelation();
@@ -272,7 +272,16 @@ class ClusteringManager {
             // console.log("Best rel =>", rel.similarity, this.getRelEntitiesTypes(rel));
             // console.log(rel.entityB.id);
             
+            
+            if(rel.similarity > 0.5) {
+                console.log(Array.from(this.relations.values()).map(rel => rel.similarity));
+                console.log("break rel:", rel.similarity);
+                console.log("Similarity > 0.5, THE END");
+                break;
+            }
+            
             console.log("*****************************************************")
+            console.log(Array.from(this.relations.values()).map(rel => rel.similarity));
             console.log("chosen rel:", mapper(rel.entityA.id), mapper(rel.entityB.id));
             this.printAll();            
             this.relations.delete(rel.id);
@@ -297,100 +306,30 @@ class ClusteringManager {
                 if(oc.every(ocItem => cc.containsVisually(ocItem))){
                     console.log("All overlapping clusters are inside CC visually");
 
-
-
                     for (let i = 0; i < oc.length; i++) {
                         cc.addBoxes(oc[i]);
                     }
 
-                    // this.clusters.clear();
-                    // if(isCluster(rel.entityA)) this.clusters.set(rel.entityA.id, rel.entityA);
-                    // if(isCluster(rel.entityB)) this.clusters.set(rel.entityB.id, rel.entityB);
-                    // this.clusters.set(cc.id, cc);
-                    // break;
-                    
                 } else {
-                    // console.log("cc", cc.id);
-                    // console.log("oc", oc[0].id);
                     console.log("Some overlapping clusters are NOT inside CC");
-                    // this.clusters.clear();
-                    // // if(isCluster(rel.entityA)) this.clusters.set(rel.entityA.id, rel.entityA);
-                    // // if(isCluster(rel.entityB)) this.clusters.set(rel.entityB.id, rel.entityB);
-                    // this.clusters.set(cc.id, cc);
-                    // console.log(this.clusters.has(oc[0].id)); this.clusters.set(oc[0].id, oc[0]);
+                    console.log("Segmentation break!");
                     break;
                 }
-
-                
-                
-
-                // this.relations.delete(rel.id);
-                // continue;
-
-                
-                // // console.log("AAAA Cluster candidate overlaps some cluster!, how is it possible?");
-                // if(!overlappingClusters) {
-                    
-                // }
-                // else if(overlappingClusters && overlappingClusters.length == 1 && cc.containsVisually(overlappingClusters[0])) {
-                //     console.log("BBBB Cluster candidate overlaps some cluster!, how is it possible?");
-                //     cc.addBoxes(overlappingClusters[0]);
-                // } else {
-                //     console.log("CCCC Cluster candidate overlaps some cluster!, how is it possible?");
-                //     for (let i=0; i<overlappingClusters.length; i++) {
-                //         cc.addBoxes(overlappingClusters[i]);
-                //     }
-                //     // this.relations.delete(rel.id);
-                //     // continue;
-                // }
             }
             
             if(cc.overlapsAnyBox(overlapping, rel)) { 
 
                 console.log("CC overlaps box");
+                console.log("Segmentation break!");
                 break;
-                // this.relations.delete(rel.id);
-                // continue;
-                // console.log("Cluster", cc.id, "overlaps some other box!, what to do now? ");
-                // var overlappingBoxes = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
-
-                // if(overlappingBoxes.length == 1 && cc.containsVisually(overlappingBoxes[0])) {
-                //     console.log(`Cluster ${mapper(cc.id)} contains 1 BOX visually! It's OK!`);
-                //     console.log(overlappingBoxes);
-                //     cc.addBoxes(overlappingBoxes[0]);
-                // } else if(overlappingBoxes.length == 2 ) {
-                //     // if(cc.containsVisually(overlappingBoxes[0]) && cc.containsVisually(overlappingBoxes[1])) {
-                //         // console.log(`Cluster ${cc.id} contains 2 BOXES visually!`);
-                //         cc.addBoxes(overlappingBoxes[0]);
-                //         cc.addBoxes(overlappingBoxes[1]);
-                //     // } else {
-                //         // console.log(`Cluster candidate overlaps 2 BOXES !!!!!!!!!!!!!!!!`);
-                //         // this.relations.delete(rel.id);
-                //         // continue;
-                //     // }
-                    
-                // } else {
-                //     console.log(`Cluster ${cc.id} overlaps box or contains multiple boxes!`);
-                //     for (let i = 0; i < overlappingBoxes.length; i++) {
-                //         cc.addBoxes(overlappingBoxes[i]);
-                        
-                //     }
-                //     // this.relations.delete(rel.id);
-                //     // continue;
-                // }
-
             } 
             
             this.recalcBoxesAndClusters(cc); 
             this.recalcNeighboursAndRelations(cc);
-            
             this.clusters.set(cc.id, cc);
 
-
             this.printAll();
-
             console.log("****************************************************")
-
         }
     }
 
@@ -413,52 +352,22 @@ class ClusteringManager {
 
     recalcNeighboursAndRelations(cc) {
         
-        console.log(`            ${mapper(cc.id)} boxes: ${boxesNames(cc.boxes)}`);
+        
+        // console.log(`            ${mapper(cc.id)} boxes: ${boxesNames(cc.boxes)}`);
+        // console.log("relDelList", Array.from(relDelList.values()).map(rel => `[${mapper(rel.entityA.id)}, ${mapper(rel.entityB.id)}]`) );
+
         var relDelList = cc.addNeighboursAndRelations();
-        console.log("relDelList", Array.from(relDelList.values()).map(rel => `[${mapper(rel.entityA.id)}, ${mapper(rel.entityB.id)}]`) );
 
         for (const [ccNeighbour, ccRel] of cc.neighbours.entries()) {
             this.relations.set(ccRel.id, ccRel);
             if(isCluster(ccNeighbour)) {
                 ccNeighbour.neighbours.set(cc, ccRel);    
             }
-
-            // ccNeighbour.neighbours.set(cc, ccRel);
-
-            // if(isBox(ccNeighbour) && ccNeighbour.cluster) {
-            //     cc.neighbours.delete(ccNeighbour);
-            //     this.relations.delete(ccRel.id);
-            // } 
-            // else {
-            //     this.relations.set(ccRel.id, ccRel);
-            // }
-
-            /** TOTO JE ASI CHYBNE!!! */
-            // if(isCluster(ccNeighbour)) {
-            //     // cc.neighbours.delete(ccNeighbour);
-            //     // this.relations.delete(ccRel.id);
-            // }
         }
 
         for (const relToDel of relDelList.keys()) {
             this.relations.delete(relToDel);            
         }
-
-        // for (const box of cc.boxes.values()) {
-        //     // for (var cluster of this.clusters.values()) {
-        //     //     if( cluster.neighbours.has(box)) {
-        //     //         this.relations.delete(cluster.neighbours.get(box).id);
-        //     //         cluster.neighbours.delete(box);
-        //     //     }
-        //     // }
-
-        //     for (const bRelation of box.neighbours.values()) {
-        //         this.relations.delete(bRelation.id);
-        //     }
-        // }
-
-
-
     }
 
     vizualize() {
