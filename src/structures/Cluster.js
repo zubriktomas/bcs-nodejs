@@ -16,6 +16,7 @@ class Cluster {
         this.top = null;
         this.right = null;
         this.bottom = null;
+        this.id = null;
 
         this.type = EntityType.cluster;
 
@@ -25,13 +26,12 @@ class Cluster {
         this.addBoxes(entityA);
         this.addBoxes(entityB);
 
-        this.recalcCoordinates();
-        this.id = this.generateId();
+        // this.recalcCoordinates();
+        // this.id = this.generateId();
     }
 
     generateId() {
         this.id = `(t: ${this.top}, l:${this.left}, b:${this.bottom}, r:${this.right})`;
-        return `(t: ${this.top}, l:${this.left}, b:${this.bottom}, r:${this.right})`;
     }
 
     recalcCoordinates() {
@@ -79,39 +79,99 @@ class Cluster {
         } else {
             this.boxes.set(entity.id, entity);
         }
+
+        this.recalcCoordinates();
+        this.generateId();
     }
 
     addNeighbour(entity) {
-        var rel = new Relation(this, entity);
-        rel.calcSimilarity();
-
-        if(isNaN(rel.similarity)) {
-            console.log("entityA:",mapper(rel.entityA.id));
-            console.log("entityB:",mapper(rel.entityB.id));
+        /* vynecha duplikovanych susedov: A by bolo 2-krat, ale nebude */
+        if(!this.neighbours.has(entity)) {
+            var rel = new Relation(this, entity);
+            rel.calcSimilarity();
+            this.neighbours.set(entity, rel);
+            return rel;
+        } else {
+            return null;
         }
+    }
 
-        this.neighbours.set(entity, rel);
+    deleteNeighbour(entity) {
+        if(this.neighbours.has(entity)) {
+            var rel = this.neighbours.get(entity);
+            this.neighbours.delete(entity);
+            return rel;
+        } else {
+            return null;
+        }
+    }
+
+    hasBox(box) {
+        return this.boxes.has(box.id);
     }
 
     addNeighboursAndRelations() {
 
+        var relDelList = new Map();
+
+        /* cez vsetky boxy v clustri: C, D */
         for (const box of this.boxes.values()) {
-            for (const bNeighbour of box.neighbours.keys()) {
+
+            /* cez vsetykch susedov boxov C: A,D   a D: A,C,E*/
+            for (const [bNeighbour, bRel] of box.neighbours.entries()) {
+
+                if(bNeighbour.cluster) {
+                    var res = bNeighbour.cluster.deleteNeighbour(box);
+                    
+                    if(box.cluster)
+                        var res2 = bNeighbour.cluster.deleteNeighbour(box.cluster);
+
+                    if(res) {
+                        console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.id)} deleted!`);
+                        relDelList.set(res.id, res);
+                    }
+
+                    if(res2) {
+                        console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.cluster.id)} deleted!`);
+                        relDelList.set(res2.id, res2);
+                    }
+
+                } else {
+                    relDelList.set(bRel.id, bRel);
+                }
+
+                /* vynecha z C: D, z D: C */
+                if(this.hasBox(bNeighbour)) {
+
+                    // var rrr = bNeighbour.neighbours.get(box);
+                    // relDelList.set(rrr.id, rrr);
+                    continue;
+                }
+
+                /* ak je box v clustri, pridaj ako suseda cluster, inak pridaj samotny box */
+                var res = this.addNeighbour(bNeighbour.cluster ? bNeighbour.cluster : bNeighbour);
+                if(res) console.log(`entity ${mapper((bNeighbour.cluster ? bNeighbour.cluster : bNeighbour).id)} added as ${mapper(this.id)} neighbour`);
+
                 /* Create new relation between cluster and entity, if entity(box) is not in the cluster and */
-                if(!this.boxes.has(bNeighbour.id) && !this.neighbours.has(bNeighbour)){
-                    this.addNeighbour(bNeighbour);
-                } 
+                // if(!this.boxes.has(bNeighbour.id) && !this.neighbours.has(bNeighbour) && bNeighbour.cluster){
+                //     console.log("bNeighbour added as CC neighbour",mapper(bNeighbour.id));
+                //     this.addNeighbour(bNeighbour);
+                // } 
 
                 /** TOTO BY TU NEMALO BYT!! */
-                if(isCluster(bNeighbour)) {
-                    for (const x of bNeighbour.neighbours.keys()) {
-                        if(x.cluster) {
-                            bNeighbour.neighbours.delete(x);
-                        }                        
-                    }
-                }
+                // if(isCluster(bNeighbour)) {
+                //     for (const x of bNeighbour.neighbours.keys()) {
+                //         if(x.cluster) {
+                //             bNeighbour.neighbours.delete(x);
+                //         }                        
+                //     }
+                // }
             }
+
+            box.cluster = this;
         }
+        return relDelList;
+        // console.log("cluster Ncount", this.neighbours.size);
     }
 
     getOverlappingEntities(tree) {
@@ -125,10 +185,10 @@ class Cluster {
    
         /* Cluster Candidate is not in the tree yet, it is not needed to check its ID */
         // var overlappingCluster = overlapping.find(entity => isCluster(entity) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
-        var overlappingCluster = overlapping.find(entity => isCluster(entity)); 
+        var overlappingCluster = overlapping.filter(entity => isCluster(entity)); 
     
         /* If it is not undefined, then return true */
-        return overlappingCluster ? true : false;
+        return overlappingCluster.length ? true : false;
     }
 
     overlapsAnyBox(overlapping, rel) {
@@ -140,11 +200,11 @@ class Cluster {
         return overlappingBoxes.length ? true : false;
     }
 
-    containsBoxVisually(box) {
+    containsVisually(entity) {
         var topLeftInside, bottomRightInside;
 
-        topLeftInside = this.top <= box.top && this.left <= box.left;
-        bottomRightInside = this.bottom >= box.bottom && this.right >= box.right;
+        topLeftInside = this.top <= entity.top && this.left <= entity.left;
+        bottomRightInside = this.bottom >= entity.bottom && this.right >= entity.right;
 
         return topLeftInside && bottomRightInside;
     }
@@ -167,6 +227,8 @@ E = '(t: 225, l:632, b:442.21875, r:989.21875, c:rgb(74, 20, 140))';
 
 X1 = '(t: 258, l:288, b:472.21875, r:490.21875)';
 X2 = '(t: 135, l:562, b:442.21875, r:1051.21875)';
+X3 = '(t: 101, l:285, b:472.21875, r:490.21875)';
+X4 = '(t: 101, l:285, b:472.21875, r:1051.21875)';
 
 function mapper(id) {
     if(id == A) return "A";
@@ -176,6 +238,8 @@ function mapper(id) {
     if(id == E) return "E";
     if(id == X1) return "X1";
     if(id == X2) return "X2";
+    if(id == X3) return "X3";
+    if(id == X4) return "X4";
     return "Xnew";
 }
 

@@ -99,26 +99,17 @@ class Relation {
         widthB = boxB.width;
         heightB = boxB.height;
 
-        // console.log(widthA, heightA, widthB, heightB);
-
         ratioA = widthA / heightA;
         ratioB = widthB / heightB;
 
-        ratioA = ratioA <= 1 ? heightA / widthA : ratioA;
-        ratioB = ratioA <= 1 ? heightB / widthB : ratioB;
-
         maxRatio = Math.max(ratioA, ratioB);
         minRatio = Math.min(ratioA, ratioB);
+        var pom = (Math.pow(maxRatio, 2) - 1);
+        if(pom == 1) {
+            pom = 1.01;
+        }
 
-        // console.log("maxRatio:",maxRatio);
-        // console.log("minRatio:",minRatio);
-        // console.log("maxratio - minratio:",maxRatio-minRatio);
-        // console.log("(Math.pow(maxRatio, 2) - 1)", (Math.pow(maxRatio, 2) - 1));
-        // console.log("( (Math.pow(maxRatio, 2) - 1) / maxRatio )", ( (Math.pow(maxRatio, 2) - 1) / maxRatio ));
-
-        ratio = (maxRatio - minRatio) / ( (Math.pow(maxRatio, 2) - 1) / maxRatio );
-
-        // console.log("ratio:", ratio);
+        ratio = (maxRatio - minRatio) / ( pom / maxRatio );
 
         // Premenne pre vypocet size
         var sizeA, sizeB, size;
@@ -147,17 +138,14 @@ class Relation {
     calcBaseSimilarity(boxA, boxB) {
         var relativeDistance = this.calcRelativeDistance(boxA, boxB);
 
-        console.log("reldist: ", relativeDistance);
-        // console.log("shape: ", this.calcShapeSimilarity(boxA, boxB));
-        // console.log("color: ", this.calcColorSimilarity(boxA, boxB));
-
         /* They are the same box, or are not semi-aligned */
-        if(relativeDistance == 0 || relativeDistance == Infinity) {
+        if(relativeDistance <= 0) {
             return 0;
-        } else if (relativeDistance == 1) {
+        } else if (relativeDistance >= 1) {
             return 1;
         } else {
-            return (relativeDistance + this.calcShapeSimilarity(boxA, boxB) + this.calcColorSimilarity(boxA, boxB)) / 3;
+            var sim = (relativeDistance + this.calcShapeSimilarity(boxA, boxB) + this.calcColorSimilarity(boxA, boxB)) / 3;
+            return sim <= 1 ? sim : 1;
         }
     }
 
