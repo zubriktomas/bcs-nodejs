@@ -147,7 +147,8 @@ class Relation {
             var relDist = relativeDistance;
             var shapeSim = this.calcShapeSimilarity(boxA, boxB);
             var colorSim = this.calcColorSimilarity(boxA, boxB);
-            var sim = (relDist*0.2 + shapeSim*0.25 + colorSim*0.1) / 3;
+            // var sim = (relDist*0.2 + shapeSim*0.25 + colorSim*0.1) / 3;
+            var sim = (relDist + shapeSim + colorSim) / 3;
             // return sim <= 1 ? sim : 1;
             return sim;
         }
@@ -217,7 +218,7 @@ class Relation {
             
             for (const cBox of cluster.boxes.values()) {
                 rel = cBox.neighbours.get(entity) || entity.neighbours.get(cBox);
-                // if(!rel) rel = (new Relation(cBox, entity, null)).calcSimilarity();
+                // if(!rel) rel = new Relation(cBox, entity); rel.calcSimilarity();
                 cumulSimilarity += rel ? rel.similarity : 0;
             }
         } else {

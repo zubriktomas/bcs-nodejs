@@ -281,10 +281,10 @@ class ClusteringManager {
             // console.log(rel.entityB.id);
             
             
-            if(rel.similarity > 0.6) {
+            if(rel.similarity > 0.7) {
                 // console.log(Array.from(this.relations.values()).map(rel => rel.similarity));
                 // console.log("break rel:", rel.similarity);
-                console.log("Similarity > 0.6, THE END");
+                console.log("Similarity > 0.7, THE END");
                 break;
             }
             
