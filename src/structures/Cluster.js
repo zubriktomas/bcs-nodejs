@@ -26,8 +26,6 @@ class Cluster {
         this.addBoxes(entityA);
         this.addBoxes(entityB);
 
-        // this.recalcCoordinates();
-        // this.id = this.generateId();
     }
 
     generateId() {
@@ -48,21 +46,6 @@ class Cluster {
             bottom = Math.max(bottom, box.bottom);
             right = Math.max(right, box.right);
         }
-
-
-        // if(isBox(entity)) {
-            // left = Math.min(this.left, entity.left);
-            // top = Math.min(this.top, entity.top);
-            // bottom = Math.max(this.bottom, entity.bottom);
-            // right = Math.max(this.right, entity.right);
-        // } else {
-        //     for (const box of entity.boxes.values()) {
-        //         left = Math.min(this.left, box.left);
-        //         top = Math.min(this.top, box.top);
-        //         bottom = Math.max(this.bottom, box.bottom);
-        //         right = Math.max(this.right, box.right);
-        //     }
-        // }
 
         this.left = left;
         this.top = top;
@@ -107,7 +90,7 @@ class Cluster {
     }
 
     hasBox(box) {
-        return this.boxes.has(box.id);
+        return (box.id);
     }
 
     addNeighboursAndRelations() {
@@ -140,11 +123,12 @@ class Cluster {
                     relDelList.set(bRel.id, bRel);
                 }
 
-                /* vynecha z C: D, z D: C */
-                if(this.hasBox(bNeighbour)) {
+                relDelList.set(bRel.id, bRel);
 
-                    // var rrr = bNeighbour.neighbours.get(box);
-                    // relDelList.set(rrr.id, rrr);
+                /* vynecha z C: D, z D: C */
+                if(this.boxes.has(bNeighbour.id)) {
+
+                    // relDelList.set(bRel.id, bRel);
                     continue;
                 }
 
@@ -169,6 +153,9 @@ class Cluster {
             }
 
             box.cluster = this;
+
+
+
         }
         return relDelList;
         // console.log("cluster Ncount", this.neighbours.size);

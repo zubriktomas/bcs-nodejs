@@ -10,6 +10,7 @@ const { SelectorDirection } = require('../structures/Selector');
 const {EntityType, isBox, isCluster} = require('./EntityType');
 
 const SQRT3 = Math.sqrt(3);
+const ONETHIRD = 1/3;
 
 
 class Relation {
@@ -20,7 +21,7 @@ class Relation {
         this.id = this.generateId(entityA, entityB);
         this.absoluteDistance = this.calcAbsoluteDistance(entityA, entityB);
         this.similarity = null;
-        // this.cardinality = cardinality;  // this.relativeDistance = null;        // this.shapeSimilarity = null;        // this.colorSimilarity = null;
+        //this.relativeDistance = null;        // this.shapeSimilarity = null;        // this.colorSimilarity = null;
     }
 
     generateId(entityA, entityB) {
@@ -84,6 +85,8 @@ class Relation {
         relA = this.absoluteDistance / maxdA;
         relB = this.absoluteDistance / maxdB;
 
+        this.relativeDistance = (relA + relB) / 2;
+
         return (relA + relB) / 2;
     }
 
@@ -101,15 +104,18 @@ class Relation {
 
         ratioA = widthA / heightA;
         ratioB = widthB / heightB;
-
+        
         maxRatio = Math.max(ratioA, ratioB);
         minRatio = Math.min(ratioA, ratioB);
-        var pom = (Math.pow(maxRatio, 2) - 1);
-        if(pom == 1) {
-            pom = 1.01;
-        }
 
+        var pom = (Math.pow(maxRatio, 2) - 1);
         ratio = (maxRatio - minRatio) / ( pom / maxRatio );
+
+        ratio = isNaN(ratio) ? 1 : ratio;
+
+        // ratioA = Math.abs(Math.log(widthA) - Math.log(heightA));
+        // ratioB = Math.abs(Math.log(widthB) - Math.log(heightB));
+        // ratio = Math.abs(ratioA - ratioB);
 
         // Premenne pre vypocet size
         var sizeA, sizeB, size;
@@ -141,21 +147,22 @@ class Relation {
         /* They are the same box, or are not semi-aligned */
         if(relativeDistance <= 0) {
             return 0;
-        } else if (relativeDistance >= 1) {
+        } else if (relativeDistance == 1) {
             return 1;
         } else {
             var relDist = relativeDistance;
             var shapeSim = this.calcShapeSimilarity(boxA, boxB);
             var colorSim = this.calcColorSimilarity(boxA, boxB);
             // var sim = (relDist*0.2 + shapeSim*0.25 + colorSim*0.1) / 3;
+            // var sim = (relDist*ONETHIRD + shapeSim*ONETHIRD + colorSim*ONETHIRD) / 3;
             var sim = (relDist + shapeSim + colorSim) / 3;
-            // return sim <= 1 ? sim : 1;
             return sim;
+            // return sim <= 1 ? sim : 1;
         }
     }
 
     
-    calcSimilarity() {
+    calcSimilarity(debug) {
         var entityA = this.entityA;
         var entityB = this.entityB;
 
@@ -164,24 +171,17 @@ class Relation {
             this.similarity = this.calcBaseSimilarity(entityA, entityB);
         } else {
             //console.log("calcClusterSimilarity", mapper(entityA.id), mapper(entityB.id));
-            this.similarity = this.calcClusterSimilarity(entityA, entityB);
+            this.similarity = this.calcClusterSimilarity(entityA, entityB, debug);
             // console.log(entityA.id, entityB.id, this.similarity);
             // if(this.similarity == 0) this.similarity = 1;
             //console.log("    => ", mapper(entityA.id), mapper(entityB.id), "simil: ", this.similarity);
         }
     }
     
-    calcClusterSimilarity(entityA, entityB) {
+    calcClusterSimilarity(entityA, entityB, debug) {
 
         if(isCluster(entityA)) {
-            
-
-            // console.log(mapper(entityA.id), mapper(entityB.id));
-            // console.log("                                         ==>>>>>>>>>>>>>> ",this.calcCardinality(entityA, entityB));
-
-            // console.log("csim:",this.calcCumulSimilarity(entityA, entityB));
-
-            return (this.calcCumulSimilarity(entityA, entityB) / this.calcCardinality(entityA, entityB));
+            return (this.calcCumulSimilarity(entityA, entityB, debug) / this.calcCardinality(entityA, entityB));
         }
 
         if(isCluster(entityB)) {
@@ -211,14 +211,14 @@ class Relation {
         return card ? card : 1;
     }
 
-    calcCumulSimilarity(cluster, entity) {
+    calcCumulSimilarity(cluster, entity, debug) {
         var rel, cumulSimilarity = 0;
         if(isBox(entity)) {
             
             
             for (const cBox of cluster.boxes.values()) {
                 rel = cBox.neighbours.get(entity) || entity.neighbours.get(cBox);
-                // if(!rel) rel = new Relation(cBox, entity); rel.calcSimilarity();
+                if(rel) this.relativeDistance += rel.relativeDistance;
                 cumulSimilarity += rel ? rel.similarity : 0;
             }
         } else {

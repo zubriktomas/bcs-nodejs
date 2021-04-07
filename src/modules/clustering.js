@@ -78,6 +78,8 @@ class ClusteringManager {
         this.clusters = new Map();
         this.relations = new Map();
         this.tree = this.createRTree();
+
+        this.cc = null;
     }
 
     createRTree() {
@@ -117,9 +119,15 @@ class ClusteringManager {
             box.findDirectNeighbours(this, SelectorDirection.up);
         }
 
+        var r = 0;
         for (let relation of this.relations.values()) {
             relation.calcSimilarity();
+            r += relation.similarity;
         }
+
+        console.log("REL SIM:", r);
+        console.log("REL SIM/REL COUNT:", r/this.relations.size);
+
     }
 
     enhanceEveryBox() {
@@ -136,7 +144,7 @@ class ClusteringManager {
     }
 
     getBestRelation() {
-        var sim = 1000, bestRel;
+        var sim = Number.MAX_SAFE_INTEGER, bestRel;
         for (const rel of this.relations.values()) {
             if(rel.similarity <= sim ) {
                 sim = rel.similarity;
@@ -264,111 +272,93 @@ class ClusteringManager {
         
         var rel;
 
-        // var fff = false;
         // for (let i = 0; i < 200; i++) {
         while(this.relations.size > 0) {
 
             rel = this.getBestRelation();
-            console.log(rel.similarity);
-            // if(rel.similarity>0) fff = true;
-            // if(rel.similarity==0 && this.getRelEntitiesTypes(rel) == "C C")
-            //     break;
-            // if(fff && rel.similarity == 0) break;
-
             this.relations.delete(rel.id);
-            // console.log();
-            // console.log("Best rel =>", rel.similarity, this.getRelEntitiesTypes(rel));
-            // console.log(rel.entityB.id);
-            
-            
-            if(rel.similarity > 0.7) {
-                // console.log(Array.from(this.relations.values()).map(rel => rel.similarity));
-                // console.log("break rel:", rel.similarity);
-                console.log("Similarity > 0.7, THE END");
+
+            if(rel.similarity > 0.5547810089749707) {
+                console.log("Similarity > 0.5547810089749707, THE END");
+                console.log(rel.similarity);
                 break;
+            } else {
+                console.log(rel.similarity);
             }
             
-            // console.log("*****************************************************")
-            // console.log(Array.from(this.relations.values()).map(rel => rel.similarity));
-            // this.printAll();            
-            
-            // console.log("-----------------------------------------------------")
-            // console.log("chosen rel:", rel.similarity, "--", this.getRelEntitiesTypes(rel));
-
             var cc = new Cluster(rel.entityA, rel.entityB);
             // console.log(cc.id);
+
+            if(!this.clusterDensityOver50Percent(cc)) {
+                // this.cc = cc;
+                // console.log("kkt");
+                continue;
+            }
+
 
             if(this.overlaps(cc, rel)) {
                 continue;
             }
 
-            // var overlapping = cc.getOverlappingEntities(this.tree);
-            
-            // if(cc.overlapsAnyCluster(overlapping, rel)) {
-
-            //     var oc = overlapping.filter(entity => isCluster(entity) );
-            //     console.log("CC overlaps cluster");
-            //     console.log("oc count",oc.length);
-
-            //     if(oc.every(ocItem => cc.containsVisually(ocItem))){
-            //         console.log("All overlapping clusters are inside CC visually");
-
-            //         for (let i = 0; i < oc.length; i++) {
-            //             cc.addBoxes(oc[i]);
-            //         }
-
-            //     } else {
-            //         console.log("Some overlapping clusters are NOT inside CC");
-            //         continue;
-            //         // console.log("Segmentation break!");
-            //         // break;
-            //     }
-            // }
-            
-            // if(cc.overlapsAnyBox(overlapping, rel)) { 
-
-            //     console.log("CC overlaps box");
-
-            //     var ob = overlapping.filter(entity => isBox(entity) );
-
-            //     if(ob.every(obItem => cc.containsVisually(obItem))){
-            //         console.log("All overlapping boxes are inside CC visually");
-
-            //         for (let i = 0; i < ob.length; i++) {
-            //             cc.addBoxes(ob[i]);
-            //         }
-
-            //     } else {
-            //         console.log("Some overlapping boxes are NOT inside CC");
-            //         console.log("Segmentation break!");
-            //         break;
-            //     }
-            // } 
-            
             this.recalcBoxesAndClusters(cc); 
             this.recalcNeighboursAndRelations(cc);
             this.clusters.set(cc.id, cc);
-
-            // this.printAll();
-            // console.log("****************************************************")
         }
-        // rel = this.getBestRelation();
-        // console.log("errornous:", rel.similarity);
-        // console.log(this.getRelEntitiesTypes(rel))
-        // var newRel = new Relation(rel.entityA, rel.entityB);
-        // newRel.print = true;
-        // newRel.calcSimilarity(); 
-        // console.log("newrel sim:", newRel.similarity);
-        // this.clusters.clear();
-        // this.clusters.set(rel.entityA.id, rel.entityA);
-        // this.clusters.set(rel.entityB.id, rel.entityB);
+
+        // console.log("THIS RELATIONS SIZE:");
+        // console.log(this.relations.size);
+        var rrr = Array.from(this.relations.values()).filter(rel => rel.similarity == 1 && isCluster(rel.entityA) && isCluster(rel.entityB));
+
+
+        for (let i = 0; i < rrr.length; i++) {
+            var rel = rrr[i];
+
+            var cc = new Cluster(rel.entityA, rel.entityB);
+            if(this.overlaps(cc, rel)) {
+                continue;
+            }
+            this.recalcBoxesAndClusters(cc); 
+            this.recalcNeighboursAndRelations(cc);
+            this.clusters.set(cc.id, cc);
+        }
+
+
+        // var rrr = Array.from(this.relations.values()).filter(rel => rel.similarity == 1 && isCluster(rel.entityA) && isCluster(rel.entityB));
+        // console.log(rrr);
+
+        // console.log(rrr.map(rel=>rel.similarity));
+
+        // var rel = rrr[1];
+
+        // var cc = new Cluster(rel.entityA, rel.entityB);
+        // this.cc = cc;
+        // this.cc = rel.entityA;
+        // this.cc = rel.entityB;
+        
+    }
+
+    clusterDensityOver50Percent(cc) {
+        const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
+        var ccContents = calcContents(cc);
+
+        var ccBoxesContents = 0;
+        for (const b of cc.boxes.values()) {
+            ccBoxesContents += calcContents(b);
+        }
+
+        if(ccBoxesContents/ccContents >= 0.20) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     overlaps(cc, rel) {
         var overlapping = cc.getOverlappingEntities(this.tree);
 
-        var ob = overlapping.filter(entity => isBox(entity) && !(this.boxes.has(entity.id)) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
-        var oc = overlapping.filter(entity => isCluster(entity) );
+        // var ob = overlapping.filter(entity => isBox(entity) && !(this.boxes.has(entity.id)) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
+        var ob = overlapping.filter(entity => isBox(entity));
+        var oc = overlapping.filter(entity => isCluster(entity));
 
         var ommitClusters = new Map();
 
@@ -381,26 +371,39 @@ class ClusteringManager {
             ommitClusters.set(oc[i].id, oc[i]);
         }
 
-        for (const box of this.boxes.values()) {
-            if(!cc.boxes.has(box.id) && cc.containsVisually(box)) {
-                return true;
-            }
+        overlapping = cc.getOverlappingEntities(this.tree);
+        ob = overlapping.filter(entity => isBox(entity) && !cc.boxes.has(entity.id));
+        
+        for (let i = 0; i < ob.length; i++) {
+            cc.addBoxes(ob[i]);
         }
 
-        for (const cluster of this.clusters.values()) {
-            if(!ommitClusters.has(cluster.id)) {
-                if(cc.containsVisually(cluster)) {
-                    return true;
-                }
-            }
-        }
+        overlapping = cc.getOverlappingEntities(this.tree);
+        oc = overlapping.filter(entity => isCluster(entity) && !ommitClusters.has(entity.id));
 
-        for (const cluster of ommitClusters.values()) {
-            this.clusters.delete(cluster.id);
-        }
+        // return ob.length || oc.length;
+        return oc.length || !this.clusterDensityOver50Percent(cc);
 
+        // for (const box of this.boxes.values()) {
+        //     if(!cc.boxes.has(box.id) && cc.containsVisually(box)) {
+        //         return true;
+        //     }
+        // }
 
-        return false;
+        // for (const cluster of this.clusters.values()) {
+        //     if(!ommitClusters.has(cluster.id)) {
+        //         if(cc.containsVisually(cluster)) {
+        //             return true;
+        //         }
+        //     }
+        // }
+
+        // for (const cluster of ommitClusters.values()) {
+        //     this.clusters.delete(cluster.id);
+        //     this.tree.remove(cluster);
+        // }
+
+        return "break";
 
 
     }
@@ -455,6 +458,7 @@ class ClusteringManager {
         vizualizer.createSvgRepresentation({
             boxes: boxes, 
             clusters: clusters,
+            cc: this.cc,
             document: {
                 width: this.pageDims.width,
                 height: this.pageDims.height
@@ -482,40 +486,40 @@ function findDirectNeighbours(cm, direction) {
 
     if(direction == SelectorDirection.right){
         
-        for (let maxX = box.right + 1 + selectorWidth; maxX < pageWidth + selectorWidth; maxX+=selectorWidth) {
+        for (let maxX = box.right + selectorWidth; maxX < pageWidth + selectorWidth; maxX+=selectorWidth) {
             
-            selector = new Selector(box.right+1, box.top+1, maxX, box.bottom-1);
-            neighbours = tree.search(selector);    
+            selector = new Selector(box.right, box.top, maxX, box.bottom);
+            neighbours = tree.search(selector.narrowBy1Px());    
             
             if(neighbours.length) {
                 break;
             }
         }
     } else if (direction == SelectorDirection.down) {
-        for (let maxY = box.bottom + 1 + selectorHeight; maxY < pageHeight + selectorHeight; maxY+=selectorHeight) {
+        for (let maxY = box.bottom + selectorHeight; maxY < pageHeight + selectorHeight; maxY+=selectorHeight) {
         
-            selector = new Selector(box.left+1, box.bottom+1, box.right-1, maxY);
-            neighbours = tree.search(selector);    
+            selector = new Selector(box.left, box.bottom, box.right, maxY);
+            neighbours = tree.search(selector.narrowBy1Px());    
     
             if(neighbours.length) {
                 break;
             }
         }
     } else if (direction == SelectorDirection.left) {
-        for (let minX = box.left - 1 - selectorWidth; minX > 0 - selectorWidth; minX-=selectorWidth) {
+        for (let minX = box.left - selectorWidth; minX > 0 - selectorWidth; minX-=selectorWidth) {
         
-            selector = new Selector(minX, box.top + 1, box.left-1 , box.bottom-1);
-            neighbours = tree.search(selector);    
+            selector = new Selector(minX, box.top, box.left, box.bottom);
+            neighbours = tree.search(selector.narrowBy1Px());    
     
             if(neighbours.length) {
                 break;
             }
         }
     } else if (direction == SelectorDirection.up) {
-        for (let minY = box.top - 1 - selectorHeight; minY > 0 - selectorHeight; minY-=selectorHeight) {
+        for (let minY = box.top - selectorHeight; minY > 0 - selectorHeight; minY-=selectorHeight) {
         
-            selector = new Selector(box.left + 1, minY, box.right - 1, box.top - 1);
-            neighbours = tree.search(selector);    
+            selector = new Selector(box.left, minY, box.right, box.top);
+            neighbours = tree.search(selector.narrowBy1Px());    
     
             if(neighbours.length) {
                 break;
@@ -523,7 +527,7 @@ function findDirectNeighbours(cm, direction) {
         }
     }
 
-    var tmpRelations = [], shortestDistance = pageWidth + pageHeight;
+    var tmpRelations = [], shortestDistance = Number.MAX_SAFE_INTEGER;
 
     for (const neighbour of neighbours) {
         var rel = new Relation(box, neighbour, direction);
