@@ -21,6 +21,7 @@ class Cluster {
         this.type = EntityType.cluster;
 
         this.neighbours = new Map(); // entity => relation
+        this.maxNeighbourDistance = 0;
 
         this.boxes = new Map(); // boxId => box
         this.addBoxes(entityA);
@@ -87,10 +88,6 @@ class Cluster {
         } else {
             return null;
         }
-    }
-
-    hasBox(box) {
-        return (box.id);
     }
 
     addNeighboursAndRelations() {

@@ -66,7 +66,7 @@ function createSvgBox(box) {
   });
 }
 
-function createSvgClusterBox(cluster, cc) {
+function createSvgClusterBox(cluster, type) {
   var width = cluster.right - cluster.left;
   var height = cluster.bottom - cluster.top;
   
@@ -76,8 +76,9 @@ function createSvgClusterBox(cluster, cc) {
     width: width,
     height: height,
     fill: 'none',
-    stroke: cc ? '#2FFF7A' : '#FF0000', // green|red
-    'stroke-width': 3,
+    stroke: !type ? '#FF0000': type=='cluster' ? '#2FFF7A' : '#f5e942', // green|red|cyan
+    'stroke-width':  type && type=='box' ? 2 : 3,
+    'stroke-opacity': type && type=='cluster' ? 0.5 : 1.0,  
     padding: 0,
     margin:0
   });
@@ -107,9 +108,21 @@ function buildSvg(req, data) {
     });
   }
   
+  if(data.hasOwnProperty('entityA')) {
+    if(data.entityA) {
+      createSvgClusterBox(data.entityA, 'box');
+    }
+  }
+
+  if(data.hasOwnProperty('entityB')) {
+    if(data.entityB) {
+      createSvgClusterBox(data.entityB, 'box');
+    }
+  }
+
   if(data.hasOwnProperty('cc')) {
     if(data.cc) {
-      createSvgClusterBox(data.cc, data.cc);
+      createSvgClusterBox(data.cc, 'cluster');
     }
   }
 

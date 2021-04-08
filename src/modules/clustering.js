@@ -13,6 +13,7 @@ const RTree = require('../structures/RTree');
 const Relation = require('../structures/Relation');
 const { Selector, SelectorDirection } = require('../structures/Selector');
 const { EntityType, isBox, isCluster } = require('../structures/EntityType');
+const { check } = require('yargs');
 
 module.exports.process = process;
 
@@ -73,6 +74,9 @@ class ClusteringManager {
         };
         this.extractedBoxes = new Map(Object.entries(extracted.boxes));
 
+        this.clusteringThreshold = null;
+        this.densityThreshold = null;
+
         /* Dynamically changed throughout the segmentation process */
         this.boxes = new Map(Object.entries(extracted.boxes)); // entityId => entity
         this.clusters = new Map();
@@ -111,22 +115,44 @@ class ClusteringManager {
     }
 
     findAllRelations() {
-    
+
+        const pageContents = this.pageDims.width * this.pageDims.height;
+        var allBoxesContents = 0;
+        const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
         for (let box of this.boxes.values()) {
             box.findDirectNeighbours(this, SelectorDirection.right);    
             box.findDirectNeighbours(this, SelectorDirection.down);
             box.findDirectNeighbours(this, SelectorDirection.left);
             box.findDirectNeighbours(this, SelectorDirection.up);
+            allBoxesContents += calcContents(box);
         }
 
         var r = 0;
         for (let relation of this.relations.values()) {
-            relation.calcSimilarity();
+
+            relation.calcSimilarity('(t: 107.890625, l:956, b:127.890625, r:976, c:rgb(126,146,202))',
+            '(t: 184.640625, l:954.125, b:200.640625, r:958.015625, c:rgb(32, 33, 34))');
+
+            // if(relation.similarity == Infinity) {
+            //     console.log("Infinity found!");
+            //     console.log("A", relation.entityA.id);
+            //     console.log("B", relation.entityB.id);
+            //     // this.cc = new Cluster(relation.entityA, relation.entityB);
+            //     this.cc = relation.entityB;
+            //     break;
+            // }
+
             r += relation.similarity;
         }
 
-        console.log("REL SIM:", r);
-        console.log("REL SIM/REL COUNT:", r/this.relations.size);
+        // this.clusteringThreshold = r / this.relations.size;
+        this.clusteringThreshold = 0.2;
+        this.densityThreshold = allBoxesContents/pageContents;
+        console.log("DENSITY THRESHOLD = BOXES CONTENTS/PAGE CONTENTS =", this.densityThreshold);
+        console.log("CLUSTERING THRESHOLD = REL SIM/REL COUNT = ", this.clusteringThreshold);
+
+        // this.clusteringThreshold = 0.5;
+        // this.densityThreshold = 0.2;
 
     }
 
@@ -145,6 +171,7 @@ class ClusteringManager {
 
     getBestRelation() {
         var sim = Number.MAX_SAFE_INTEGER, bestRel;
+
         for (const rel of this.relations.values()) {
             if(rel.similarity <= sim ) {
                 sim = rel.similarity;
@@ -268,18 +295,42 @@ class ClusteringManager {
         return out;
     }
 
+    checkI(i) {
+        if(i==83) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     createClusters() {
         
+        const isBetweenClusters = (rel) => {return isCluster(rel.entityA) && isCluster(rel.entityB);};
+
         var rel;
 
-        // for (let i = 0; i < 200; i++) {
-        while(this.relations.size > 0) {
+        var i=0;
 
+        // for (let i = 0; i < 50; i++) {
+        while(this.relations.size > 0) {
+            i++;
             rel = this.getBestRelation();
+
+            if(isBetweenClusters(rel) && this.checkI(i)) {
+                console.log("isBetweenClusters:", rel.similarity.toFixed(2), "i:", i);
+
+                this.entityA = rel.entityA;
+                this.entityB = rel.entityB;
+
+                break;
+            } 
+
+            // if(!rel) {console.log("Rel == null!, BREAK"); break;};
+
             this.relations.delete(rel.id);
 
-            if(rel.similarity > 0.5547810089749707) {
-                console.log("Similarity > 0.5547810089749707, THE END");
+            if(rel.similarity > this.clusteringThreshold) {
+                console.log(`Similarity > ${this.clusteringThreshold}, THE END`);
                 console.log(rel.similarity);
                 break;
             } else {
@@ -287,40 +338,46 @@ class ClusteringManager {
             }
             
             var cc = new Cluster(rel.entityA, rel.entityB);
-            // console.log(cc.id);
 
-            if(!this.clusterDensityOver50Percent(cc)) {
-                // this.cc = cc;
-                // console.log("kkt");
-                continue;
-            }
+            // if(!this.densityOverThreshold(cc)) {
+            //     continue;
+            // }
 
 
             if(this.overlaps(cc, rel)) {
                 continue;
             }
 
+            if(this.checkI(i)) {
+                this.entityA = rel.entityA;
+                this.entityB = rel.entityB;
+                this.cc = cc;
+                break;
+            }
+
+            // this.mergeOverlaps(cc);
+
             this.recalcBoxesAndClusters(cc); 
             this.recalcNeighboursAndRelations(cc);
+
             this.clusters.set(cc.id, cc);
         }
 
         // console.log("THIS RELATIONS SIZE:");
         // console.log(this.relations.size);
-        var rrr = Array.from(this.relations.values()).filter(rel => rel.similarity == 1 && isCluster(rel.entityA) && isCluster(rel.entityB));
+        // var rrr = Array.from(this.relations.values()).filter(rel => rel.similarity == 1 && isCluster(rel.entityA) && isCluster(rel.entityB));
 
+        // for (let i = 0; i < rrr.length; i++) {
+        //     var rel = rrr[i];
 
-        for (let i = 0; i < rrr.length; i++) {
-            var rel = rrr[i];
-
-            var cc = new Cluster(rel.entityA, rel.entityB);
-            if(this.overlaps(cc, rel)) {
-                continue;
-            }
-            this.recalcBoxesAndClusters(cc); 
-            this.recalcNeighboursAndRelations(cc);
-            this.clusters.set(cc.id, cc);
-        }
+        //     var cc = new Cluster(rel.entityA, rel.entityB);
+        //     if(this.overlaps(cc, rel)) {
+        //         continue;
+        //     }
+        //     this.recalcBoxesAndClusters(cc); 
+        //     this.recalcNeighboursAndRelations(cc);
+        //     this.clusters.set(cc.id, cc);
+        // }
 
 
         // var rrr = Array.from(this.relations.values()).filter(rel => rel.similarity == 1 && isCluster(rel.entityA) && isCluster(rel.entityB));
@@ -337,7 +394,7 @@ class ClusteringManager {
         
     }
 
-    clusterDensityOver50Percent(cc) {
+    densityOverThreshold(cc) {
         const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
         var ccContents = calcContents(cc);
 
@@ -346,18 +403,38 @@ class ClusteringManager {
             ccBoxesContents += calcContents(b);
         }
 
-        if(ccBoxesContents/ccContents >= 0.20) {
-            return true;
-        } else {
-            return false;
-        }
+        return ccBoxesContents/ccContents >= this.densityThreshold;
     }
 
-    overlaps(cc, rel) {
-        var overlapping = cc.getOverlappingEntities(this.tree);
+    mergeOverlaps(cc) {
 
+        var overlapping, ob, oc, ommitClusters = new Map();
+
+        do {
+            overlapping = cc.getOverlappingEntities(this.tree);
+            ob = overlapping.filter(entity => isBox(entity) && !cc.boxes.has(entity.id) && this.boxes.has(entity.id));
+            oc = overlapping.filter(entity => isCluster(entity) && !ommitClusters.has(entity.id) );
+
+            for (let i = 0; i < ob.length; i++) {
+                cc.addBoxes(ob[i]);
+            }
+    
+            for (let i = 0; i < oc.length; i++) {
+                cc.addBoxes(oc[i]);
+                ommitClusters.set(oc[i].id, oc[i]);
+            }
+
+        } while (!this.densityOverThreshold(cc));
+
+
+    }
+
+
+
+    overlaps(cc, rel) {
         // var ob = overlapping.filter(entity => isBox(entity) && !(this.boxes.has(entity.id)) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
-        var ob = overlapping.filter(entity => isBox(entity));
+        var overlapping = cc.getOverlappingEntities(this.tree);
+        var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
         var oc = overlapping.filter(entity => isCluster(entity));
 
         var ommitClusters = new Map();
@@ -372,7 +449,8 @@ class ClusteringManager {
         }
 
         overlapping = cc.getOverlappingEntities(this.tree);
-        ob = overlapping.filter(entity => isBox(entity) && !cc.boxes.has(entity.id));
+        // ob = overlapping.filter(entity => isBox(entity) && !cc.boxes.has(entity.id));
+        var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
         
         for (let i = 0; i < ob.length; i++) {
             cc.addBoxes(ob[i]);
@@ -380,9 +458,11 @@ class ClusteringManager {
 
         overlapping = cc.getOverlappingEntities(this.tree);
         oc = overlapping.filter(entity => isCluster(entity) && !ommitClusters.has(entity.id));
+        // ob = overlapping.filter(entity => isBox(entity) && !cc.boxes.has(entity.id));
+        var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
 
         // return ob.length || oc.length;
-        return oc.length || !this.clusterDensityOver50Percent(cc);
+        return ob.length || oc.length;//|| !this.densityOverThreshold(cc);
 
         // for (const box of this.boxes.values()) {
         //     if(!cc.boxes.has(box.id) && cc.containsVisually(box)) {
@@ -435,8 +515,11 @@ class ClusteringManager {
 
         for (const [ccNeighbour, ccRel] of cc.neighbours.entries()) {
             this.relations.set(ccRel.id, ccRel);
+            cc.maxNeighbourDistance = Math.max(ccRel.absoluteDistance, cc.maxNeighbourDistance);
+
             if(isCluster(ccNeighbour)) {
                 ccNeighbour.neighbours.set(cc, ccRel);    
+                ccNeighbour.maxNeighbourDistance = Math.max(ccRel.absoluteDistance, ccNeighbour.maxNeighbourDistance);
             }
         }
 
@@ -459,6 +542,8 @@ class ClusteringManager {
             boxes: boxes, 
             clusters: clusters,
             cc: this.cc,
+            entityA: this.entityA,
+            entityB: this.entityB,
             document: {
                 width: this.pageDims.width,
                 height: this.pageDims.height
