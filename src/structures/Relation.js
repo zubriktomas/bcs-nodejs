@@ -21,9 +21,9 @@ class Relation {
         this.id = this.generateId(entityA, entityB);
         this.absoluteDistance = this.calcAbsoluteDistance(entityA, entityB);
         this.similarity = null;
-        
-        this.relativeDistance = null;     
-        this.shapeSimilarity = null;        
+
+        this.relativeDistance = null;
+        this.shapeSimilarity = null;
         this.colorSimilarity = null;
     }
 
@@ -68,11 +68,11 @@ class Relation {
         if(this.direction == SelectorDirection.right) {
             absoluteDistance = entityB.left - entityA.right;
         } else if (this.direction == SelectorDirection.down) {
-            absoluteDistance = entityB.top - entityA.bottom; 
+            absoluteDistance = entityB.top - entityA.bottom;
         } else if (this.direction == SelectorDirection.left) {
-            absoluteDistance = entityA.left - entityB.right; 
+            absoluteDistance = entityA.left - entityB.right;
         } else if (this.direction == SelectorDirection.up) {
-            absoluteDistance = entityA.top - entityB.bottom; 
+            absoluteDistance = entityA.top - entityB.bottom;
         } else {
             absoluteDistance = Infinity;
         }
@@ -81,7 +81,7 @@ class Relation {
 
     calcRelativeDistance(boxA, boxB) {
         var relA, relB, maxdA, maxdB;
-        
+
         maxdA = boxA.maxNeighbourDistance;
         maxdB = boxB.maxNeighbourDistance;
 
@@ -107,7 +107,7 @@ class Relation {
 
         ratioA = widthA / heightA;
         ratioB = widthB / heightB;
-        
+
         maxRatio = Math.max(ratioA, ratioB);
         minRatio = Math.min(ratioA, ratioB);
 

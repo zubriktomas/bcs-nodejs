@@ -16,11 +16,11 @@ const clustering = require('./modules/clustering');
 const { chromium } = require('playwright');
 
 // Main process
-(async () => { 
-  
+(async () => {
+
   // Create browser instance
   const browser = await chromium.launch();
-  
+
   // Open new page in browser
   const page = await browser.newPage();
 
@@ -31,7 +31,6 @@ const { chromium } = require('playwright');
 
   // Load webpage for segmentation process given by input argument
   await page.goto('https://en.wikipedia.org/wiki/Dyslalia', {waitUntil: 'domcontentloaded'});
-  // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'networkidle2'});
   // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
   // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
   // await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
@@ -40,8 +39,6 @@ const { chromium } = require('playwright');
   // await page.goto('http://localhost:8080/1_no_conflict.html', {waitUntil: 'domcontentloaded'});
   // await page.goto('http://localhost:8080/2_overlaps_box.html', {waitUntil: 'domcontentloaded'});
   // await page.goto('http://localhost:8080/4_contains_box.html', {waitUntil: 'domcontentloaded'});
-
-  
 
 
   // Add JavaScript files into webpage for execution and processing in browser context
@@ -59,9 +56,9 @@ const { chromium } = require('playwright');
     return {
       boxes: boxes,
       document: {
-        height: document.body.scrollHeight, 
-        width: document.body.scrollWidth 
-      }, 
+        height: document.body.scrollHeight,
+        width: document.body.scrollWidth
+      },
       time: t1-t0
     };
   });
@@ -79,7 +76,7 @@ const { chromium } = require('playwright');
 
   /* Visualize box tree representation of webpage and take screenshot */
   // vizualizer.createSvgRepresentation(extracted);
-  
+
   // BCS has finished successfully!
   // console.log("BCS has finished successfully!");
 

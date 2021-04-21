@@ -10,6 +10,7 @@
 const http = require('http');
 const svg = require('svg-builder');
 const { chromium } = require('playwright');
+const { isCluster } = require('../structures/EntityType');
 
 module.exports.createSvgRepresentation = createSvgRepresentation;
 
@@ -60,6 +61,7 @@ function createSvgRect(entity, props) {
     width: props.width || entity.width || entity.right - entity.left,
     height: props.height || entity.height || entity.bottom - entity.top ,
     fill: props.fill || 'none',
+    'fill-opacity': props.fillOpacity || 1,
     stroke: props.stroke || 'none',
     'stroke-width':  props.strokeWidth || 0,
     'stroke-opacity': props.strokeOpacity || 1,
@@ -76,42 +78,44 @@ function buildSvg(req, data) {
   svg.width(data.document.width);
   svg.height(data.document.height);
 
+  console.log(data);
+
   if(data.boxes){
     for (const box of data.boxes) {
       createSvgRect(box, {fill: box.color});
     }
   }
-  
+
   if(data.clusters) {
     for (const cluster of data.clusters) {
-      createSvgRect(cluster, {stroke: '#000000', strokeWidth: 3}); //stroke color: BLACK
+      createSvgRect(cluster, {stroke: 'ORANGE', strokeWidth: 3}); //stroke color: ORANGE
     }
   }
-  
+
   if(data.entityA) {
-    createSvgRect(data.entityA, {stroke: '#2FFF7A', strokeWidth: 2});  //stroke color: GREEN
+    createSvgRect(data.entityA, isCluster(data.entityB) ? {stroke: 'GREEN', strokeWidth: 3} : {fill: 'GREEN', fillOpacity: 0.7});  //stroke color: GREEN
   }
 
   if(data.entityB) {
-    createSvgRect(data.entityB, {stroke: '#2FFF7A', strokeWidth: 2}); //stroke color: GREEN
+    createSvgRect(data.entityB, isCluster(data.entityB) ? {stroke: 'GREEN', strokeWidth: 3} : {fill: 'GREEN', fillOpacity: 0.7}); //stroke color: GREEN
   }
 
   if(data.neighbours) {
     for (const neighbour of data.neighbours) {
-      createSvgRect(neighbour, {stroke: '#fc03df', strokeWidth: 2}); // color: MAGENTA
+      createSvgRect(neighbour, {fill: '#fc03df', fillOpacity: 0.7}); // color: MAGENTA
     }
   }
 
   if(data.cc) {
-    createSvgRect(data.cc, {stroke: '#FF0000', strokeWidth: 3});
+    createSvgRect(data.cc, {stroke: '#FF0000', strokeWidth: 2});
   }
 
   return `<!DOCTYPE html>
-            <head> 
-              ${header} 
+            <head>
+              ${header}
             </head>
-            <body> 
-              ${svg.render()} 
+            <body>
+              ${svg.render()}
             </body>
           </html>`;
 }

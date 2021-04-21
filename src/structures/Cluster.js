@@ -100,9 +100,11 @@ class Cluster {
             /* cez vsetykch susedov boxov C: A,D   a D: A,C,E*/
             for (const [bNeighbour, bRel] of box.neighbours.entries()) {
 
+                this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
+
                 if(bNeighbour.cluster) {
                     var res = bNeighbour.cluster.deleteNeighbour(box);
-                    
+
                     if(box.cluster)
                         var res2 = bNeighbour.cluster.deleteNeighbour(box.cluster);
 
@@ -115,6 +117,8 @@ class Cluster {
                         // console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.cluster.id)} deleted!`);
                         relDelList.set(res2.id, res2);
                     }
+
+                    bNeighbour.cluster.maxNeighbourDistance = Math.max(bNeighbour.cluster.maxNeighbourDistance, bRel.absoluteDistance);
 
                 } else {
                     relDelList.set(bRel.id, bRel);

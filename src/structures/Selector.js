@@ -1,8 +1,8 @@
 /* Selector Direction Enum JavaScript best practice */
 const SelectorDirection = Object.freeze({
-    right: 'right', 
-    down: 'down', 
-    left: 'left', 
+    right: 'right',
+    down: 'down',
+    left: 'left',
     up: 'up',
     other: 'other'
 });

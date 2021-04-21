@@ -1,0 +1,18 @@
+{
+    "name": "bcs-nodejs",
+    "version": "1.0.0",
+    "description": "Box Clustering Segmentation Node.js",
+    "main": "./src/bcs.js",
+    "keywords": [],
+    "license": "MIT",
+    "private": true,
+    "dependencies": {
+        "fast-sort": "^3.0.1",
+        "playwright-chromium": "^1.10.0",
+        "rbush": "^3.0.1",
+        "svg-builder": "^1.0.0"
+    },
+    "devDependencies": {
+        "playwright": "^1.10.0"
+    }
+}

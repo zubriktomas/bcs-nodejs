@@ -103,10 +103,6 @@ dist
 # TernJS port file
 .tern-port
 
-# VS Code files
-package.json
-package-lock.json
-
 # Generated PNG files
 *.png
 output/

@@ -17,19 +17,19 @@
     return boxes;
 
     /**
-     * 
-     * @param {Node} node 
-     * @returns 
+     *
+     * @param {Node} node
+     * @returns
      */
     async function extract(node) {
-  
-      if(isTextNode(node)) 
+
+      if(isTextNode(node))
       {
         var textBoxes = getTextBoxes(node);
         textBoxes.forEach(textBox => {
           boxes[textBox.id] = textBox;
         });
-      } 
+      }
       else if(isImageNode(node))
       {
         var imageBox = await getImageBox(node);
@@ -39,13 +39,13 @@
         // Skip element unrelevant nodes
         if(isExcluded(node)) {
             return;
-        } 
-    
+        }
+
         if(hasNoBranches(node))
         {
           // Get smallest box and stop recursion
           var smallest = getSmallest(node);
-  
+
           if(smallest == null) {
             return;
           } else if(isTextNode(smallest)) {
@@ -62,11 +62,11 @@
             var elementBox = await getElementBox(smallest);
             boxes[elementBox.id] = elementBox;
           }
-  
+
         } else {
           // Get all valid child nodes
           var childNodes = getChildNodes(node);
-        
+
           // Recursively extract child nodes
           for (let i=0; i < childNodes.length; i++) {
             await extract(childNodes[i]);
@@ -75,11 +75,11 @@
       }
     }
   }
-  
+
 /**
  * Get average color of background image of HTML element
- * @param {Node} node 
- * @returns 
+ * @param {Node} node
+ * @returns
  */
 async function getBgImgColorAsync(node) {
 
@@ -244,7 +244,7 @@ function getBoundingBoxes(textNode) {
   }
 
 
-  rects = range.getClientRects();  
+  rects = range.getClientRects();
   rectsLength = rects.length;
 
   // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
@@ -253,18 +253,18 @@ function getBoundingBoxes(textNode) {
     // if(!(isInvalidbbox(bbox))) {
       bboxes.push(bbox);
     // }
-  }      
+  }
   return bboxes;
 }
 
 
   /**
    * Check if Element has transparent background
-   * @param {HTML Element} element 
+   * @param {HTML Element} element
    * @returns true - has transparent background, false - doesn't have
    */
   function isTransparent(element) {
-  
+
       if(isImageNode(element)) {
         return false;
       }
@@ -275,69 +275,69 @@ function getBoundingBoxes(textNode) {
         return false;
       }
   }
-  
+
   /**
    * Check if given node is visible on webpage.
-   * @param {Element or text node} node 
+   * @param {Element or text node} node
    * @returns true - if it's visible, false - if it's non-visible
    */
   function isVisible(node) {
-  
+
       if (isElementNode(node)) {
-        // const bbox = getBoundingBox(node);  
+        // const bbox = getBoundingBox(node);
         // Element explicitly non-visible
         // if (bbox.width == 0 || bbox.height == 0) {
         //   return false;
         // }
-    
+
         var style = getStyle(node);
 
-        // Element implicitly non-visible 
+        // Element implicitly non-visible
         if(style.visibility == "hidden" || style.visibility == "collapse"){
           return false;
         }
-    
+
         // Element implicitly non-visible
         if(style.display == "none"){
           return false;
         }
-    
+
       } else if (isTextNode(node)) {
-    
+
         // Text non-visible
         if(node.nodeValue.trim() == "") {
           return false;
         }
-    
+
       }
-    
+
       // Node supposed to be visible
       return true;
   }
-    
+
   /**
    * Check if given node should be exluded from further processing.
-   * @param {Element or text node} node 
+   * @param {Element or text node} node
    * @returns true - if it's excluded, false - if it's not excluded
    */
   function isExcluded(node) {
-    
+
       // List of excluded tag names
       var excludedTagNames = ["STYLE", "SCRIPT", "NOSCRIPT", "IFRAME", "OBJECT"];
-    
+
       if(isElementNode(node))
       {
           return excludedTagNames.includes(node.tagName);
-      } 
-      else if(isTextNode(node)) 
+      }
+      else if(isTextNode(node))
       {
           return excludedTagNames.includes(node.parentElement.tagName);
-      } 
+      }
       else {
           return true;
       }
   }
-    
+
   /**
    * Check if Element has background image
    * @param {HTML Element} element 

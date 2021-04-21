@@ -11,23 +11,23 @@ const RBush = require('rbush');
 
 class RTree extends RBush {
 
-    toBBox(entity) { 
+    toBBox(entity) {
         return {
-            minX: entity.left, 
-            minY: entity.top, 
-            maxX: entity.right, 
-            maxY: entity.bottom, 
-            id: entity.id, 
+            minX: entity.left,
+            minY: entity.top,
+            maxX: entity.right,
+            maxY: entity.bottom,
+            id: entity.id,
             type: entity.type
-        }; 
+        };
     }
 
-    compareMinX(a, b) { 
-        return a.left - b.left; 
+    compareMinX(a, b) {
+        return a.left - b.left;
     }
 
-    compareMinY(a, b) { 
-        return a.top - b.top; 
+    compareMinY(a, b) {
+        return a.top - b.top;
     }
 }
 
