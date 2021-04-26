@@ -98,7 +98,11 @@ async function getBgImgColorAsync(node) {
   }
 
   if(imageUrl.startsWith("http")){
-    imageColor = await fac.getColorAsync(imageUrl);
+    try{
+      imageColor = await fac.getColorAsync(imageUrl);
+    } catch(e) {
+      return "rgb(128, 128, 128)";
+    }
     return imageColor.rgb;
   } else {
     return imageUrl;

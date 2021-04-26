@@ -78,8 +78,6 @@ function buildSvg(req, data) {
   svg.width(data.document.width);
   svg.height(data.document.height);
 
-  console.log(data);
-
   if(data.boxes){
     for (const box of data.boxes) {
       createSvgRect(box, {fill: box.color});

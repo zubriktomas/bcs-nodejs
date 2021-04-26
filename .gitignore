@@ -106,4 +106,3 @@ dist
 # Generated PNG files
 *.png
 output/
-examples/
