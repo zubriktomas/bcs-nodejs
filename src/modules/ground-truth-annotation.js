@@ -1,13 +1,6 @@
 const { chromium } = require('playwright');
 const { readFileSync } = require('fs');
 
-const box = [
-  { top: '0', left: '6rem', width: '5rem', height: '5rem', color: 'red' },
-  { top: '3rem', left: '3rem', width: '5rem', height: '5rem', color: 'green' },
-  { top: '6rem', left: '0', width: '5rem', height: '5rem', color: 'blue' }
-]
-
-
 const viewportWidth = 1200;
 const viewportHeight = 950;
 
@@ -47,35 +40,34 @@ const generateMarkup = async () => {
             }
 
             .resize-drag {
-                width: 120px;
-                border-radius: 8px;
-                padding: 20px;
+                width: 60px;
+                border-radius: 2px; 
+                padding: 40px;
                 margin: 1rem;
                 background-color: #29e;
+                opacity: 0.4;
                 color: white;
                 font-size: 20px;
                 font-family: sans-serif;
+                position: absolute;
+                z-index: 99;
               
                 touch-action: none;
               
                 /* This makes things *much* easier */
                 box-sizing: border-box;
               }
+
+              div:focus {
+                background-color: Aqua;
+            }
+
         
         </style>
-
-        <script type="module">
-
-        
-
-        </script>
-
       </head>
       <body>
-        <!-- <div id="test" class="backgroundA"></div> -->
-        <div class="resize-drag">
-            Resize from any edge or corner
-        </div>
+        <div id="test" class="backgroundA"></div>
+        <!-- <div id="div0" class="resize-drag"></div> -->
       </body>
       </html>
     `;
@@ -84,17 +76,59 @@ const generateMarkup = async () => {
     await page.addScriptTag({ type: 'module', path: './interact-test.js'});
 
     await page.evaluate(async () => {
+
+        var index = 1;
+
         document.addEventListener("keydown", e => {
             if (e.code === "Enter") {
               enterPressed = true;
               console.log("[browser] enter was pressed");
             }
           });
+
+        document.addEventListener("keydown", e => {
+            if (e.code === "KeyN") {
+                console.log("N was pressed");
+                let div = document.createElement('div');
+                div.className = 'resize-drag';
+                div.id = `div${index}`;
+                div.tabIndex ="0";
+                div.addEventListener("mousemove", e => {
+                    console.log("mouse over", div.id);
+                });
+
+                document.body.appendChild(div);
+                index++;
+            }
+          });
+
+          document.addEventListener("keydown", e => {
+            if(e.code === "KeyD" && document.hasFocus()) {
+
+                var el = document.activeElement;
+
+                if(el.id.startsWith("div")) { 
+                    console.log(el.id, "deleted!");
+                    el.remove();
+                }
+            }
+          });
+
+        //   document.addEventListener("keydown", e => {
+        //     console.log(e);
+        //   })
     });
 
     
     // await page.waitForTimeout(2000)
     await page.screenshot({ path: `./output/teeeest.png`, fullPage: true })
+
+    page.on ('close', () => {
+        console.log ('page closed');
+        browser.close();});
+    
+
+
 
 
 //   for (const el of box) {
