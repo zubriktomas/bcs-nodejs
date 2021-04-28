@@ -13,8 +13,9 @@
   async function extractBoxes(node) {
 
     var boxes = {};
+    var boxesList = [];
     await extract(node);
-    return boxes;
+    return {boxes:boxes, boxesList:boxesList};
 
     /**
      *
@@ -29,11 +30,13 @@
         textBoxes.forEach(textBox => {
           boxes[textBox.id] = textBox;
         });
+        boxesList = boxesList.concat(textBoxes);
       }
       else if(isImageNode(node))
       {
         var imageBox = await getImageBox(node);
         boxes[imageBox.id] = imageBox;
+        boxesList.push(imageBox);
       }
       else {
         // Skip element unrelevant nodes
@@ -53,14 +56,17 @@
             textBoxes.forEach(textBox => {
               boxes[textBox.id] = textBox;
             });
+            boxesList = boxesList.concat(textBoxes);
 
           } else if(isImageNode(smallest)) {
             var imageBox = await getImageBox(smallest);
             boxes[imageBox.id] = imageBox;
+            boxesList.push(imageBox);
 
           } else if(isElementNode(smallest)) {
             var elementBox = await getElementBox(smallest);
             boxes[elementBox.id] = elementBox;
+            boxesList.push(elementBox);
           }
 
         } else {
