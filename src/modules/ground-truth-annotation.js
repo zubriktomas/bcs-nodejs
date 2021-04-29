@@ -69,41 +69,41 @@ const generateMarkup = async () => {
 
             /* The Modal (background) */
             .modal {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 100; /* Sit on top */
-            padding-top: 100px; /* Location of the box */
-            left: 0;
-            top: 0;
-            width: 100%; /* Full width */
-            height: 100%; /* Full height */
-            overflow: auto; /* Enable scroll if needed */
-            background-color: rgb(0,0,0); /* Fallback color */
-            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+                display: none; /* Hidden by default */
+                position: fixed; /* Stay in place */
+                z-index: 100; /* Sit on top */
+                padding-top: 100px; /* Location of the box */
+                left: 0;
+                top: 0;
+                width: 100%; /* Full width */
+                height: 100%; /* Full height */
+                overflow: auto; /* Enable scroll if needed */
+                background-color: rgb(0,0,0); /* Fallback color */
+                background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
             }
 
             /* Modal Content */
             .modal-content {
-            background-color: #fefefe;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
+                background-color: #fefefe;
+                margin: auto;
+                padding: 20px;
+                border: 1px solid #888;
+                width: 80%;
             }
 
             /* The Close Button */
             .close {
-            color: #aaaaaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
+                color: #aaaaaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
             }
 
             .close:hover,
-            .close:focus {
-            color: #000;
-            text-decoration: none;
-            cursor: pointer;
+                .close:focus {
+                color: #000;
+                text-decoration: none;
+                cursor: pointer;
             }
         </style>
       </head>
@@ -115,7 +115,7 @@ const generateMarkup = async () => {
             <!-- Modal content -->
             <div id="myModalContent" class="modal-content">
                 <span class="close">&times;</span>
-                <p>Some text in the Modal..</p>
+                <h1>Results</h1>
             </div>
         </div>
 
@@ -306,17 +306,17 @@ const generateMarkup = async () => {
 
         document.addEventListener("keydown", e => {
             if (e.code === "Digit3") {
-                var referenceImplDivs = document.querySelectorAll('.'+ImplementationType.extended);
+                // var referenceImplDivs = document.querySelectorAll('.'+ImplementationType.extended);
 
-                if(referenceImplDivs.length == 0) {
-                    for (const cluster of referenceImplClusters) {
-                        clusterToDiv(cluster, ImplementationType.extended);
-                    }
-                } else {
-                    for (const div of referenceImplDivs) {
-                        div.classList.toggle('hiddenDiv');
-                    }
-                }
+                // if(referenceImplDivs.length == 0) {
+                //     for (const cluster of referenceImplClusters) {
+                //         clusterToDiv(cluster, ImplementationType.extended);
+                //     }
+                // } else {
+                //     for (const div of referenceImplDivs) {
+                //         div.classList.toggle('hiddenDiv');
+                //     }
+                // }
             }
         });
 
@@ -326,30 +326,89 @@ const generateMarkup = async () => {
 
         // Get the modal
         var modal = document.getElementById("myModal");
+        var myModalContent = document.getElementById('myModalContent');
 
         // Get the <span> element that closes the modal
         var span = document.getElementsByClassName("close")[0];
 
         // When the user clicks on <span> (x), close the modal
         span.onclick = function() {
+            myModalContent.removeChild(document.getElementById('refParagraph'));
+            myModalContent.removeChild(document.getElementById('basicParagraph'));
             modal.style.display = "none";
         }
 
         // When the user clicks anywhere outside of the modal, close it
         window.onclick = function(event) {
             if (event.target == modal) {
+                myModalContent.removeChild(document.getElementById('refParagraph'));
+                myModalContent.removeChild(document.getElementById('basicParagraph'));
                 modal.style.display = "none";
             }
         }
 
         document.addEventListener("keydown", e => {
+            if (e.code === "Escape") {
+                if(modal.style.display === "block") {
+                    myModalContent.removeChild(document.getElementById('refParagraph'));
+                    myModalContent.removeChild(document.getElementById('basicParagraph'));
+                    modal.style.display = "none";
+                }
+            }
+        });
+
+
+
+        document.addEventListener("keydown", e => {
             if (e.code === "KeyR") {
+                if(modal.style.display == "block") {
+                    console.log("modal close by R");
+                    var myModalContent = document.getElementById('myModalContent');
+                    myModalContent.removeChild(document.getElementById('refParagraph'));
+                    myModalContent.removeChild(document.getElementById('basicParagraph'));
+                    modal.style.display = "none";
+                    return;
+                }
+
+
                 var myModalContent = document.getElementById('myModalContent');
-                let p = document.createElement('p');
-                let newContent = document.createTextNode("New text content in modal! ");
-                p.appendChild(newContent);
-                myModalContent.appendChild(p);
-                console.log("key R pressed");
+                var refImplText, basicImplText;
+                var refClustersLoaded=false, basicClustersLoaded=false;
+
+                var refParagraph = document.createElement('p'), 
+                    basicParagraph = document.createElement('p');
+
+                refParagraph.id = "refParagraph";
+                basicParagraph.id = "basicParagraph";
+            
+                var referenceImplDivs = document.querySelectorAll('.'+ImplementationType.ref);
+                if(referenceImplDivs.length > 0) {
+                    refClustersLoaded = true;
+                    refImplText = document.createTextNode("Reference implementation clusters loaded!");
+                } else {
+                    refImplText = document.createTextNode("Reference implementation clusters NOT LOADED YET!");
+                }
+                
+                var basicImplDivs = document.querySelectorAll('.'+ImplementationType.basic);
+                if(basicImplDivs.length > 0) {
+                    basicClustersLoaded = true;
+                    basicImplText = document.createTextNode("Basic implementation clusters loaded!");
+                } else {
+                    basicImplText = document.createTextNode("Basic implementation clusters NOT LOADED YET!");
+                }
+
+
+                refParagraph.appendChild(refImplText);
+                basicParagraph.appendChild(basicImplText);
+
+                var refPcheck = document.getElementById('refParagraph');
+                var basicPcheck = document.getElementById('basicParagraph');
+
+                if(refPcheck == null && basicPcheck == null) {
+                    myModalContent.appendChild(refParagraph);
+                    myModalContent.appendChild(basicParagraph);
+                }
+
                 modal.style.display = "block";        
             }
         });
