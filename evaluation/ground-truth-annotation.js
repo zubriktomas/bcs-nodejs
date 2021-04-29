@@ -180,15 +180,15 @@ const generateMarkup = async () => {
         resultsCloseButton.onclick = hideResultsModal;
     }, data);
 
-
-    page.on('close', () => {
-        console.log('Page closed. Browser closed.');
-        browser.close();
-    });
+    page.on('close', () => browser.close());
 
     while(1) {
-        const download = await page.waitForEvent('download', {timeout: 0});
-        download.saveAs('./output/exported-ground-truth-clusters.json');
+        try {
+            const download = await page.waitForEvent('download', {timeout: 0});
+            download.saveAs('./output/exported-ground-truth-clusters.json');
+        } catch (error) {
+            console.log("Ground truth annotator was closed.");
+        }
     }
 
 
