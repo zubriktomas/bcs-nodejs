@@ -5,10 +5,7 @@ var ImplementationType = Object.freeze({
     extended: 'extendedImplCluster'
 });
 
-/* Index of ground truth cluster divs */
-window.index = 1;
-// When the user clicks anywhere outside of the modal, close it
-window.onclick = e => {e.target == document.getElementById("myModal") ? hideResultsModal() : null };
+
 
 /**
  * Select right function by Code Key
@@ -70,7 +67,7 @@ function writeEnterPressed() {
 function addGroundTruthCluster() {
     let div = document.createElement('div');
     div.className = 'resize-drag';
-    div.id = `div${index}`;
+    div.id = `div${window.index}`;
     div.tabIndex = "0";
 
     document.body.appendChild(div);

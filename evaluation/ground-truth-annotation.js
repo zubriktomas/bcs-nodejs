@@ -54,21 +54,20 @@ const generateMarkup = async () => {
                 width: ${viewportWidth}px;
                 height: ${viewportHeight}px;
             }
-            
-            .backgroundA {
-                background-image: url("data:image/png;base64,${webpagePNG}");
+
+            .bg {
                 position:absolute;
                 width: 100%;
                 height:100%;
                 z-index: -1;
             }
             
+            .backgroundA {
+                background-image: url("data:image/png;base64,${webpagePNG}");
+            }
+            
             .backgroundB {
                 background-image: url("data:image/png;base64,${renderedPNG}");
-                position:absolute;
-                width: 100%;
-                height: 100%;
-                z-index: -1;
             }
 
             .resize-drag {
@@ -151,7 +150,7 @@ const generateMarkup = async () => {
         </style>
       </head>
       <body>
-        <div id="backgroundScreenshot" class="backgroundA"></div>
+        <div id="backgroundScreenshot" class="bg backgroundA"></div>
 
         <!-- The Modal -->
         <div id="myModal" class="modal">
@@ -173,6 +172,8 @@ const generateMarkup = async () => {
 
 
     await page.evaluate(async (dataClusters) => {
+
+        window.onclick = e => { e.target == document.getElementById("myModal") ? hideResultsModal() : null};
 
         document.addEventListener("keydown", e => selectFunctionByCodeKey(e, dataClusters));
 
