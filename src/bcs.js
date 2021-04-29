@@ -15,6 +15,39 @@ const clustering = require('./modules/clustering');
 // Import playwright
 const { chromium } = require('playwright');
 
+
+const argv = require('yargs/yargs')(process.argv.slice(2))
+  .usage('Usage: $0 [options] <url>')
+	.example('$0 -W 1200 -H 800 http://cssbox.sf.net', '')
+	.strictOptions(true)
+    .alias('CT', 'clustering-threshold')
+      .nargs('CT', 1)
+      .default('CT', 0.5)
+      .describe('CT', 'Clustering Threshold')
+    .alias('W', 'width')
+      .nargs('W', 1)
+      .default('W', 1200)
+      .describe('W', 'Browser viewport width')
+    .alias('H', 'height')
+      .nargs('H', 1)
+      .default('H', 800)
+      .describe('H', 'Browser viewport height')
+	  .alias('S', 'save-screenshot')
+      .boolean('S').default('S', true)
+      .describe('S', 'Save screenshot of rendered page')
+    .help('h').alias('h', 'help')
+    .argv;
+
+if (argv._.length !== 1) {
+	process.stderr.write('<url> is required. Use -h for help.\n');
+	process.exit(1);
+}
+
+const url = argv._[0];
+const viewportWidth = argv.width;
+const viewportHeight = argv.height;
+const clusteringThreshold = argv.CT;
+
 // Main process
 (async () => {
 
@@ -25,21 +58,22 @@ const { chromium } = require('playwright');
   const page = await browser.newPage();
 
   page.setViewportSize({
-    width: 1000,
-    height: 600
+    width: viewportWidth,
+    height: viewportHeight
   });
 
   // Load webpage for segmentation process given by input argument
-  await page.goto('https://en.wikipedia.org/wiki/Dyslalia', {waitUntil: 'domcontentloaded'});
-  // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
-  // await page.goto('http://localhost:8080/one-child-nodes.html', {waitUntil: 'domcontentloaded'});
-  // await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
-  // await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
-  // await page.goto('http://localhost:8080/1.html', {waitUntil: 'domcontentloaded'});
-  // await page.goto('http://localhost:8080/1_no_conflict.html', {waitUntil: 'domcontentloaded'});
-  // await page.goto('http://localhost:8080/2_overlaps_box.html', {waitUntil: 'domcontentloaded'});
-  // await page.goto('http://localhost:8080/4_contains_box.html', {waitUntil: 'domcontentloaded'});
-
+  try {
+    // await page.goto(url);
+    await page.goto('http://cssbox.sf.net');
+    // await page.goto('https://en.wikipedia.org/wiki/Dyslalia', {waitUntil: 'domcontentloaded'});
+    // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
+    // await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
+    // await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
+  } catch (error) {
+    console.log(error.message);
+    process.exit(1);
+  }
 
   // Add JavaScript files into webpage for execution and processing in browser context
   await page.addScriptTag({ path: './src/structures/Box.js'});
@@ -50,11 +84,18 @@ const { chromium } = require('playwright');
   const extracted = await page.evaluate(async () => {
 
     const t0 = performance.now();
-    const boxes = await extractBoxes(document.body);
+    var boxes;
+    
+    try {
+      boxes = await extractBoxes(document.body);
+    } catch (error) {
+      page.on('console', msg => console.log('PAGE LOG:', msg.text() + '\n'));
+    }
     const t1 = performance.now();
 
     return {
-      boxes: boxes,
+      boxes: boxes.boxes,
+      boxesList: boxes.boxesList,
       document: {
         height: document.body.scrollHeight,
         width: document.body.scrollWidth
@@ -72,7 +113,7 @@ const { chromium } = require('playwright');
   // console.log("Extraction time:", extracted.time, "ms");
 
   /* Start Clustering Process */
-  clustering.process(extracted);
+  clustering.process(extracted, clusteringThreshold);
 
   /* Visualize box tree representation of webpage and take screenshot */
   // vizualizer.createSvgRepresentation(extracted);
