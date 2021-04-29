@@ -7,6 +7,7 @@
  */
 
 const sort = require('fast-sort');
+const fs = require('fs');
 const vizualizer = require('./box-vizualizer');
 const Cluster = require('../structures/Cluster');
 const RTree = require('../structures/RTree');
@@ -141,7 +142,7 @@ class ClusteringManager {
         this.entityB = rel.entityB;
     }
 
-    createClusters() {
+    createClusters(clusteringThreshold) {
         var rel;
         var i=0;
 
@@ -153,13 +154,14 @@ class ClusteringManager {
             this.relations.delete(rel.id);
             // continue;
 
-            if(rel.similarity > 0.) {
-                console.log(`Similarity > ${this.clusteringThreshold}, THE END`);
-                console.log(rel.similarity);
+            if(rel.similarity > clusteringThreshold) {
+                console.log(`Similarity > ${clusteringThreshold}`, rel.similarity);
+                console.log("Number of segments:", this.clusters.size);
                 break;
-            } else {
-                console.log(rel.similarity);
-            }
+            } 
+            // else {
+            //     console.log(rel.similarity);
+            // }
 
             var cc = new Cluster(rel.entityA, rel.entityB);
 
@@ -183,6 +185,30 @@ class ClusteringManager {
             this.recalcNeighboursAndRelations(cc);
             this.clusters.set(cc.id, cc);
         }
+        
+
+        function convertCluster(cluster) {
+            var newCluster = {};
+            newCluster.left = cluster.left;
+            newCluster.top = cluster.top;
+            newCluster.right = cluster.right;
+            newCluster.bottom = cluster.bottom;
+            newCluster.width = cluster.right - cluster.left;
+            newCluster.height = cluster.bottom - cluster.top;
+            return newCluster;
+        }
+
+
+        var clusters = [];
+        for (const cluster of this.clusters.values()) {
+            clusters.push(convertCluster(cluster));
+        }
+    
+        var clustersJson = JSON.stringify(clusters);
+
+        fs.writeFile('./output/segments.json', clustersJson, (err) => {
+            if (err) throw err;
+        });
     }
 
     // densityOverThreshold(cc) {
@@ -412,12 +438,12 @@ function toString() {
 }
 
 
-function process(extracted) {
+function process(extracted, clusteringThreshold) {
 
     var cm = new ClusteringManager(extracted);
     cm.removeContainers();
     cm.enhanceEveryBox();
     cm.findAllRelations();
-    cm.createClusters();
+    cm.createClusters(clusteringThreshold);
     cm.vizualize();
 }

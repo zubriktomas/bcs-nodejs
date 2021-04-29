@@ -44,7 +44,7 @@ const generateMarkup = async () => {
             .resize-drag {
                 width: 60px;
                 border-radius: 2px; 
-                padding: 40px;
+                padding: 35px;
                 background-color: #29e;
                 opacity: 0.4;
                 color: white;
@@ -63,12 +63,62 @@ const generateMarkup = async () => {
                 background-color: Aqua;
             }
 
-        
+            .hiddenDiv {
+                visibility: hidden;
+            }
+
+            /* The Modal (background) */
+            .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 100; /* Sit on top */
+            padding-top: 100px; /* Location of the box */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgb(0,0,0); /* Fallback color */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            }
+
+            /* Modal Content */
+            .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            }
+
+            /* The Close Button */
+            .close {
+            color: #aaaaaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            }
+
+            .close:hover,
+            .close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+            }
         </style>
       </head>
       <body>
         <div id="backgroundScreenshot" class="backgroundA"></div>
-        <!-- <div id="div0" class="resize-drag"></div> -->
+
+        <!-- The Modal -->
+        <div id="myModal" class="modal">
+            <!-- Modal content -->
+            <div id="myModalContent" class="modal-content">
+                <span class="close">&times;</span>
+                <p>Some text in the Modal..</p>
+            </div>
+        </div>
+
       </body>
       </html>
     `;
@@ -77,11 +127,15 @@ const generateMarkup = async () => {
     await page.addScriptTag({ type: 'module', path: './interact-test.js' });
 
     var referenceImplClusters = JSON.parse(readFileSync('./../../../../fitlayout-jar/out/segments.json', 'utf8'));
-    // var basicImplCluster = 
+    var basicImplClusters = JSON.parse(readFileSync('./../../output/segments.json', 'utf8'));
 
-    await page.evaluate(async ({referenceImplClusters}) => {
+    await page.evaluate(async ({referenceImplClusters, basicImplClusters}) => {
 
-        var ImplementationType = Object.freeze({ref:'ref', basic:'basic', extended:'extended'});
+        var ImplementationType = Object.freeze({
+            ref:'referenceImplCluster', 
+            basic:'basicImplCluster', 
+            extended:'extendedImplCluster'
+        });
 
 
         console.log(referenceImplClusters);
@@ -183,10 +237,25 @@ const generateMarkup = async () => {
 
         function clusterToDiv(cluster, clusterImplType) {
 
-///           style="border-width: 5.21875px; border-color: rgba(0, 0, 0, 0); background-color: rgb(27, 94, 32); border-style: solid; ">
+            var color;
+            switch (clusterImplType) {
+                case ImplementationType.ref:
+                    color = "rgba(128, 0, 0, 0.5)";
+                    break;
+            
+                case ImplementationType.basic:
+                    color = "rgba(0, 128, 0, 0.5)";
+                    break;
 
+                case ImplementationType.extended:
+                    color = "rgba(0, 0, 128, 0.5)";
+                    break;
 
-//width: 489.21875px; height: 44.21875px; position: absolute; top: 135px; left: 562px;
+                default:
+                    color = rgba(0, 0, 0, 0.5);
+                    break;
+            }
+
             let div = document.createElement('div');
                 div.style = `
                     width: ${cluster.width}px; 
@@ -195,8 +264,8 @@ const generateMarkup = async () => {
                     left: ${cluster.left}px;
                     position: absolute;
                     z-index: 99;
-                    background-color: rgb(27, 94, 32);
-                    opacity: 0.4;
+                    background-color: ${color};
+                    opacity: 0.5;
                 `;
                 div.className = clusterImplType;
                 document.body.appendChild(div);
@@ -205,30 +274,90 @@ const generateMarkup = async () => {
 
         document.addEventListener("keydown", e => {
             if (e.code === "Digit1") {
-                for (const cluster of referenceImplClusters) {
-                    clusterToDiv(cluster);
+                var referenceImplDivs = document.querySelectorAll('.'+ImplementationType.ref);
+
+                if(referenceImplDivs.length == 0) {
+                    for (const cluster of referenceImplClusters) {
+                        clusterToDiv(cluster, ImplementationType.ref);
+                    }
+                } else {
+                    for (const div of referenceImplDivs) {
+                        div.classList.toggle('hiddenDiv');
+                    }
                 }
             }
         });
 
         document.addEventListener("keydown", e => {
             if (e.code === "Digit2") {
-                console.log("Digit2 pressed");
+                var basicImplDivs = document.querySelectorAll('.'+ImplementationType.basic);
+
+                if(basicImplDivs.length == 0) {
+                    for (const cluster of basicImplClusters) {
+                        clusterToDiv(cluster, ImplementationType.basic);
+                    }
+                } else {
+                    for (const div of basicImplDivs) {
+                        div.classList.toggle('hiddenDiv');
+                    }
+                }
             }
         });
 
         document.addEventListener("keydown", e => {
             if (e.code === "Digit3") {
-                console.log("Digit3 pressed");
+                var referenceImplDivs = document.querySelectorAll('.'+ImplementationType.extended);
+
+                if(referenceImplDivs.length == 0) {
+                    for (const cluster of referenceImplClusters) {
+                        clusterToDiv(cluster, ImplementationType.extended);
+                    }
+                } else {
+                    for (const div of referenceImplDivs) {
+                        div.classList.toggle('hiddenDiv');
+                    }
+                }
             }
         });
 
+        
 
+
+
+        // Get the modal
+        var modal = document.getElementById("myModal");
+
+        // Get the <span> element that closes the modal
+        var span = document.getElementsByClassName("close")[0];
+
+        // When the user clicks on <span> (x), close the modal
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        document.addEventListener("keydown", e => {
+            if (e.code === "KeyR") {
+                var myModalContent = document.getElementById('myModalContent');
+                let p = document.createElement('p');
+                let newContent = document.createTextNode("New text content in modal! ");
+                p.appendChild(newContent);
+                myModalContent.appendChild(p);
+                console.log("key R pressed");
+                modal.style.display = "block";        
+            }
+        });
 
         //   document.addEventListener("keydown", e => {
         //     console.log(e);
         //   })
-    }, {referenceImplClusters});
+    }, {referenceImplClusters, basicImplClusters});
 
 
     
