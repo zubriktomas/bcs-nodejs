@@ -77,12 +77,10 @@ function addGroundTruthCluster() {
 function switchBackgroundImage() {
     var bgScreenshot = document.getElementById('backgroundScreenshot');
 
-    if (bgScreenshot.classList.contains("backgroundA")) {
-        bgScreenshot.classList.remove("backgroundA");
-        bgScreenshot.classList.add("backgroundB");
+    if (bgScreenshot.style.backgroundImage == window.bgA) {
+        bgScreenshot.style.backgroundImage = window.bgB;
     } else {
-        bgScreenshot.classList.remove("backgroundB");
-        bgScreenshot.classList.add("backgroundA");
+        bgScreenshot.style.backgroundImage = window.bgA;
     }
 }
 

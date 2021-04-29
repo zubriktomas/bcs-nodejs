@@ -13,6 +13,14 @@ var dataClusters = {ref: referenceImplClusters, basic: basicImplClusters};
 const viewportWidth = 1200;
 const viewportHeight = 950;
 
+const data = {
+    dataClusters: dataClusters, 
+    viewportWidth: viewportWidth,
+    viewportHeight: viewportHeight,
+    webpagePNG: webpagePNG,
+    renderedPNG: renderedPNG
+}
+
 const generateMarkup = async () => {
     const browser = await chromium.launch({ headless: false })
     const context = await browser.newContext({ acceptDownloads: true });
@@ -23,165 +31,154 @@ const generateMarkup = async () => {
         height: viewportHeight
     });
 
-    const table = `
-    <table>
-    <tr>
-      <th>Firstname</th>
-      <th>Lastname</th>
-      <th>Age</th>
-    </tr>
-    <tr>
-      <td>Jill</td>
-      <td>Smith</td>
-      <td>50</td>
-    </tr>
-    <tr>
-      <td>Eve</td>
-      <td>Jackson</td>
-      <td>94</td>
-    </tr>
-  </table>
-    `;
 
+    var contentHtml = readFileSync('./index.html', 'utf8');
+    await page.setContent(contentHtml);
 
-    const html = `
-      <html>
-      <head> 
-        <style> 
-            body { 
-                margin: 0; 
-                padding: 0; 
-                width: ${viewportWidth}px;
-                height: ${viewportHeight}px;
-            }
+    // const html = `
+    //   <html>
+    //   <head> 
+    //     <style> 
+    //         body { 
+    //             margin: 0; 
+    //             padding: 0; 
+    //             width: ${viewportWidth}px;
+    //             height: ${viewportHeight}px;
+    //         }
 
-            .bg {
-                position:absolute;
-                width: 100%;
-                height:100%;
-                z-index: -1;
-            }
+    //         .bg {
+    //             position:absolute;
+    //             width: 100%;
+    //             height:100%;
+    //             z-index: -1;
+    //         }
             
-            .backgroundA {
-                background-image: url("data:image/png;base64,${webpagePNG}");
-            }
+    //         .backgroundA {
+    //             background-image: url("data:image/png;base64,${webpagePNG}");
+    //         }
             
-            .backgroundB {
-                background-image: url("data:image/png;base64,${renderedPNG}");
-            }
+    //         .backgroundB {
+    //             background-image: url("data:image/png;base64,${renderedPNG}");
+    //         }
 
-            .resize-drag {
-                width: 60px;
-                border-radius: 2px; 
-                padding: 35px;
-                background-color: #29e;
-                opacity: 0.4;
-                color: white;
-                font-size: 20px;
-                font-family: sans-serif;
-                position: absolute;
-                z-index: 99;
+    //         .resize-drag {
+    //             width: 60px;
+    //             border-radius: 2px; 
+    //             padding: 35px;
+    //             background-color: #29e;
+    //             opacity: 0.4;
+    //             color: white;
+    //             font-size: 20px;
+    //             font-family: sans-serif;
+    //             position: absolute;
+    //             z-index: 99;
               
-                touch-action: none;
+    //             touch-action: none;
               
-                /* This makes things *much* easier */
-                box-sizing: border-box;
-              }
+    //             /* This makes things *much* easier */
+    //             box-sizing: border-box;
+    //           }
 
-            div:focus {
-                background-color: Aqua;
-            }
+    //         div:focus {
+    //             background-color: Aqua;
+    //         }
 
-            .hiddenDiv {
-                visibility: hidden;
-            }
+    //         .hiddenDiv {
+    //             visibility: hidden;
+    //         }
 
-            /* The Modal (background) */
-            .modal {
-                display: none; /* Hidden by default */
-                position: fixed; /* Stay in place */
-                z-index: 100; /* Sit on top */
-                padding-top: 100px; /* Location of the box */
-                left: 0;
-                top: 0;
-                width: 100%; /* Full width */
-                height: 100%; /* Full height */
-                overflow: auto; /* Enable scroll if needed */
-                background-color: rgb(0,0,0); /* Fallback color */
-                background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-            }
+    //         /* The Modal (background) */
+    //         .modal {
+    //             display: none; /* Hidden by default */
+    //             position: fixed; /* Stay in place */
+    //             z-index: 100; /* Sit on top */
+    //             padding-top: 100px; /* Location of the box */
+    //             left: 0;
+    //             top: 0;
+    //             width: 100%; /* Full width */
+    //             height: 100%; /* Full height */
+    //             overflow: auto; /* Enable scroll if needed */
+    //             background-color: rgb(0,0,0); /* Fallback color */
+    //             background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    //         }
 
-            /* Modal Content */
-            .modal-content {
-                background-color: #fefefe;
-                margin: auto;
-                padding: 20px;
-                border: 1px solid #888;
-                width: 80%;
-            }
+    //         /* Modal Content */
+    //         .modal-content {
+    //             background-color: #fefefe;
+    //             margin: auto;
+    //             padding: 20px;
+    //             border: 1px solid #888;
+    //             width: 80%;
+    //         }
 
-            /* The Close Button */
-            .close {
-                color: #aaaaaa;
-                float: right;
-                font-size: 28px;
-                font-weight: bold;
-            }
+    //         /* The Close Button */
+    //         .close {
+    //             color: #aaaaaa;
+    //             float: right;
+    //             font-size: 28px;
+    //             font-weight: bold;
+    //         }
 
-            .close:hover,
-                .close:focus {
-                color: #000;
-                text-decoration: none;
-                cursor: pointer;
-            }
+    //         .close:hover,
+    //             .close:focus {
+    //             color: #000;
+    //             text-decoration: none;
+    //             cursor: pointer;
+    //         }
 
-            table {
-                font-family: arial, sans-serif;
-                border-collapse: collapse;
-                width: 100%;
-              }
+    //         table {
+    //             font-family: arial, sans-serif;
+    //             border-collapse: collapse;
+    //             width: 100%;
+    //           }
               
-              td, th {
-                border: 1px solid #dddddd;
-                text-align: left;
-                padding: 8px;
-              }
+    //           td, th {
+    //             border: 1px solid #dddddd;
+    //             text-align: left;
+    //             padding: 8px;
+    //           }
               
-        </style>
-      </head>
-      <body>
-        <div id="backgroundScreenshot" class="bg backgroundA"></div>
+    //     </style>
+    //   </head>
+    //   <body>
+    //     <div id="backgroundScreenshot" class="bg backgroundA"></div>
 
-        <!-- The Modal -->
-        <div id="myModal" class="modal">
-            <!-- Modal content -->
-            <div id="myModalContent" class="modal-content">
-                <span class="close">&times;</span>
-                <h1>Results</h1>
-                ${table}
-            </div>
-        </div>
+    //     <!-- The Modal -->
+    //     <div id="myModal" class="modal">
+    //         <!-- Modal content -->
+    //         <div id="myModalContent" class="modal-content">
+    //             <span class="close">&times;</span>
+    //             <h1>Results</h1>
+    //             ${table}
+    //         </div>
+    //     </div>
 
-      </body>
-      </html>
-    `;
+    //   </body>
+    //   </html>
+    // `;
+    // await page.setContent(html)
 
-    await page.setContent(html)
     await page.addScriptTag({ type: 'module', path: './interact.js' });
     await page.addScriptTag({ path: './listener-functions.js'});
 
 
-    await page.evaluate(async (dataClusters) => {
+    await page.evaluate(async (data) => {
+
+        document.body.style.width = `${data.viewportWidth}px`;
+        document.body.style.height = `${data.viewportHeight}px`;
+        
+        window.bgA = `url("data:image/png;base64,${data.webpagePNG}")`;
+        window.bgB = `url("data:image/png;base64,${data.renderedPNG}")`;
+
+        document.getElementById('backgroundScreenshot').style.backgroundImage = window.bgA;
 
         window.onclick = e => { e.target == document.getElementById("myModal") ? hideResultsModal() : null};
-
-        document.addEventListener("keydown", e => selectFunctionByCodeKey(e, dataClusters));
+        document.addEventListener("keydown", e => selectFunctionByCodeKey(e, data.dataClusters));
 
         // When the user clicks on <span> (x), close the modal
         var resultsCloseButton = document.getElementsByClassName("close")[0];
         resultsCloseButton.onclick = hideResultsModal;
-
-    }, dataClusters);
+    }, data);
 
 
     page.on('close', () => {
