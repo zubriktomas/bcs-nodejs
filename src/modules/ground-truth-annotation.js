@@ -76,7 +76,16 @@ const generateMarkup = async () => {
 
     await page.addScriptTag({ type: 'module', path: './interact-test.js' });
 
-    await page.evaluate(async () => {
+    var referenceImplClusters = JSON.parse(readFileSync('./../../../../fitlayout-jar/out/segments.json', 'utf8'));
+    // var basicImplCluster = 
+
+    await page.evaluate(async ({referenceImplClusters}) => {
+
+        var ImplementationType = Object.freeze({ref:'ref', basic:'basic', extended:'extended'});
+
+
+        console.log(referenceImplClusters);
+        
 
         var index = 1;
 
@@ -161,7 +170,7 @@ const generateMarkup = async () => {
                     a.id = "download";
                     a.style = "position: absolute; width:100px; height: 100px;";
                     a.download = filename || 'download';
-                    document.body.appendChild(a);
+                    // document.body.appendChild(a);
                     a.click();
                     a.remove();
                   }
@@ -171,10 +180,55 @@ const generateMarkup = async () => {
             }
         });
 
+
+        function clusterToDiv(cluster, clusterImplType) {
+
+///           style="border-width: 5.21875px; border-color: rgba(0, 0, 0, 0); background-color: rgb(27, 94, 32); border-style: solid; ">
+
+
+//width: 489.21875px; height: 44.21875px; position: absolute; top: 135px; left: 562px;
+            let div = document.createElement('div');
+                div.style = `
+                    width: ${cluster.width}px; 
+                    height: ${cluster.height}px;
+                    top: ${cluster.top}px;
+                    left: ${cluster.left}px;
+                    position: absolute;
+                    z-index: 99;
+                    background-color: rgb(27, 94, 32);
+                    opacity: 0.4;
+                `;
+                div.className = clusterImplType;
+                document.body.appendChild(div);
+        }
+
+
+        document.addEventListener("keydown", e => {
+            if (e.code === "Digit1") {
+                for (const cluster of referenceImplClusters) {
+                    clusterToDiv(cluster);
+                }
+            }
+        });
+
+        document.addEventListener("keydown", e => {
+            if (e.code === "Digit2") {
+                console.log("Digit2 pressed");
+            }
+        });
+
+        document.addEventListener("keydown", e => {
+            if (e.code === "Digit3") {
+                console.log("Digit3 pressed");
+            }
+        });
+
+
+
         //   document.addEventListener("keydown", e => {
         //     console.log(e);
         //   })
-    });
+    }, {referenceImplClusters});
 
 
     
