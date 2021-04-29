@@ -1,6 +1,24 @@
 import interact from 'https://cdn.interactjs.io/v1.10.11/interactjs/index.js'
 
 
+
+
+
+// download(jsonData, 'Form_Data_.json','application/json');
+
+
+
+// function downloadTextFile(text, name) {
+//     const a = document.createElement('a');
+//     const type = name.split(".").pop();
+//     a.href = URL.createObjectURL( new Blob([text], { type:`text/${type === "txt" ? "plain" : type}` }) );
+//     a.download = name;
+//     a.click();
+//   }
+  
+//   downloadTextFile(JSON.stringify({left:100, right:100}), 'myObj.json');
+
+
 interact('.resize-drag')
 .resizable({
     // resize from all edges and corners
