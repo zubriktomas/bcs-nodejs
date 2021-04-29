@@ -45,7 +45,6 @@ const generateMarkup = async () => {
                 width: 60px;
                 border-radius: 2px; 
                 padding: 40px;
-                margin: 1rem;
                 background-color: #29e;
                 opacity: 0.4;
                 color: white;
@@ -60,7 +59,7 @@ const generateMarkup = async () => {
                 box-sizing: border-box;
               }
 
-              div:focus {
+            div:focus {
                 background-color: Aqua;
             }
 
@@ -95,10 +94,6 @@ const generateMarkup = async () => {
                 div.className = 'resize-drag';
                 div.id = `div${index}`;
                 div.tabIndex = "0";
-                div.addEventListener("mousemove", e => {
-                    console.log("mouse over", div.id);
-                });
-
                 document.body.appendChild(div);
                 index++;
             }
@@ -134,9 +129,27 @@ const generateMarkup = async () => {
             if (e.code === "KeyE") {
                 console.log("key E pressed");
 
-                var bgScreenshot = document.getElementById('backgroundScreenshot');
+                var divElements = document.querySelectorAll(".resize-drag");
+
+                function convertToCluster(divElement) {
+                    var cluster = {};
+                    cluster.top = Number(divElement.dataset.x);
+                    cluster.left = Number(divElement.dataset.y);
+                    cluster.width = divElement.offsetWidth;
+                    cluster.height = divElement.offsetHeight;
+                    cluster.right = cluster.left + cluster.width;
+                    cluster.bottom = cluster.top + cluster.height;
+                    return cluster;
+                }
+
+                var clusters = [];
+
+                for (const div of divElements) {
+                    var cluster = convertToCluster(div);
+                    clusters.push(cluster);
+                }
                 
-                const box = { left: 100, right: 100, bottom: 100, top: 100, color: "rgb(15,77,77)" };
+                // const box = { left: 100, right: 100, bottom: 100, top: 100, color: "rgb(15,77,77)" };
 
                 function downloadJsonFile(data, filename) {
                     // Creating a blob object from non-blob data using the Blob constructor
@@ -153,7 +166,8 @@ const generateMarkup = async () => {
                     a.remove();
                   }
 
-                downloadJsonFile(box, 'box.json');
+                // downloadJsonFile(box, 'box.json');
+                downloadJsonFile(clusters, "clusters.json");
             }
         });
 
@@ -166,15 +180,9 @@ const generateMarkup = async () => {
     
 
 
-    const [download] = await Promise.all([
-        // Start waiting for the download
-        // page.click('#download'),
-        page.waitForEvent('download')
-        // Perform the action that initiates download
-    ]);
-    // // Wait for the download process to complete
-    const filename = download.suggestedFilename('box.json');
-    download.saveAs('./output/box.json');
+    const download = await page.waitForEvent('download', {timeout: 0});
+
+    download.saveAs('./output/clusters.json');
 
     page.on('close', () => {
         console.log('page closed');
