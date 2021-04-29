@@ -8,6 +8,8 @@ const renderedPNG = readFileSync('./../output/rendered.png').toString('base64');
 var referenceImplClusters = JSON.parse(readFileSync('./../../../fitlayout-jar/out/segments.json', 'utf8'));
 var basicImplClusters = JSON.parse(readFileSync('./../output/segments.json', 'utf8'));
 
+var dataClusters = {ref: referenceImplClusters, basic: basicImplClusters};
+
 const viewportWidth = 1200;
 const viewportHeight = 950;
 
@@ -165,223 +167,31 @@ const generateMarkup = async () => {
       </html>
     `;
 
-            
-
     await page.setContent(html)
-
     await page.addScriptTag({ type: 'module', path: './interact.js' });
     await page.addScriptTag({ path: './listener-functions.js'});
 
 
-    await page.evaluate(async ({referenceImplClusters, basicImplClusters}) => {
+    await page.evaluate(async (dataClusters) => {
 
-        /* Incremented in addGroundTruthCluster in listener-functions.js */
-        window.index = 1;
-
-        var ImplementationType = Object.freeze({
-            ref:'referenceImplCluster', 
-            basic:'basicImplCluster', 
-            extended:'extendedImplCluster'
-        });
-
-        document.addEventListener("keydown", e => selectFunctionByCodeKey(e));
-
-        function clusterToDiv(cluster, clusterImplType) {
-
-            var color;
-            switch (clusterImplType) {
-                case ImplementationType.ref:
-                    color = "rgba(128, 0, 0, 0.5)";
-                    break;
-            
-                case ImplementationType.basic:
-                    color = "rgba(0, 128, 0, 0.5)";
-                    break;
-
-                case ImplementationType.extended:
-                    color = "rgba(0, 0, 128, 0.5)";
-                    break;
-
-                default:
-                    color = rgba(0, 0, 0, 0.5);
-                    break;
-            }
-
-            let div = document.createElement('div');
-                div.style = `
-                    width: ${cluster.width}px; 
-                    height: ${cluster.height}px;
-                    top: ${cluster.top}px;
-                    left: ${cluster.left}px;
-                    position: absolute;
-                    z-index: 99;
-                    background-color: ${color};
-                    opacity: 0.5;
-                `;
-                div.className = clusterImplType;
-                document.body.appendChild(div);
-        }
-
-
-        document.addEventListener("keydown", e => {
-            if (e.code === "Digit1") {
-                var referenceImplDivs = document.querySelectorAll('.'+ImplementationType.ref);
-
-                if(referenceImplDivs.length == 0) {
-                    for (const cluster of referenceImplClusters) {
-                        clusterToDiv(cluster, ImplementationType.ref);
-                    }
-                } else {
-                    for (const div of referenceImplDivs) {
-                        div.classList.toggle('hiddenDiv');
-                    }
-                }
-            }
-        });
-
-        document.addEventListener("keydown", e => {
-            if (e.code === "Digit2") {
-                var basicImplDivs = document.querySelectorAll('.'+ImplementationType.basic);
-
-                if(basicImplDivs.length == 0) {
-                    for (const cluster of basicImplClusters) {
-                        clusterToDiv(cluster, ImplementationType.basic);
-                    }
-                } else {
-                    for (const div of basicImplDivs) {
-                        div.classList.toggle('hiddenDiv');
-                    }
-                }
-            }
-        });
-
-        document.addEventListener("keydown", e => {
-            if (e.code === "Digit3") {
-                // var referenceImplDivs = document.querySelectorAll('.'+ImplementationType.extended);
-
-                // if(referenceImplDivs.length == 0) {
-                //     for (const cluster of referenceImplClusters) {
-                //         clusterToDiv(cluster, ImplementationType.extended);
-                //     }
-                // } else {
-                //     for (const div of referenceImplDivs) {
-                //         div.classList.toggle('hiddenDiv');
-                //     }
-                // }
-            }
-        });
-
-        
-
-
-
-        // Get the modal
-        var modal = document.getElementById("myModal");
-        var myModalContent = document.getElementById('myModalContent');
-
-        // Get the <span> element that closes the modal
-        var span = document.getElementsByClassName("close")[0];
+        document.addEventListener("keydown", e => selectFunctionByCodeKey(e, dataClusters));
 
         // When the user clicks on <span> (x), close the modal
-        span.onclick = function() {
-            myModalContent.removeChild(document.getElementById('refParagraph'));
-            myModalContent.removeChild(document.getElementById('basicParagraph'));
-            modal.style.display = "none";
-        }
+        var resultsCloseButton = document.getElementsByClassName("close")[0];
+        resultsCloseButton.onclick = hideResultsModal;
 
-        // When the user clicks anywhere outside of the modal, close it
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                myModalContent.removeChild(document.getElementById('refParagraph'));
-                myModalContent.removeChild(document.getElementById('basicParagraph'));
-                modal.style.display = "none";
-            }
-        }
+    }, dataClusters);
 
-        document.addEventListener("keydown", e => {
-            if (e.code === "Escape") {
-                if(modal.style.display === "block") {
-                    myModalContent.removeChild(document.getElementById('refParagraph'));
-                    myModalContent.removeChild(document.getElementById('basicParagraph'));
-                    modal.style.display = "none";
-                }
-            }
-        });
-
-
-
-        document.addEventListener("keydown", e => {
-            if (e.code === "KeyR") {
-                if(modal.style.display == "block") {
-                    console.log("modal close by R");
-                    var myModalContent = document.getElementById('myModalContent');
-                    myModalContent.removeChild(document.getElementById('refParagraph'));
-                    myModalContent.removeChild(document.getElementById('basicParagraph'));
-                    modal.style.display = "none";
-                    return;
-                }
-
-
-                var myModalContent = document.getElementById('myModalContent');
-                var refImplText, basicImplText;
-                var refClustersLoaded=false, basicClustersLoaded=false;
-
-                var refParagraph = document.createElement('p'), 
-                    basicParagraph = document.createElement('p');
-
-                refParagraph.id = "refParagraph";
-                basicParagraph.id = "basicParagraph";
-            
-                var referenceImplDivs = document.querySelectorAll('.'+ImplementationType.ref);
-                if(referenceImplDivs.length > 0) {
-                    refClustersLoaded = true;
-                    refImplText = document.createTextNode("Reference implementation clusters loaded!");
-                } else {
-                    refImplText = document.createTextNode("Reference implementation clusters NOT LOADED YET!");
-                }
-                
-                var basicImplDivs = document.querySelectorAll('.'+ImplementationType.basic);
-                if(basicImplDivs.length > 0) {
-                    basicClustersLoaded = true;
-                    basicImplText = document.createTextNode("Basic implementation clusters loaded!");
-                } else {
-                    basicImplText = document.createTextNode("Basic implementation clusters NOT LOADED YET!");
-                }
-
-
-                refParagraph.appendChild(refImplText);
-                basicParagraph.appendChild(basicImplText);
-
-                var refPcheck = document.getElementById('refParagraph');
-                var basicPcheck = document.getElementById('basicParagraph');
-
-                if(refPcheck == null && basicPcheck == null) {
-                    myModalContent.appendChild(refParagraph);
-                    myModalContent.appendChild(basicParagraph);
-                }
-
-                modal.style.display = "block";        
-            }
-        });
-
-        //   document.addEventListener("keydown", e => {
-        //     console.log(e);
-        //   })
-    }, {referenceImplClusters, basicImplClusters});
-
-
-    
-
-
-    const download = await page.waitForEvent('download', {timeout: 0});
-
-    download.saveAs('./output/clusters.json');
 
     page.on('close', () => {
-        console.log('page closed');
+        console.log('Page closed. Browser closed.');
         browser.close();
     });
 
+    while(1) {
+        const download = await page.waitForEvent('download', {timeout: 0});
+        download.saveAs('./output/exported-ground-truth-clusters.json');
+    }
 
 
     //   for (const el of box) {
