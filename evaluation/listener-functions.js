@@ -1,15 +1,15 @@
 /* Classes for clusters according to implementation */
 var ImplementationType = Object.freeze({
-    ref: 'referenceImplCluster',
-    basic: 'basicImplCluster',
-    extended: 'extendedImplCluster'
+    reference: 'reference',
+    basic: 'basic',
+    extended: 'extended'
 });
 
 /**
  * Select right function by Code Key
  *  
  * */ 
-function selectFunctionByCodeKey(event, dataClusters) {
+function selectFunctionByCodeKey(event, segmentations) {
     switch (event.code) {
 
         case "KeyA":
@@ -30,11 +30,11 @@ function selectFunctionByCodeKey(event, dataClusters) {
             break;
 
         case "Digit1":
-            loadReferenceImplSegments(dataClusters.ref);
+            loadSegmentationReference(segmentations.reference);
             break;
 
         case "Digit2":
-            loadBasicImplSegments(dataClusters.basic);
+            loadSegmentationBasic(segmentations.basic);
             break;
 
         case "Digit3":
@@ -57,7 +57,7 @@ function selectFunctionByCodeKey(event, dataClusters) {
 function addGroundTruthCluster() {
     let div = document.createElement('div');
     div.className = 'resize-drag';
-    div.id = `div${window.index}`;
+    div.id = `divGT${window.index}`;
     div.tabIndex = "0";
     div.style.top = `${window.mouseY}px`;
     div.style.left = `${window.mouseX}px`;
@@ -118,31 +118,30 @@ function exportGroundTruthClusterToJsonFile() {
     downloadJsonFile(clusters);
 }
 
-function loadReferenceImplSegments(referenceImplClusters) {
+function loadSegmentationReference(segmentsReference) {
 
-    console.log(referenceImplClusters);
-    var referenceImplDivs = document.querySelectorAll('.' + ImplementationType.ref);
+    var divsReference = document.querySelectorAll('.' + ImplementationType.ref);
 
-    if (referenceImplDivs.length == 0) {
-        for (const cluster of referenceImplClusters) {
+    if (divsReference.length == 0) {
+        for (const cluster of segmentsReference) {
             clusterToDiv(cluster, ImplementationType.ref);
         }
     } else {
-        for (const div of referenceImplDivs) {
+        for (const div of divsReference) {
             div.classList.toggle('hiddenDiv');
         }
     }
 }
 
-function loadBasicImplSegments(basicImplClusters) {
-    var basicImplDivs = document.querySelectorAll('.' + ImplementationType.basic);
+function loadSegmentationBasic(segmentsBasic) {
+    var divsBasic = document.querySelectorAll('.' + ImplementationType.basic);
 
-    if (basicImplDivs.length == 0) {
-        for (const cluster of basicImplClusters) {
+    if (divsBasic.length == 0) {
+        for (const cluster of segmentsBasic) {
             clusterToDiv(cluster, ImplementationType.basic);
         }
     } else {
-        for (const div of basicImplDivs) {
+        for (const div of divsBasic) {
             div.classList.toggle('hiddenDiv');
         }
     }
@@ -218,16 +217,16 @@ function showResultsModal() {
     refParagraph.id = "refParagraph";
     basicParagraph.id = "basicParagraph";
 
-    var referenceImplDivs = document.querySelectorAll('.' + ImplementationType.ref);
-    if (referenceImplDivs.length > 0) {
+    var divsReference = document.querySelectorAll('.' + ImplementationType.ref);
+    if (divsReference.length > 0) {
         refClustersLoaded = true;
         refImplText = document.createTextNode("Reference implementation clusters loaded!");
     } else {
         refImplText = document.createTextNode("Reference implementation clusters NOT LOADED YET!");
     }
 
-    var basicImplDivs = document.querySelectorAll('.' + ImplementationType.basic);
-    if (basicImplDivs.length > 0) {
+    var divsBasic = document.querySelectorAll('.' + ImplementationType.basic);
+    if (divsBasic.length > 0) {
         basicClustersLoaded = true;
         basicImplText = document.createTextNode("Basic implementation clusters loaded!");
     } else {

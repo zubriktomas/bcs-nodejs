@@ -3,6 +3,7 @@ const { readFileSync } = require('fs');
 const { selectFunctionByCodeKey } = require('./listener-functions');
 const sizeOfImage = require('image-size');
 const screenres = require('screenres');
+const RTree = require('../src/structures/RTree');
 
 require('./areatree-parser').areaTreeParse();
 
@@ -11,21 +12,27 @@ const bcsOutputFolder = './../output';
 const webpagePNG = readFileSync(`${bcsOutputFolder}/webpage.png`).toString('base64');
 const renderedPNG = readFileSync(`${bcsOutputFolder}/rendered.png`).toString('base64'); 
 
-var basicImplClusters = JSON.parse(readFileSync(`${bcsOutputFolder}/segments.json`, 'utf8'));
-var referenceImplClusters = JSON.parse(readFileSync('./input/segments-ref.json', 'utf8'));
-var dataClusters = {ref: referenceImplClusters, basic: basicImplClusters};
+var segmentsBasic = JSON.parse(readFileSync(`${bcsOutputFolder}/segments.json`, 'utf8'));
+var segmentsReference = JSON.parse(readFileSync('./input/segments-ref.json', 'utf8'));
+var boxes = JSON.parse(readFileSync(`${bcsOutputFolder}/boxes.json`, 'utf8'));
+
+
+
+
+var segmentations = {reference: segmentsReference, basic: segmentsBasic};
 
 const dimensions = sizeOfImage(`${bcsOutputFolder}/webpage.png`);
-const viewportWidth = dimensions.width;
-const viewportHeight = dimensions.height;
+const imageWidth = dimensions.width;
+const imageHeight = dimensions.height;
 
 const screenHeight = screenres.get()[1];
 const screenWidth = screenres.get()[0];
 
 const data = {
-    dataClusters: dataClusters, 
-    viewportWidth: viewportWidth,
-    viewportHeight: viewportHeight,
+    boxes: boxes,
+    segmentations: segmentations, 
+    imageWidth: imageWidth,
+    imageHeight: imageHeight,
     webpagePNG: webpagePNG,
     renderedPNG: renderedPNG
 }
@@ -38,7 +45,7 @@ const startAnnotator = async () => {
     page.on('close', () => browser.close());
 
     await page.setViewportSize({
-        width: viewportWidth,
+        width: imageWidth,
         height: screenHeight
     });
 
@@ -55,9 +62,9 @@ const startAnnotator = async () => {
         window.addEventListener('mousemove', e => {window.mouseX = e.pageX; window.mouseY = e.pageY;} );
         
         document.body.style.backgroundImage = window.bgA;
-        document.body.style.height = `${data.viewportHeight+200}px`;
+        document.body.style.height = `${data.imageHeight+200}px`;
         
-        document.addEventListener("keydown", e => selectFunctionByCodeKey(e, data.dataClusters));
+        document.addEventListener("keydown", e => selectFunctionByCodeKey(e, data.segmentations));
         window.onclick = e => { e.target == document.getElementById("myModal") ? hideResultsModal() : null};
         
         var resultsCloseButton = document.getElementsByClassName("close")[0];
@@ -68,7 +75,7 @@ const startAnnotator = async () => {
     while(1) {
         try {
             const download = await page.waitForEvent('download', {timeout: 0});
-            download.saveAs('./output/exported-ground-truth-clusters.json');
+            download.saveAs('./output/ground-truth-segments.json');
         } catch (e) {
             console.log("Ground truth annotator was closed.");
         }
