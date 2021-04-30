@@ -1,5 +1,6 @@
 const { readFileSync, writeFileSync } = require('fs');
 const parser = require('xml2json');
+const { EntityType } = require('../src/structures/EntityType');
 
 var inFile = './../../../fitlayout-jar/out/segments.xml';
 var outFile = './input/segments-ref.json';
@@ -12,6 +13,8 @@ function convertAreaToCluster(area) {
     cluster.bottom = Number(area.y2);
     cluster.width = cluster.right - cluster.left;
     cluster.height = cluster.bottom - cluster.top;
+    cluster.type = EntityType.cluster;
+    cluster.impl = 'reference';
     return cluster;
 }
 
