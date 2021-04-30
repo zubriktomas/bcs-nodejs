@@ -5,17 +5,12 @@ var ImplementationType = Object.freeze({
     extended: 'extendedImplCluster'
 });
 
-
-
 /**
  * Select right function by Code Key
  *  
  * */ 
 function selectFunctionByCodeKey(event, dataClusters) {
     switch (event.code) {
-        case "Enter":
-            writeEnterPressed();
-            break;
 
         case "KeyA":
             addGroundTruthCluster();
@@ -57,11 +52,6 @@ function selectFunctionByCodeKey(event, dataClusters) {
         default:
             break;
     }
-
-}
-
-function writeEnterPressed() {
-    console.log("[browser] enter was pressed");
 }
 
 function addGroundTruthCluster() {
@@ -69,18 +59,17 @@ function addGroundTruthCluster() {
     div.className = 'resize-drag';
     div.id = `div${window.index}`;
     div.tabIndex = "0";
-
+    div.style.top = `${window.mouseY}px`;
+    div.style.left = `${window.mouseX}px`;
     document.body.appendChild(div);
     window.index++;
 }
 
 function switchBackgroundImage() {
-    var bgScreenshot = document.getElementById('backgroundScreenshot');
-
-    if (bgScreenshot.style.backgroundImage == window.bgA) {
-        bgScreenshot.style.backgroundImage = window.bgB;
+    if (document.body.style.backgroundImage == window.bgA) {
+        document.body.style.backgroundImage = window.bgB;
     } else {
-        bgScreenshot.style.backgroundImage = window.bgA;
+        document.body.style.backgroundImage = window.bgA;
     }
 }
 
@@ -135,12 +124,10 @@ function loadReferenceImplSegments(referenceImplClusters) {
     var referenceImplDivs = document.querySelectorAll('.' + ImplementationType.ref);
 
     if (referenceImplDivs.length == 0) {
-        console.log("aa");
         for (const cluster of referenceImplClusters) {
             clusterToDiv(cluster, ImplementationType.ref);
         }
     } else {
-        console.log("bb");
         for (const div of referenceImplDivs) {
             div.classList.toggle('hiddenDiv');
         }

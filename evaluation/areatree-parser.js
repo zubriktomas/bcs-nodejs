@@ -1,5 +1,5 @@
-fs = require('fs');
-var parser = require('xml2json');
+const { readFileSync, writeFileSync } = require('fs');
+const parser = require('xml2json');
 
 var inFile = './../../../fitlayout-jar/out/segments.xml';
 var outFile = './input/segments-ref.json';
@@ -15,24 +15,20 @@ function convertAreaToCluster(area) {
     return cluster;
 }
 
-fs.readFile(inFile, function (err, data) {
-    if (err) throw err;
+function areaTreeParse() {
 
-    /* Convert XML to JSON */
-    const json = JSON.parse(parser.toJson(data));
-
-    /* Top level areaTree -> whole page area containing all areas -> list of leaf areas as clusters */
+    const xmlData = readFileSync(inFile).toString();
+    const json = JSON.parse(parser.toJson(xmlData));
     const areaClusters = json.areaTree.area.area;
-
     var clusters = [];
     for (const area of areaClusters) {
         var cluster = convertAreaToCluster(area);
         clusters.push(cluster);
     }
-
     var clustersJson = JSON.stringify(clusters);
-
-    fs.writeFile(outFile, clustersJson, (err) => {
+    writeFileSync(outFile, clustersJson, (err) => {
         if (err) throw err;
     });
-});
+}
+
+module.exports.areaTreeParse = areaTreeParse;
