@@ -1,30 +1,41 @@
-const { Selector } = require("../src/structures/Selector");
 
-var boxes;
-var rtree;
-
-/** put all boxes into Rtree */
-/** put reference impl clusters into Rtree */
-/** put basic impl clusters into Rtree */
-
-/** getBoxes that are in SOME cluster:
- * 
- *  
- *  foreach cluster overlaps boxes in Rtree:
- *          
- * 
- */
-
-
-function getBoxesWithCluster(rtree, boxes, clusters) {
-
-    var boxesInCluster = [];
-    for (const cluster of clusters) {
-        var boxesOverlapping = rtree.search(Selector.fromEntity(cluster).narrowBy1Px()).filter(e => e.type == 0);
-        boxesInCluster = boxesInCluster.concat(boxesOverlapping);
+class Selector {
+    constructor(minX, minY, maxX, maxY) {
+        this.minX = minX;
+        this.minY = minY;
+        this.maxX = maxX;
+        this.maxY = maxY;
     }
 
-    return boxesInCluster;
+    static fromEntity(entity) {
+        return new Selector(entity.left, entity.top, entity.right, entity.bottom);
+    }
+
+    narrowBy1Px() {
+        this.minX += 1;
+        this.minY += 1;
+        this.maxX -= 1;
+        this.maxY -= 1;
+        return this;
+    }
+}
+
+function getAllBoxesThatAreInSomeCluster(impl) {
+
+    var clusters;
+
+    if(impl) {
+        clusters = window.tree.all().filter(e => e.type == 1 && e.impl == impl);    
+    } else {
+        clusters = window.tree.all().filter(e => e.type == 1 && !(e.impl));
+    }
+
+    var boxes = [];
+    for (const cluster of clusters) {
+        var boxesInCluster = window.tree.search(Selector.fromEntity(cluster).narrowBy1Px()).filter(e => e.type == 0);
+        boxes = boxes.concat(boxesInCluster);
+    }
+    return new Set(boxes);
 }
 
 function getBoxesInSameCluster(rtree, box) {
@@ -49,11 +60,6 @@ function calcPrecision(clusters1, clusters2) {
             sum2 += (Math.min(Sb))
         }
     }
-
-    // var boxesInClusterCount = boxesInCluster.length;
-
-
-
 }
 
 function calcRecall(clusters1, clusters2) {

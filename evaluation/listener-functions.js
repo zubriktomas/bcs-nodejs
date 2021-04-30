@@ -81,7 +81,11 @@ function addGroundTruthSegmentationToRTree() {
         window.tree.load(segmentsGT); 
         window.notyf.success("Ground truth segmentation loaded to RTree! Press R to show results.");
     } else {
-        window.notyf.error("No ground truth segments added!");
+        // var gtSegments = window.tree.all().filter(e => e.type == 1 && e.impl == "GT");
+        // for (const segment of gtSegments) {
+        //     window.tree.remove(segment);
+        // }
+        window.notyf.error("No ground truth segments added! Previous deleted!");
     }   
 }
 
@@ -110,6 +114,8 @@ function convertDivGTToJsonSegment(divElement) {
     cluster.height = divElement.offsetHeight;
     cluster.right = cluster.left + cluster.width;
     cluster.bottom = cluster.top + cluster.height;
+    cluster.type = 1;
+    cluster.impl = "GT";
     return cluster;
 }
 
