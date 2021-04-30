@@ -6,9 +6,7 @@
  * Description: Functions useful for process of node extraction.
  */
 
-
 const RBush = require('rbush');
-
 class RTree extends RBush {
 
     toBBox(entity) {

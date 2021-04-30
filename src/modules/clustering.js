@@ -6,8 +6,7 @@
  * Description: Main function program block
  */
 
-const sort = require('fast-sort');
-const fs = require('fs');
+const { writeFileSync } = require('fs');
 const vizualizer = require('./box-vizualizer');
 const Cluster = require('../structures/Cluster');
 const RTree = require('../structures/RTree');
@@ -217,6 +216,8 @@ class ClusteringManager {
             newCluster.bottom = cluster.bottom;
             newCluster.width = cluster.right - cluster.left;
             newCluster.height = cluster.bottom - cluster.top;
+            newCluster.type = EntityType.cluster;
+            newCluster.impl = 'basic';
             return newCluster;
         }
 
@@ -228,7 +229,7 @@ class ClusteringManager {
     
         var clustersJson = JSON.stringify(clusters);
 
-        fs.writeFile('./output/segments.json', clustersJson, (err) => {
+        writeFileSync('./output/segments.json', clustersJson, (err) => {
             if (err) throw err;
         });
     }
@@ -354,9 +355,9 @@ class ClusteringManager {
     vizualize() {
 
         vizualizer.createSvgRepresentation({
-            boxes: this.boxes.values(),
+            boxes: this.boxesOk.values(),
             // boxes: this.extractedBoxes ? this.extractedBoxes.values() : null,
-            clusters: this.clusters ? this.clusters.values() : null,
+            // clusters: this.clusters ? this.clusters.values() : null,
             cc: this.cc ? this.cc : null,
             entityA: this.entityA ? this.entityA : null,
             entityB: this.entityB ? this.entityB : null,
@@ -374,11 +375,40 @@ class ClusteringManager {
     }
 }
 
+function exportBoxesToJson(boxesMap) {
+    
+    function convertBox(box) {
+        var newBox = {};
+        newBox.left = box.left;
+        newBox.top = box.top;
+        newBox.right = box.right;
+        newBox.bottom = box.bottom;
+        newBox.width = box.width
+        newBox.height = box.height;
+        newBox.color = box.color;
+        newBox.type = EntityType.box;
+        return newBox;
+    }
+
+    var boxesToExport = [];
+    for (const box of boxesMap.values()) {
+        boxesToExport.push(convertBox(box));
+    }
+
+    var boxesJson = JSON.stringify(boxesToExport);
+
+    writeFileSync('./output/boxes.json', boxesJson, (err) => {
+        if (err) throw err;
+    });
+
+}
 
 function process(extracted, clusteringThreshold) {
 
     var cm = new ClusteringManager(extracted);
     cm.removeContainers();
+
+    exportBoxesToJson(cm.boxesOk);
 
     cm.findAllRelations();
     cm.createClusters(clusteringThreshold);
@@ -388,7 +418,5 @@ function process(extracted, clusteringThreshold) {
     console.log("boxesUnclustered", cm.boxes.size);
 
     cm.vizualize();
-
-
 
 }

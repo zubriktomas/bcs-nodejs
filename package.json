@@ -7,11 +7,9 @@
     "license": "MIT",
     "private": true,
     "dependencies": {
-        "fast-sort": "^3.0.1",
         "image-size": "^1.0.0",
         "playwright-chromium": "^1.10.0",
         "rbush": "^3.0.1",
-        "screenres": "^2.0.1",
         "svg-builder": "^1.0.0",
         "xml2json": "^0.12.0",
         "yargs": "^16.2.0"
