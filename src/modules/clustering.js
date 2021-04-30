@@ -14,6 +14,7 @@ const RTree = require('../structures/RTree');
 const Relation = require('../structures/Relation');
 const { Selector, SelectorDirection } = require('../structures/Selector');
 const { EntityType, isBox, isCluster } = require('../structures/EntityType');
+const BoxC = require('../structures/BoxC');
 
 module.exports.process = process;
 
@@ -29,29 +30,45 @@ class ClusteringManager {
             height: extracted.document.height,
             width: extracted.document.width
         };
-        this.extractedBoxes = new Map(Object.entries(extracted.boxes));
 
-        this.clusteringThreshold = null;
-        this.densityThreshold = null;
+        /* Won't be changed */
+        this.clusteringThreshold = 0;
+        this.densityThreshold = 0;
+        this.allBoxesList = extracted.boxesList;
 
         /* Dynamically changed throughout the segmentation process */
-        this.boxes = new Map(Object.entries(extracted.boxes)); // entityId => entity
+        // this.boxes = new Map(Object.entries(extracted.boxes)); // BoxId => Box
+        this.boxes = this.reinitBoxes(extracted.boxesList);
+        this.boxesOk = null;        
+        this.tree = this.createRTree(Array.from(this.boxes.values()));
         this.clusters = new Map();
         this.relations = new Map();
-        this.tree = this.createRTree();
 
+        /* Just for vizualization purposes */
         this.cc = null;
     }
 
-    createRTree() {
+    reinitBoxes(boxesList) {
+        var boxesMap = new Map();
+
+        for (const box of boxesList) {
+            var boxStruct = new BoxC(box);
+            boxesMap.set(boxStruct.id, boxStruct);            
+        }
+        return boxesMap;
+    }
+
+    createRTree(boxesList) {
         const tree = new RTree();
-        tree.load(Array.from(this.boxes.values()));
+        // tree.load(Array.from(this.boxes.values()));
+        tree.load(boxesList);
         return tree;
     }
 
     removeContainers() {
         var selector, overlapping;
     
+        /* Remove bigger containers that contain more than 2 boxes (probably background images) */
         for (let box of this.boxes.values()) {
             selector = Selector.fromEntity(box);
             overlapping = this.tree.search(selector.narrowBy1Px());
@@ -61,6 +78,7 @@ class ClusteringManager {
             }
         }
 
+        /* Remove smaller containers now */
         for (let box of this.boxes.values()) {
             selector = Selector.fromEntity(box);
             overlapping = this.tree.search(selector.narrowBy1Px());
@@ -69,6 +87,8 @@ class ClusteringManager {
                 this.tree.remove(box);
             }
         }
+
+        this.boxesOk = new Map(this.boxes.entries());
     }
 
     findAllRelations() {
@@ -99,19 +119,21 @@ class ClusteringManager {
 
     enhanceEveryBox() {
 
-        for (let box of this.boxes.values()) {
-            box.findDirectNeighbours = findDirectNeighbours;
-            box.hasDirectNeighbour = function (otherBox) {
-                return box.neighbours.has(otherBox.id);
-            };
-            box.neighbours = new Map();
-            box.boxes = new Map();
-            box.toString = toString;
-        }
+        // for (const boxEntry of this.boxes.entries()) {
+        //     this.boxes.set(boxEntry.id, new Box)
+        // }
+
+        // for (let box of this.boxes.values()) {
+        //     box.findDirectNeighbours = findDirectNeighbours;
+        //     box.hasDirectNeighbour = function (otherBox) {
+        //         return box.neighbours.has(otherBox.id);
+        //     };
+        //     box.neighbours = new Map();
+        // }
     }
 
     getBestRelation() {
-        var sim = Number.MAX_SAFE_INTEGER, bestRel;
+        var bestRel, sim = Number.MAX_SAFE_INTEGER;
 
         for (const rel of this.relations.values()) {
             if(rel.similarity <= sim ) {
@@ -352,98 +374,21 @@ class ClusteringManager {
     }
 }
 
-function findDirectNeighbours(cm, direction) {
-    var tree = cm.tree;
-    var box = this;
-
-    var selector, neighbours = [];
-
-    const pageWidth = cm.pageDims.width;
-    const pageHeight = cm.pageDims.height;
-
-    const selectorWidth = 100;
-    const selectorHeight = 50;
-
-    if(direction == SelectorDirection.right){
-
-        for (let maxX = box.right + selectorWidth; maxX < pageWidth + selectorWidth; maxX+=selectorWidth) {
-
-            selector = new Selector(box.right, box.top, maxX, box.bottom);
-            neighbours = tree.search(selector.narrowBy1Px());
-
-            if(neighbours.length) {
-                break;
-            }
-        }
-    } else if (direction == SelectorDirection.down) {
-        for (let maxY = box.bottom + selectorHeight; maxY < pageHeight + selectorHeight; maxY+=selectorHeight) {
-
-            selector = new Selector(box.left, box.bottom, box.right, maxY);
-            neighbours = tree.search(selector.narrowBy1Px());
-
-            if(neighbours.length) {
-                break;
-            }
-        }
-    } else if (direction == SelectorDirection.left) {
-        for (let minX = box.left - selectorWidth; minX > 0 - selectorWidth; minX-=selectorWidth) {
-
-            selector = new Selector(minX, box.top, box.left, box.bottom);
-            neighbours = tree.search(selector.narrowBy1Px());
-
-            if(neighbours.length) {
-                break;
-            }
-        }
-    } else if (direction == SelectorDirection.up) {
-        for (let minY = box.top - selectorHeight; minY > 0 - selectorHeight; minY-=selectorHeight) {
-
-            selector = new Selector(box.left, minY, box.right, box.top);
-            neighbours = tree.search(selector.narrowBy1Px());
-
-            if(neighbours.length) {
-                break;
-            }
-        }
-    }
-
-    var tmpRelations = [], shortestDistance = Number.MAX_SAFE_INTEGER;
-
-    for (const neighbour of neighbours) {
-        var rel = new Relation(box, neighbour, direction);
-        tmpRelations.push(rel);
-        if(rel.absoluteDistance < shortestDistance) {
-            shortestDistance = rel.absoluteDistance;
-        }
-    }
-
-    for (const rel of tmpRelations) {
-        if(rel.absoluteDistance == shortestDistance) {
-
-            if(!cm.relations.has(rel.id)) {
-                cm.relations.set(rel.id, rel);
-            }
-            box.neighbours.set(rel.entityB, cm.relations.get(rel.id));
-
-            if(rel.absoluteDistance > box.maxNeighbourDistance) {
-                box.maxNeighbourDistance = rel.absoluteDistance;
-            }
-        }
-    }
-  }
-
-function toString() {
-    var boxString = `\n Box: ${this.color} \n |Neighbours|: ${this.neighbours.size}`;
-    return boxString;
-}
-
 
 function process(extracted, clusteringThreshold) {
 
     var cm = new ClusteringManager(extracted);
     cm.removeContainers();
-    cm.enhanceEveryBox();
+
     cm.findAllRelations();
     cm.createClusters(clusteringThreshold);
+
+    console.log("allboxes", cm.allBoxesList.length);
+    console.log("boxesOk", cm.boxesOk.size);
+    console.log("boxesUnclustered", cm.boxes.size);
+
     cm.vizualize();
+
+
+
 }

@@ -27,6 +27,4 @@
       this.cluster = null;
 
     }
-
-   
 }
