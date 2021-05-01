@@ -1,8 +1,6 @@
 const { chromium } = require('playwright');
 const { readFileSync } = require('fs');
-const { selectFunctionByCodeKey } = require('./listener-functions');
 const sizeOfImage = require('image-size');
-const RTree = require('../src/structures/RTree');
 
 /* Parse FiyLayout segments.xml output */
 require('./areatree-parser').areaTreeParse();
@@ -13,11 +11,9 @@ const bcsOutputFolder = './../output';
 const dimensions = sizeOfImage(`${bcsOutputFolder}/webpage.png`);
 const imageWidth = dimensions.width;
 const imageHeight = dimensions.height;
-// const screenHeight = screenres.get()[1];
-// const screenWidth = screenres.get()[0];
 
-const screenHeight = 1200;
-const screenWidth = 1920;
+// const screenHeight = 1200;
+// const screenWidth = 1920;
 
 const data = loadDataFromFileSystem();
 
@@ -30,22 +26,23 @@ const startAnnotator = async () => {
 
     await page.setViewportSize({
         width: imageWidth,
-        height: screenHeight
+        height: imageHeight
     });
 
     var contentHtml = readFileSync('./index.html', 'utf8');
     await page.setContent(contentHtml);
 
-    await page.addScriptTag({ type: 'module', path: './interact.js' });
-    await page.addScriptTag({ path: './listener-functions.js' });
+    await page.addScriptTag({ type: 'module', path: './browser/interact.js' });
+    await page.addScriptTag({ path: './browser/listener-functions.js' });
     
     await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/rbush@3.0.1/rbush.min.js'});
-    await page.addScriptTag({ path: './rtree.js'});
+    await page.addScriptTag({ path: './browser/rtree.js'});
 
     await page.addStyleTag({ url: 'https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css' });
     await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js'});
 
-    await page.addScriptTag({ path: './metrics.js'});
+    await page.addScriptTag({ path: './browser/metrics.js'});
+    await page.addScriptTag({ path: './browser/set-operations.js'});
 
     await page.evaluate(async (data) => {
 

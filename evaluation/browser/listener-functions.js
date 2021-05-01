@@ -5,6 +5,10 @@ var Implementation = Object.freeze({
     extended: 'extended'
 });
 
+// try {
+//     module.exports.selectFunctionByCodeKey = selectFunctionByCodeKey;
+// } catch(e) {}
+
 /**
  * Select right function by Code Key
  *  
