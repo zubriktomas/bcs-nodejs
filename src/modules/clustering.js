@@ -216,7 +216,7 @@ class ClusteringManager {
             newCluster.width = cluster.right - cluster.left;
             newCluster.height = cluster.bottom - cluster.top;
             newCluster.type = EntityType.cluster;
-            newCluster.impl = 'basic';
+            newCluster.segm = 'basic';
             return newCluster;
         }
 
