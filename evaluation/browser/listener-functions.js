@@ -38,7 +38,7 @@ function selectFunctionByCodeKey(event, segmentations) {
             break;
 
         case "Digit3":
-            loadExtendedImplSegments();
+            loadExtendedSegmentation();
             break;
 
         case "Escape":
@@ -101,6 +101,15 @@ function addGroundTruthSegmentationToRTree() {
     console.log(gtSegments);
 }
 
+function deleteGroundTruthCluster() {
+    if (document.hasFocus()) {
+        var element = document.activeElement;
+        if (element.id.startsWith("divGT")) {
+            element.remove();
+        }
+    }
+}
+
 function clearAllGroundTruthSegments() {
 
     var segmentDivs = document.querySelectorAll('.resize-drag');
@@ -114,22 +123,6 @@ function clearAllGroundTruthSegments() {
     }
 }
 
-function switchBackgroundImage() {
-    if (document.body.style.backgroundImage == window.bgA) {
-        document.body.style.backgroundImage = window.bgB;
-    } else {
-        document.body.style.backgroundImage = window.bgA;
-    }
-}
-
-function deleteGroundTruthCluster() {
-    if (document.hasFocus()) {
-        var element = document.activeElement;
-        if (element.id.startsWith("divGT")) {
-            element.remove();
-        }
-    }
-}
 
 function convertDivGTToJsonSegment(divElement) {
     var cluster = {};
@@ -201,7 +194,7 @@ function loadSegmentationBasic(segmentsBasic) {
 
 }
 
-function loadExtendedImplSegments() {
+function loadExtendedSegmentation() {
 
 }
 
@@ -241,6 +234,19 @@ function clusterToDiv(cluster, clusterImplType) {
     document.body.appendChild(div);
 }
 
+
+function calcSegmentationsSimilarity(segments1, segments2) {
+    /** TODO */
+}
+
+function switchBackgroundImage() {
+    if (document.body.style.backgroundImage == window.bgA) {
+        document.body.style.backgroundImage = window.bgB;
+    } else {
+        document.body.style.backgroundImage = window.bgA;
+    }
+}
+
 function hideResultsModal() {
     var modal = document.getElementById("myModal");
     var myModalContent = document.getElementById('myModalContent');
@@ -250,11 +256,6 @@ function hideResultsModal() {
         myModalContent.removeChild(document.getElementById('basicParagraph'));
         modal.style.display = "none";
     }
-}
-
-
-function calcSegmentationsSimilarity(segments1, segments2) {
-    /** TODO */
 }
 
 function showResultsModal() {

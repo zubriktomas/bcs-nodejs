@@ -1,3 +1,4 @@
+// import { intersection } from "./set-operations";
 
 class Selector {
     constructor(minX, minY, maxX, maxY) {
@@ -20,56 +21,82 @@ class Selector {
     }
 }
 
+/** E^S */
 function getAllBoxesThatAreInSomeCluster(impl) {
 
-    var clusters;
-
-    if(impl) {
-        clusters = window.tree.all().filter(e => e.type == 1 && e.impl == impl);    
-    } else {
-        clusters = window.tree.all().filter(e => e.type == 1 && !(e.impl));
-    }
+    var implSegments = window.tree.all().filter(e => e.type == 1 && e.impl == impl);    
 
     var boxes = [];
-    for (const cluster of clusters) {
-        var boxesInCluster = window.tree.search(Selector.fromEntity(cluster).narrowBy1Px()).filter(e => e.type == 0);
+    for (const segment of implSegments) {
+        var boxesInCluster = window.tree.search(Selector.fromEntity(segment).narrowBy1Px()).filter(e => e.type == 0);
         boxes = boxes.concat(boxesInCluster);
     }
     return new Set(boxes);
 }
 
-function getBoxesInSameCluster(rtree, box) {
-    var cluster = rtree.search(Selector.fromEntity(box).narrowBy1Px()).filter(e => e.type == 1)[0];
-    var boxes = rtree.search(Selector.fromEntity(cluster).narrowBy1Px()).filter(e => e.type == 0 && e != box);
-    return boxes;
+/** E^S_e */
+function getAllBoxesInClusterThatHasBox_e(impl, box) {
+    var clusterOfBox = window.tree.search(Selector.fromEntity(box).narrowBy1Px()).filter(e => e.type == 1 && e.impl == impl)[0];
+    var boxCompanions = window.tree.search(Selector.fromEntity(clusterOfBox).narrowBy1Px()).filter(e => e.type == 0 && e != box);
+    return new Set(boxCompanions);
+}
+
+function getAllClustersContainingBox(impl, box) {
+    var clustersContainingBox = window.tree.search(Selector.fromEntity(box).narrowBy1Px()).filter(e => e.type == 1 && e.impl == impl);
+    return new Set(clustersContainingBox);
 }
 
 
+/* impl1 == some segmentation, impl2 == ground truth segmentation */
+function calcPrecision(impl1, impl2) {
+    
+    var ES = getAllBoxesThatAreInSomeCluster(impl1);
 
-function calcPrecision(clusters1, clusters2) {
-    var boxesInCluster = getBoxesWithCluster(rtree, boxes, clusters1);
-    var oneDividedByES = 1 / boxesInCluster.length;
+    var sumES = 0.0, sumESe = 0.0;
 
-    var sum1 = 0, sum2 = 0;
-    for (const b of boxesInCluster) {
+    for (const e of ES) {
 
-        var boxesInSameCluster = getBoxesInSameCluster(rtree, b);
-        var oneDividedByESe = 1 / boxesInSameCluster.length;
+        var ESe = getAllBoxesInClusterThatHasBox_e(impl1, e);
 
-        for (const b_ of boxesInSameCluster) {
-            sum2 += (Math.min(Sb))
+        for (const e_ of ESe) {
+            var Se = getAllClustersContainingBox(impl1, e);
+            var Se_ = getAllClustersContainingBox(impl1, e_);
+
+            var SeStar = getAllClustersContainingBox(impl2, e);
+            var Se_Star = getAllClustersContainingBox(impl2, e_);
+
+            var SeIntersectionSe_Size = intersection(Se, Se_).size;
+            var SeStarIntersectionSe_StarSize = intersection(SeStar, Se_Star).size;
+
+            sumESe += (Math.min(SeIntersectionSe_Size, SeStarIntersectionSe_StarSize) / SeIntersectionSe_Size);
         }
+
+        sumES += (sumESe / ESe.size);
+        sumESe = 0.0;    
     }
+
+    var result = sumES / ES.size;
+
+    return result;
 }
 
-function calcRecall(clusters1, clusters2) {
-    return calcPrecision(clusters2, clusters1);
+function calcRecall(impl1, impl2) {
+    return calcPrecision(impl2, impl1);
 }
 
-function calcFScore(clusters1, clusters2) {
-    var precision, recall, result;
-    precision = calcPrecision(clusters1, clusters2);
-    recall = calcRecall(clusters1, clusters2);
-    result = (2 * precision * recall) / (precision + recall);
+function calcMetricsBetweenSegmentations(impl1, impl2) {
+    var precision, recall, fscore, metrics = {};
+    precision = calcPrecision(impl1, impl2);
+    recall = calcRecall(impl1, impl2);
+    fscore = (2 * precision * recall) / (precision + recall);
 
+    metrics.precision = precision;
+    metrics.recall = recall;
+    metrics.fscore = fscore;
+
+    return metrics;
+}
+
+function calcMetricsWithGroundTruth(impl) {
+    return calcMetricsBetweenSegmentations(impl, "GT");
 }

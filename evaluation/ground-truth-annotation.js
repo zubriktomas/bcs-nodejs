@@ -41,8 +41,8 @@ const startAnnotator = async () => {
     await page.addStyleTag({ url: 'https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css' });
     await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js'});
 
-    await page.addScriptTag({ path: './browser/metrics.js'});
     await page.addScriptTag({ path: './browser/set-operations.js'});
+    await page.addScriptTag({ path: './browser/metrics.js'});
 
     await page.evaluate(async (data) => {
 

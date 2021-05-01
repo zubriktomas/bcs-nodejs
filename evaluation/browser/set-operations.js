@@ -6,7 +6,7 @@
  * Set - Implementing basic set operations
  * Code version: 1.0.0
  * Type: Source code
- * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set
+ * URL: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set#implementing_basic_set_operations
  * 
  */
 
@@ -56,3 +56,5 @@ function difference(setA, setB) {
     }
     return _difference
 }
+
+// export {isSuperset, union, intersection, symmetricDifference, difference};
