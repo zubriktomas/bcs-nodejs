@@ -1,3 +1,13 @@
+/**
+ * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
+ * Date: 2021-05-01
+ * 
+ */
+
+/**
+ * RTree for indexing segmentations in browser context
+ * (duplicated and adapted code from /src/structures/RTree.js)
+ */
 class RTree extends RBush {
     toBBox(entity) {
         return {
@@ -17,6 +27,7 @@ class RTree extends RBush {
         return a.top - b.top;
     }
 
+    /* Create baseline segmentation with single segment (whole page) given by all RTree data */
     getBaselineWholePageSegment() {
         var segment = {};
         segment.top = this.data.minY;
@@ -26,7 +37,7 @@ class RTree extends RBush {
         segment.width = segment.right - segment.left;
         segment.height = segment.bottom - segment.top;
         segment.type = 1;
-        segment.impl = "baseline";
+        segment.segm = "baseline";
         return segment;
     }    
 }

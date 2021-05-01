@@ -1,3 +1,13 @@
+/**
+ * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
+ * Date: 2021-05-01
+ * 
+ */
+
+/**
+ * Selector structure used for searching in RTree
+ * (duplicated code from /src/structures/Selector for a sake of annotator)
+ */
 class Selector {
     constructor(minX, minY, maxX, maxY) {
         this.minX = minX;
@@ -19,12 +29,14 @@ class Selector {
     }
 }
 
-const Metrics = Object.freeze({ fscore: 'fscore', precision: 'precision', recall: 'recall' });
+/**
+ * Get all boxes that are at least in one segment
+ * @param {*} segm 
+ * @returns Set of boxes inside some segment
+ */
+function getAllBoxesThatAreInSomeSegment(segm) {
 
-/** E^S */
-function getAllBoxesThatAreInSomeCluster(impl) {
-
-    var implSegments = window.tree.all().filter(e => e.type == 1 && e.impl == impl);
+    var implSegments = window.tree.all().filter(e => e.type == 1 && e.segm == segm);
 
     var boxes = [];
     for (const segment of implSegments) {
@@ -34,60 +46,89 @@ function getAllBoxesThatAreInSomeCluster(impl) {
     return new Set(boxes);
 }
 
-/** E^S_e */
-function getAllBoxesInClusterThatHasBox_e(impl, box) {
-    var clusterOfBox = window.tree.search(Selector.fromEntity(box).narrowBy1Px()).filter(e => e.type == 1 && e.impl == impl)[0];
+/**
+ * Get all boxes from segment, that has given box 
+ * @param {*} segm 
+ * @param {*} box 
+ * @returns Set of boxes (companions of given box)
+ */
+function getAllBoxesInSegmentThatHasBox(segm, box) {
+    var clusterOfBox = window.tree.search(Selector.fromEntity(box).narrowBy1Px()).filter(e => e.type == 1 && e.segm == segm)[0];
     var boxCompanions = window.tree.search(Selector.fromEntity(clusterOfBox).narrowBy1Px()).filter(e => e.type == 0 && e != box);
     return new Set(boxCompanions);
 }
 
-function getAllClustersContainingBox(impl, box) {
-    var clustersContainingBox = window.tree.search(Selector.fromEntity(box).narrowBy1Px()).filter(e => e.type == 1 && e.impl == impl);
+/**
+ * Get all segments from segmentation, that contain given box
+ * @param {*} segm 
+ * @param {*} box 
+ * @returns Set of segments containing the box
+ */
+function getAllSegmentsContainingBox(segm, box) {
+    var clustersContainingBox = window.tree.search(Selector.fromEntity(box).narrowBy1Px()).filter(e => e.type == 1 && e.segm == segm);
     return new Set(clustersContainingBox);
 }
 
+/**
+ * Calculate precision between two segmentations.
+ * (For better understanding of precision calculation between 2 segmentations
+ * look into: https://doi.org/10.1145/3340531.3412782)
+ * @param {*} segm1 
+ * @param {*} segm2 
+ * @returns 
+ */
+function calcPrecision(segm1, segm2) {
 
-/* impl1 == some segmentation, impl2 == ground truth segmentation */
-function calcPrecision(impl1, impl2) {
+    var boxesInSegment = getAllBoxesThatAreInSomeSegment(segm1);
 
-    var ES = getAllBoxesThatAreInSomeCluster(impl1);
+    var sumOuter = 0.0, sumInner = 0.0;
 
-    var sumES = 0.0, sumESe = 0.0;
+    for (const box of boxesInSegment) {
 
-    for (const e of ES) {
+        var boxesInSameSegmentAsBox = getAllBoxesInSegmentThatHasBox(segm1, box);
 
-        var ESe = getAllBoxesInClusterThatHasBox_e(impl1, e);
+        for (const box_ of boxesInSameSegmentAsBox) {
+            var segm1SegmentsBox = getAllSegmentsContainingBox(segm1, box);
+            var segm1SegmentsBox_ = getAllSegmentsContainingBox(segm1, box_);
 
-        for (const e_ of ESe) {
-            var Se = getAllClustersContainingBox(impl1, e);
-            var Se_ = getAllClustersContainingBox(impl1, e_);
+            var segm2SegmentsBox = getAllSegmentsContainingBox(segm2, box);
+            var segm2SegmentsBox_ = getAllSegmentsContainingBox(segm2, box_);
 
-            var SeStar = getAllClustersContainingBox(impl2, e);
-            var Se_Star = getAllClustersContainingBox(impl2, e_);
+            var segm1IntersectionSize = intersection(segm1SegmentsBox, segm1SegmentsBox_).size;
+            var segm2IntersectionSize = intersection(segm2SegmentsBox, segm2SegmentsBox_).size;
 
-            var SeIntersectionSe_Size = intersection(Se, Se_).size;
-            var SeStarIntersectionSe_StarSize = intersection(SeStar, Se_Star).size;
-
-            sumESe += (Math.min(SeIntersectionSe_Size, SeStarIntersectionSe_StarSize) / SeIntersectionSe_Size);
+            sumInner += (Math.min(segm1IntersectionSize, segm2IntersectionSize) / segm1IntersectionSize);
         }
 
-        sumES += (sumESe / ESe.size);
-        sumESe = 0.0;
+        sumOuter += (sumInner / boxesInSameSegmentAsBox.size);
+        sumInner = 0.0;
     }
 
-    var result = sumES / ES.size;
+    var result = sumOuter / boxesInSegment.size;
 
     return result;
 }
 
-function calcRecall(impl1, impl2) {
-    return calcPrecision(impl2, impl1);
+/**
+ * Calculate recall between two segmentations
+ * @param {*} segm1 
+ * @param {*} segm2 
+ * @returns 
+ */
+function calcRecall(segm1, segm2) {
+    return calcPrecision(segm2, segm1);
 }
 
-function calcMetricsBetweenSegmentations(impl1, impl2) {
+/**
+ * Calculate metrics between two segmentations
+ * @param {*} segm1 
+ * @param {*} segm2 
+ * @returns metrics
+ */
+function calcMetricsBetweenSegmentations(segm1, segm2) {
     var precision, recall, fscore, metrics = {};
-    precision = calcPrecision(impl1, impl2);
-    recall = calcRecall(impl1, impl2);
+    precision = calcPrecision(segm1, segm2);
+    recall = calcRecall(segm1, segm2);
     fscore = (2 * precision * recall) / (precision + recall);
 
     metrics.precision = precision;
@@ -97,26 +138,33 @@ function calcMetricsBetweenSegmentations(impl1, impl2) {
     return metrics;
 }
 
-function calcMetricsWithGroundTruth(impl) {
-    return calcMetricsBetweenSegmentations(impl, "GT");
+/**
+ * Calculate metrics between segmentation and ground truth
+ * @param {*} segm Specific segmentation type
+ * @returns Metrics as object
+ */
+function calcMetricsWithGroundTruth(segm) {
+    return calcMetricsBetweenSegmentations(segm, Segmentation.GT);
 }
 
-
+/**
+ * Create results table with metrics
+ */
 function createMetricsResultsTable() {
     const resultsDiv = document.querySelector("div.results");
 
     var tableHeaders = ["Metric", "Baseline", "Reference", "Basic"];
 
-    var resultBaseline = calcMetricsWithGroundTruth("baseline");
-    var resultReference = calcMetricsWithGroundTruth("reference");
-    var resultBasic = calcMetricsWithGroundTruth("basic");
+    var resultBaseline = calcMetricsWithGroundTruth(Segmentation.baseline);
+    var resultReference = calcMetricsWithGroundTruth(Segmentation.reference);
+    var resultBasic = calcMetricsWithGroundTruth(Segmentation.basic);
 
     var allSegments = window.tree.all().filter(e => e.type == 1);
 
     var nosegments = {
-        baseline: allSegments.filter(e => e.impl == "baseline").length,
-        reference: allSegments.filter(e => e.impl == "reference").length,
-        basic: allSegments.filter(e => e.impl == "basic").length
+        baseline: allSegments.filter(e => e.segm == Segmentation.baseline).length,
+        reference: allSegments.filter(e => e.segm == Segmentation.reference).length,
+        basic: allSegments.filter(e => e.segm == Segmentation.basic).length
     };
 
     var fscore = {
@@ -137,6 +185,12 @@ function createMetricsResultsTable() {
         basic: resultBasic.recall.toFixed(2)
     };
 
+    /**
+     * Create table row with calculated metrics values
+     * @param {*} metricName 
+     * @param {*} values 
+     * @returns HTML <tr> element containing results
+     */
     const createTableRow = (metricName, values) => {
         let resultsTableBodyRow = document.createElement('tr');
 
@@ -165,18 +219,15 @@ function createMetricsResultsTable() {
         return resultsTableBodyRow;
     };
 
-
+    /**
+     * Create results table with metrics
+     */
     const createResultsTable = () => {
         while (resultsDiv.firstChild) resultsDiv.removeChild(resultsDiv.firstChild);
 
         let resultsTable = document.createElement('table');
-        // resultsTable.className = 'resultsTable';
-
         let resultsTableHead = document.createElement('thead');
-        // resultsTableHead.className = 'resultsTableHead';
-
         let resultsTableHeaderRow = document.createElement('tr');
-        // resultsTableHeaderRow.className = 'resultsTableHeaderRow';
 
         tableHeaders.forEach(header => {
             let resultHeader = document.createElement('th');
@@ -188,36 +239,14 @@ function createMetricsResultsTable() {
         resultsTable.append(resultsTableHead);
 
         let resultsTableBody = document.createElement('tbody');
-        // resultsTableBody.className = 'resultsTableBody';
-
         resultsTableBody.append(createTableRow("no. segments", nosegments));
         resultsTableBody.append(createTableRow(Metrics.fscore, fscore));
         resultsTableBody.append(createTableRow(Metrics.precision, precision));
         resultsTableBody.append(createTableRow(Metrics.recall, recall));
 
         resultsTable.append(resultsTableBody);
-
         resultsDiv.append(resultsTable);
-
     }
 
     createResultsTable();
-
-    // const appendResults = (singleResult, singleResultIndex) => {
-    //     const scoreboardTable = document.querySelector('.scoreboardTable') // Find the table we created
-        
-
-    //     let usernameData = document.createElement('td')
-    //     usernameData.innerText = singleResult.user.username
-    //     let scoreData = document.createElement('td')
-    //     scoreData.innerText = singleResult.score
-    //     let timeData = document.createElement('td')
-    //     timeData.innerText = singleResult.time_alive
-    //     let accuracyData = document.createElement('td')
-    //     accuracyData.innerText = singleResult.accuracy
-    //     scoreboardTableBodyRow.append(scoreRanking, usernameData, scoreData, timeData, accuracyData) // Append all 5 cells to the table row
-    //     scoreboardTable.append(scoreboardTableBodyRow) // Append the current row to the scoreboard table body
-    // };
 }
-
-

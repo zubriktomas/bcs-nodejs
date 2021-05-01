@@ -4,13 +4,6 @@
  * 
  */
 
-/* Enum for segmentation according to implementation */
-var Implementation = Object.freeze({
-    reference: 'reference',
-    basic: 'basic',
-    extended: 'extended'
-});
-
 /**
  * Select right listener function given by CodeKey from event
  * @param {*} event Event with information which key was pressed
@@ -100,7 +93,7 @@ function addGroundTruthSegmentationToRTree() {
     //     segmentsGT.push(convertDivGTToJsonSegment(segmentDiv));
     // }
 
-    var gtSegments = window.tree.all().filter(e => e.type == 1 && e.impl == "GT");
+    var gtSegments = window.tree.all().filter(e => e.type == 1 && e.segm == "GT");
 
     gtSegments.forEach(segment => window.tree.remove(segment));
     // for (const segment of gtSegments) {
@@ -116,7 +109,7 @@ function addGroundTruthSegmentationToRTree() {
         window.notyf.error("No ground truth segments added! Previous deleted!");
     }
 
-    // gtSegments = window.tree.all().filter(e => e.type == 1 && e.impl == "GT");
+    // gtSegments = window.tree.all().filter(e => e.type == 1 && e.segm == "GT");
     // console.log(gtSegments);
 }
 
@@ -142,7 +135,7 @@ function clearAllGroundTruthSegments() {
         segmentDiv.remove();
     }
 
-    var gtSegments = window.tree.all().filter(e => e.type == 1 && e.impl == "GT");
+    var gtSegments = window.tree.all().filter(e => e.type == 1 && e.segm == "GT");
     for (const gtSegment of gtSegments) {
         window.tree.remove(gtSegment);
     }
@@ -162,7 +155,7 @@ function convertDivGTToJsonSegment(divElement) {
     segment.right = segment.left + segment.width;
     segment.bottom = segment.top + segment.height;
     segment.type = 1;
-    segment.impl = "GT";
+    segment.segm = "GT";
     return segment;
 }
 
@@ -227,11 +220,11 @@ function loadSegmentationGroundTruth(segmentsGT) {
  */
 function loadSegmentationReference(segmentsReference) {
 
-    var divsReference = document.querySelectorAll('.' + Implementation.reference);
+    var divsReference = document.querySelectorAll('.' + Segmentation.reference);
 
     if (divsReference.length == 0) {
         for (const segment of segmentsReference) {
-            convertSegmentToDiv(segment, Implementation.reference);
+            convertSegmentToDiv(segment, Segmentation.reference);
         }
         window.notyf.success("Reference segmentation loaded!");
     } else {
@@ -246,11 +239,11 @@ function loadSegmentationReference(segmentsReference) {
  * @param {[]} segmentsBasic 
  */
 function loadSegmentationBasic(segmentsBasic) {
-    var divsBasic = document.querySelectorAll('.' + Implementation.basic);
+    var divsBasic = document.querySelectorAll('.' + Segmentation.basic);
 
     if (divsBasic.length == 0) {
         for (const segment of segmentsBasic) {
-            convertSegmentToDiv(segment, Implementation.basic);
+            convertSegmentToDiv(segment, Segmentation.basic);
         }
         window.notyf.success("Basic segmentation loaded!");
     } else {
@@ -272,18 +265,18 @@ function loadExtendedSegmentation(segmentsExtended) {
 /**
  * Convert segment to div visual representation by segmentation (implementation) type
  * @param {} segment 
- * @param {Implementation} segmentationImplType 
+ * @param {Segmentation} segmentationImplType 
  */
 function convertSegmentToDiv(segment, segmentationImplType) {
     var color;
     switch (segmentationImplType) {
-        case Implementation.reference: color = "rgba(128, 0, 0, 0.5)"; break;
-        case Implementation.basic: color = "rgba(0, 128, 0, 0.5)"; break;
-        case Implementation.extended: color = "rgba(0, 0, 128, 0.5)"; break;
+        case Segmentation.reference: color = "rgba(128, 0, 0, 0.5)"; break;
+        case Segmentation.basic: color = "rgba(0, 128, 0, 0.5)"; break;
+        case Segmentation.extended: color = "rgba(0, 0, 128, 0.5)"; break;
         default: color = rgba(0, 0, 0, 0.5); break;
     }
 
-    /* Create segment as with representative color set by impl. type */
+    /* Create segment as with representative color set by segm. type */
     let div = document.createElement('div');
     div.style.width = `${segment.width}px`;
     div.style.height = `${segment.height}px`;
