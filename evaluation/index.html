@@ -3,7 +3,6 @@
 
 <head>
     <style>
-        
         body {
             margin: 0;
             padding: 0;
@@ -42,7 +41,7 @@
             /* Hidden by default */
             position: fixed;
             /* Stay in place */
-            z-index: 100;
+            z-index: 200;
             /* Sit on top */
             padding-top: 100px;
             /* Location of the box */
@@ -94,9 +93,23 @@
         td,
         th {
             border: 1px solid #dddddd;
-            text-align: left;
+            text-align: center;
             padding: 8px;
         }
+
+        .fscore {
+            background-color: #dddddd;
+        }
+
+        .results {
+            display: block;
+        }
+
+        .bold {
+            font-weight: bold;
+            font-size: large;
+        }
+
     </style>
 </head>
 
@@ -109,26 +122,39 @@
         <div id="myModalContent" class="modal-content">
             <span class="close">&times;</span>
             <h1>Results</h1>
-            <table>
-                <tr>
-                    <th>Firstname</th>
-                    <th>Lastname</th>
-                    <th>Age</th>
-                </tr>
-                <tr>
-                    <td>Jill</td>
-                    <td>Smith</td>
-                    <td>50</td>
-                </tr>
-                <tr>
-                    <td>Eve</td>
-                    <td>Jackson</td>
-                    <td>94</td>
-                </tr>
-            </table>
+            <div class="results">
+
+
+            </div>
         </div>
     </div>
+    
+    <!-- <table>
+        <tr>
+            <th>Firstname</th>
+            <th>Lastname</th>
+            <th>Age</th>
+        </tr>
+        <tr>
+            <td>Jill</td>
+            <td>Smith</td>
+            <td>50</td>
+        </tr>
+        <tr>
+            <td>Eve</td>
+            <td>Jackson</td>
+            <td>94</td>
+        </tr>
+    </table> -->
 
+    <!-- <div id="myModal" class="modal">
+        <div id="myModalContent" class="modal-content">
+            <span class="close">&times;</span>
+            <h1>Files</h1>
+            <label for="upload-photo">Browse...</label>
+            <input type="file" name="photo" id="upload-photo"></inp>
+        </div>
+    </div> -->
 </body>
 
 </html>

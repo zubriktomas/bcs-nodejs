@@ -92,6 +92,7 @@ function addGroundTruthSegmentationToRTree() {
 
     if(segmentsGT.length){
         window.tree.load(segmentsGT); 
+        createMetricsResultsTable();
         window.notyf.success("Ground truth segmentation loaded to RTree! Press R to show results.");
     } else {
         window.notyf.error("No ground truth segments added! Previous deleted!");
@@ -161,6 +162,27 @@ function exportGroundTruthSegmentsToJsonFile() {
 
     downloadJsonFile(clusters);
 }
+
+function loadSegmentationGroundTruth(segmentsGT) {
+
+    for (const segment of segmentsGT) {
+        let div = document.createElement('div');
+        div.className = 'resize-drag';
+        div.id = `divGT${window.index}`;
+        div.tabIndex = "0";
+        div.style.top = `${segment.top}px`;
+        div.style.left = `${segment.left}px`;
+        div.dataset.x = 0;
+        div.dataset.y = 0;
+        div.style.height = `${segment.height}px`;
+        div.style.width = `${segment.width}px`;
+        document.body.appendChild(div);
+        window.index++;
+    }
+}
+
+
+
 
 function loadSegmentationReference(segmentsReference) {
 
@@ -252,8 +274,8 @@ function hideResultsModal() {
     var myModalContent = document.getElementById('myModalContent');
 
     if (modal.style.display === "block") {
-        myModalContent.removeChild(document.getElementById('refParagraph'));
-        myModalContent.removeChild(document.getElementById('basicParagraph'));
+        // myModalContent.removeChild(document.getElementById('refParagraph'));
+        // myModalContent.removeChild(document.getElementById('basicParagraph'));
         modal.style.display = "none";
     }
 }
@@ -272,41 +294,41 @@ function showResultsModal() {
     // }
 
 
-    var refImplText, basicImplText;
-    var refClustersLoaded = false, basicClustersLoaded = false;
+    // var refImplText, basicImplText;
+    // var refClustersLoaded = false, basicClustersLoaded = false;
 
-    var refParagraph = document.createElement('p'),
-        basicParagraph = document.createElement('p');
+    // var refParagraph = document.createElement('p'),
+    //     basicParagraph = document.createElement('p');
 
-    refParagraph.id = "refParagraph";
-    basicParagraph.id = "basicParagraph";
+    // refParagraph.id = "refParagraph";
+    // basicParagraph.id = "basicParagraph";
 
-    var divsReference = document.querySelectorAll('.' + Implementation.reference);
-    if (divsReference.length > 0) {
-        refClustersLoaded = true;
-        refImplText = document.createTextNode("Reference implementation clusters loaded!");
-    } else {
-        refImplText = document.createTextNode("Reference implementation clusters NOT LOADED YET!");
-    }
+    // var divsReference = document.querySelectorAll('.' + Implementation.reference);
+    // if (divsReference.length > 0) {
+    //     refClustersLoaded = true;
+    //     refImplText = document.createTextNode("Reference implementation clusters loaded!");
+    // } else {
+    //     refImplText = document.createTextNode("Reference implementation clusters NOT LOADED YET!");
+    // }
 
-    var divsBasic = document.querySelectorAll('.' + Implementation.basic);
-    if (divsBasic.length > 0) {
-        basicClustersLoaded = true;
-        basicImplText = document.createTextNode("Basic implementation clusters loaded!");
-    } else {
-        basicImplText = document.createTextNode("Basic implementation clusters NOT LOADED YET!");
-    }
+    // var divsBasic = document.querySelectorAll('.' + Implementation.basic);
+    // if (divsBasic.length > 0) {
+    //     basicClustersLoaded = true;
+    //     basicImplText = document.createTextNode("Basic implementation clusters loaded!");
+    // } else {
+    //     basicImplText = document.createTextNode("Basic implementation clusters NOT LOADED YET!");
+    // }
 
-    refParagraph.appendChild(refImplText);
-    basicParagraph.appendChild(basicImplText);
+    // refParagraph.appendChild(refImplText);
+    // basicParagraph.appendChild(basicImplText);
 
-    var refPcheck = document.getElementById('refParagraph');
-    var basicPcheck = document.getElementById('basicParagraph');
+    // var refPcheck = document.getElementById('refParagraph');
+    // var basicPcheck = document.getElementById('basicParagraph');
 
-    if (refPcheck == null && basicPcheck == null) {
-        myModalContent.appendChild(refParagraph);
-        myModalContent.appendChild(basicParagraph);
-    }
+    // if (refPcheck == null && basicPcheck == null) {
+    //     myModalContent.appendChild(refParagraph);
+    //     myModalContent.appendChild(basicParagraph);
+    // }
 
     modal.style.display = "block";
 }
