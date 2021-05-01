@@ -1,3 +1,13 @@
+/**
+ * Author: Taye Adeyemi
+ * Date: 2021-05-01
+ * JavaScript drag and drop, resizing, and multi-touch gestures for modern browsers (and also IE9+) - Dragging, Resizing
+ * Code version: 1.10.11
+ * Type: Source code
+ * URL: https://interactjs.io/
+ * 
+ */
+
 import interact from 'https://cdn.interactjs.io/v1.10.11/interactjs/index.js';
 
 interact('.resize-drag')

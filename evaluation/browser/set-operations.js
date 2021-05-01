@@ -56,5 +56,3 @@ function difference(setA, setB) {
     }
     return _difference
 }
-
-// export {isSuperset, union, intersection, symmetricDifference, difference};

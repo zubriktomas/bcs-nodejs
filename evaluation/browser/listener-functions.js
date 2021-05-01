@@ -1,4 +1,10 @@
-/* Classes for clusters according to implementation */
+/**
+ * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
+ * Date: 2021-05-01
+ * 
+ */
+
+/* Enum for segmentation according to implementation */
 var Implementation = Object.freeze({
     reference: 'reference',
     basic: 'basic',
@@ -6,14 +12,15 @@ var Implementation = Object.freeze({
 });
 
 /**
- * Select right function by Code Key
- *  
- * */ 
+ * Select right listener function given by CodeKey from event
+ * @param {*} event Event with information which key was pressed
+ * @param {*} segmentations All available segmentations
+ */
 function selectFunctionByCodeKey(event, segmentations) {
     switch (event.code) {
 
         case "KeyA":
-            addGroundTruthCluster();
+            addGroundTruthDiv();
             break;
 
         case "KeyS":
@@ -22,7 +29,7 @@ function selectFunctionByCodeKey(event, segmentations) {
 
         case "KeyD":
         case "Delete":
-            deleteGroundTruthCluster();
+            deleteGroundTruthDiv();
             break;
 
         case "KeyE":
@@ -62,7 +69,10 @@ function selectFunctionByCodeKey(event, segmentations) {
     }
 }
 
-function addGroundTruthCluster() {
+/**
+ * Add new ground truth DIV at current mouse position
+ */
+function addGroundTruthDiv() {
     let div = document.createElement('div');
     div.className = 'resize-drag';
     div.id = `divGT${window.index}`;
@@ -77,32 +87,43 @@ function addGroundTruthCluster() {
     window.index++;
 }
 
+/**
+ * Insert all created ground truth segments to RTree for metrics calculations
+ */
 function addGroundTruthSegmentationToRTree() {
     var segmentDivs = document.querySelectorAll('.resize-drag');
 
     var segmentsGT = [];
-    for (const segmentDiv of segmentDivs) {
-        segmentsGT.push(convertDivGTToJsonSegment(segmentDiv));
-    }
+    segmentDivs.forEach(segmentDiv => segmentsGT.push(convertDivGTToJsonSegment(segmentDiv)));
+
+    // for (const segmentDiv of segmentDivs) {
+    //     segmentsGT.push(convertDivGTToJsonSegment(segmentDiv));
+    // }
 
     var gtSegments = window.tree.all().filter(e => e.type == 1 && e.impl == "GT");
-    for (const segment of gtSegments) {
-        window.tree.remove(segment);
-    }
 
-    if(segmentsGT.length){
-        window.tree.load(segmentsGT); 
+    gtSegments.forEach(segment => window.tree.remove(segment));
+    // for (const segment of gtSegments) {
+    //     window.tree.remove(segment);
+    // }
+
+    if (segmentsGT.length) {
+        window.tree.load(segmentsGT);
+        /* Calculate all metrics and create results table */
         createMetricsResultsTable();
         window.notyf.success("Ground truth segmentation loaded to RTree! Press R to show results.");
     } else {
         window.notyf.error("No ground truth segments added! Previous deleted!");
-    }   
+    }
 
-    gtSegments = window.tree.all().filter(e => e.type == 1 && e.impl == "GT");
-    console.log(gtSegments);
+    // gtSegments = window.tree.all().filter(e => e.type == 1 && e.impl == "GT");
+    // console.log(gtSegments);
 }
 
-function deleteGroundTruthCluster() {
+/**
+ * Delete ground truth cluster
+ */
+function deleteGroundTruthDiv() {
     if (document.hasFocus()) {
         var element = document.activeElement;
         if (element.id.startsWith("divGT")) {
@@ -111,6 +132,9 @@ function deleteGroundTruthCluster() {
     }
 }
 
+/**
+ * Clear (remove all) ground truth segments actually visible on page
+ */
 function clearAllGroundTruthSegments() {
 
     var segmentDivs = document.querySelectorAll('.resize-drag');
@@ -124,28 +148,38 @@ function clearAllGroundTruthSegments() {
     }
 }
 
-
+/**
+ * Convert ground truth DIV to JSON segment representation
+ * @param {*} divElement 
+ * @returns DIV as JSON GT segment 
+ */
 function convertDivGTToJsonSegment(divElement) {
-    var cluster = {};
-    cluster.top = parseFloat(divElement.style.top) + parseFloat(divElement.dataset.y);
-    cluster.left = parseFloat(divElement.style.left) + parseFloat(divElement.dataset.x);
-    cluster.width = divElement.offsetWidth;
-    cluster.height = divElement.offsetHeight;
-    cluster.right = cluster.left + cluster.width;
-    cluster.bottom = cluster.top + cluster.height;
-    cluster.type = 1;
-    cluster.impl = "GT";
-    return cluster;
+    var segment = {};
+    segment.top = parseFloat(divElement.style.top) + parseFloat(divElement.dataset.y);
+    segment.left = parseFloat(divElement.style.left) + parseFloat(divElement.dataset.x);
+    segment.width = divElement.offsetWidth;
+    segment.height = divElement.offsetHeight;
+    segment.right = segment.left + segment.width;
+    segment.bottom = segment.top + segment.height;
+    segment.type = 1;
+    segment.impl = "GT";
+    return segment;
 }
 
+/**
+ * Export all ground truth segments to local JSON file 
+ * (filename is set by Playwright by function saveAs(...) in backend)
+ */
 function exportGroundTruthSegmentsToJsonFile() {
 
     var clusters = [];
     var segmentDivs = document.querySelectorAll(".resize-drag");
 
-    for (const segmentDiv of segmentDivs) {
-        clusters.push(convertDivGTToJsonSegment(segmentDiv));
-    }
+    segmentDivs.forEach(segmentDiv => clusters.push(convertDivGTToJsonSegment(segmentDiv)));
+
+    // for (const segmentDiv of segmentDivs) {
+    //     clusters.push(convertDivGTToJsonSegment(segmentDiv));
+    // }
 
     const downloadJsonFile = jsonData => {
         // Creating a blob object from non-blob data using the Blob constructor
@@ -154,15 +188,21 @@ function exportGroundTruthSegmentsToJsonFile() {
         // Create a new anchor element
         const a = document.createElement('a');
         a.href = url;
-        a.id = "download";
+        a.id = 'download';
         a.download = 'download';
         a.click();
         a.remove();
     }
 
+    // Initiate download 
     downloadJsonFile(clusters);
 }
 
+/**
+ * Load ground truth segments from file for given page 
+ * (if was extracted before, given by its name)
+ * @param {[]} segmentsGT 
+ */
 function loadSegmentationGroundTruth(segmentsGT) {
 
     for (const segment of segmentsGT) {
@@ -181,16 +221,17 @@ function loadSegmentationGroundTruth(segmentsGT) {
     }
 }
 
-
-
-
+/**
+ * Load segments from reference (FitLayout) segmentation/implementation as DIVS
+ * @param {[]} segmentsReference 
+ */
 function loadSegmentationReference(segmentsReference) {
 
     var divsReference = document.querySelectorAll('.' + Implementation.reference);
 
     if (divsReference.length == 0) {
-        for (const cluster of segmentsReference) {
-            clusterToDiv(cluster, Implementation.reference);
+        for (const segment of segmentsReference) {
+            convertSegmentToDiv(segment, Implementation.reference);
         }
         window.notyf.success("Reference segmentation loaded!");
     } else {
@@ -200,12 +241,16 @@ function loadSegmentationReference(segmentsReference) {
     }
 }
 
+/**
+ * Load segments from basic segmentation/implementation as DIVS
+ * @param {[]} segmentsBasic 
+ */
 function loadSegmentationBasic(segmentsBasic) {
     var divsBasic = document.querySelectorAll('.' + Implementation.basic);
 
     if (divsBasic.length == 0) {
-        for (const cluster of segmentsBasic) {
-            clusterToDiv(cluster, Implementation.basic);
+        for (const segment of segmentsBasic) {
+            convertSegmentToDiv(segment, Implementation.basic);
         }
         window.notyf.success("Basic segmentation loaded!");
     } else {
@@ -216,51 +261,46 @@ function loadSegmentationBasic(segmentsBasic) {
 
 }
 
-function loadExtendedSegmentation() {
-
-}
-
-function clusterToDiv(cluster, clusterImplType) {
-    var color;
-    switch (clusterImplType) {
-        case Implementation.reference:
-            color = "rgba(128, 0, 0, 0.5)";
-            break;
-
-        case Implementation.basic:
-            color = "rgba(0, 128, 0, 0.5)";
-            break;
-
-        case Implementation.extended:
-            color = "rgba(0, 0, 128, 0.5)";
-            break;
-
-        default:
-            color = rgba(0, 0, 0, 0.5);
-            break;
-    }
-
-    let div = document.createElement('div');
-    div.style = `
-            width: ${cluster.width}px; 
-            height: ${cluster.height}px;
-            top: ${cluster.top}px;
-            left: ${cluster.left}px;
-            position: absolute;
-            z-index: 99;
-            background-color: ${color};
-            opacity: 0.5;
-        `;
-
-    div.className = clusterImplType;
-    document.body.appendChild(div);
-}
-
-
-function calcSegmentationsSimilarity(segments1, segments2) {
+/**
+ * Load segments from extended segmentation/implementation as DIVS
+ * @param {[]} segmentsExtended
+ */
+function loadExtendedSegmentation(segmentsExtended) {
     /** TODO */
 }
 
+/**
+ * Convert segment to div visual representation by segmentation (implementation) type
+ * @param {} segment 
+ * @param {Implementation} segmentationImplType 
+ */
+function convertSegmentToDiv(segment, segmentationImplType) {
+    var color;
+    switch (segmentationImplType) {
+        case Implementation.reference: color = "rgba(128, 0, 0, 0.5)"; break;
+        case Implementation.basic: color = "rgba(0, 128, 0, 0.5)"; break;
+        case Implementation.extended: color = "rgba(0, 0, 128, 0.5)"; break;
+        default: color = rgba(0, 0, 0, 0.5); break;
+    }
+
+    /* Create segment as with representative color set by impl. type */
+    let div = document.createElement('div');
+    div.style.width = `${segment.width}px`;
+    div.style.height = `${segment.height}px`;
+    div.style.top = `${segment.top}px`;
+    div.style.left = `${segment.left}px`;
+    div.style.position = 'absolute';
+    div.style.zIndex = 99;
+    div.style.backgroundColor = `${color}`;
+    div.style.opacity = 0.5;
+
+    div.className = segmentationImplType;
+    document.body.appendChild(div);
+}
+
+/**
+ * Switch background image between page screenshot and extracted boxes screenshot
+ */
 function switchBackgroundImage() {
     if (document.body.style.backgroundImage == window.bgA) {
         document.body.style.backgroundImage = window.bgB;
@@ -269,66 +309,26 @@ function switchBackgroundImage() {
     }
 }
 
+/**
+ * Hide modal with metrics calculation results
+ */
 function hideResultsModal() {
     var modal = document.getElementById("myModal");
-    var myModalContent = document.getElementById('myModalContent');
 
     if (modal.style.display === "block") {
-        // myModalContent.removeChild(document.getElementById('refParagraph'));
-        // myModalContent.removeChild(document.getElementById('basicParagraph'));
         modal.style.display = "none";
     }
 }
 
+/**
+ * Show modal with metrics calculation results
+ */
 function showResultsModal() {
     var modal = document.getElementById("myModal");
-    var myModalContent = document.getElementById('myModalContent');
 
     if (modal.style.display == "block") {
         hideResultsModal();
         return;
     }
-
-    // if (divsBasic.length > 0 && divsReference.length > 0) {
-    //     /** TODO: */
-    // }
-
-
-    // var refImplText, basicImplText;
-    // var refClustersLoaded = false, basicClustersLoaded = false;
-
-    // var refParagraph = document.createElement('p'),
-    //     basicParagraph = document.createElement('p');
-
-    // refParagraph.id = "refParagraph";
-    // basicParagraph.id = "basicParagraph";
-
-    // var divsReference = document.querySelectorAll('.' + Implementation.reference);
-    // if (divsReference.length > 0) {
-    //     refClustersLoaded = true;
-    //     refImplText = document.createTextNode("Reference implementation clusters loaded!");
-    // } else {
-    //     refImplText = document.createTextNode("Reference implementation clusters NOT LOADED YET!");
-    // }
-
-    // var divsBasic = document.querySelectorAll('.' + Implementation.basic);
-    // if (divsBasic.length > 0) {
-    //     basicClustersLoaded = true;
-    //     basicImplText = document.createTextNode("Basic implementation clusters loaded!");
-    // } else {
-    //     basicImplText = document.createTextNode("Basic implementation clusters NOT LOADED YET!");
-    // }
-
-    // refParagraph.appendChild(refImplText);
-    // basicParagraph.appendChild(basicImplText);
-
-    // var refPcheck = document.getElementById('refParagraph');
-    // var basicPcheck = document.getElementById('basicParagraph');
-
-    // if (refPcheck == null && basicPcheck == null) {
-    //     myModalContent.appendChild(refParagraph);
-    //     myModalContent.appendChild(basicParagraph);
-    // }
-
     modal.style.display = "block";
 }
