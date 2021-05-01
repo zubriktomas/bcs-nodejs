@@ -8,12 +8,11 @@
 
 const { writeFileSync } = require('fs');
 const vizualizer = require('./box-vizualizer');
+const Box = require('../structures/Box');
 const Cluster = require('../structures/Cluster');
 const RTree = require('../structures/RTree');
-const Relation = require('../structures/Relation');
 const { Selector, SelectorDirection } = require('../structures/Selector');
 const { EntityType, isBox, isCluster } = require('../structures/EntityType');
-const BoxC = require('../structures/BoxC');
 
 module.exports.process = process;
 
@@ -51,7 +50,7 @@ class ClusteringManager {
         var boxesMap = new Map();
 
         for (const box of boxesList) {
-            var boxStruct = new BoxC(box);
+            var boxStruct = new Box(box);
             boxesMap.set(boxStruct.id, boxStruct);            
         }
         return boxesMap;

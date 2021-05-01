@@ -80,7 +80,7 @@ const saveScreenshot = argv.S;
   }
 
   // Add JavaScript files into webpage for execution and processing in browser context
-  await page.addScriptTag({ path: './src/structures/Box.js' });
+  await page.addScriptTag({ path: './src/structures/BoxInfo.js' });
   await page.addScriptTag({ path: './src/modules/box-extraction.js' });
   await page.addScriptTag({ url: 'https://unpkg.com/fast-average-color/dist/index.min.js' });
 

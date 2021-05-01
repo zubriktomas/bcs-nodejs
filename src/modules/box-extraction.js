@@ -159,7 +159,7 @@ function getBgColor(node) {
     color = await getBgImgColorAsync(node);
   }
 
-  return new Box(bbox, color);
+  return new BoxInfo(bbox, color);
 }
 
 /**
@@ -179,7 +179,7 @@ async function getImageBox(node) {
       color = await getBgImgColorAsync(node);
   }
     
-  return new Box(bbox, color);
+  return new BoxInfo(bbox, color);
 }
  
 
@@ -200,7 +200,7 @@ function getTextBoxes(textNode) {
   // Multiple bounding boxes are possible, because text node may be wrapped into multiple lines
   for(let i=0; i < bboxes.length; i++) {
     // textBoxes.push({color: color, bbox: bboxes[i]})
-    textBoxes.push(new Box(bboxes[i], color));
+    textBoxes.push(new BoxInfo(bboxes[i], color));
   }      
 
   return textBoxes;
