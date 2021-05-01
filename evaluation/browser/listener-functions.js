@@ -5,10 +5,6 @@ var Implementation = Object.freeze({
     extended: 'extended'
 });
 
-// try {
-//     module.exports.selectFunctionByCodeKey = selectFunctionByCodeKey;
-// } catch(e) {}
-
 /**
  * Select right function by Code Key
  *  
@@ -57,6 +53,10 @@ function selectFunctionByCodeKey(event, segmentations) {
             addGroundTruthSegmentationToRTree();
             break;
 
+        case "KeyC":
+            clearAllGroundTruthSegments();
+            break;
+
         default:
             break;
     }
@@ -69,6 +69,10 @@ function addGroundTruthCluster() {
     div.tabIndex = "0";
     div.style.top = `${window.mouseY}px`;
     div.style.left = `${window.mouseX}px`;
+    div.dataset.x = 0;
+    div.dataset.y = 0;
+    div.offsetHeight = 60;
+    div.offsetWidth = 60;
     document.body.appendChild(div);
     window.index++;
 }
@@ -81,16 +85,33 @@ function addGroundTruthSegmentationToRTree() {
         segmentsGT.push(convertDivGTToJsonSegment(segmentDiv));
     }
 
+    var gtSegments = window.tree.all().filter(e => e.type == 1 && e.impl == "GT");
+    for (const segment of gtSegments) {
+        window.tree.remove(segment);
+    }
+
     if(segmentsGT.length){
         window.tree.load(segmentsGT); 
         window.notyf.success("Ground truth segmentation loaded to RTree! Press R to show results.");
     } else {
-        // var gtSegments = window.tree.all().filter(e => e.type == 1 && e.impl == "GT");
-        // for (const segment of gtSegments) {
-        //     window.tree.remove(segment);
-        // }
         window.notyf.error("No ground truth segments added! Previous deleted!");
     }   
+
+    gtSegments = window.tree.all().filter(e => e.type == 1 && e.impl == "GT");
+    console.log(gtSegments);
+}
+
+function clearAllGroundTruthSegments() {
+
+    var segmentDivs = document.querySelectorAll('.resize-drag');
+    for (const segmentDiv of segmentDivs) {
+        segmentDiv.remove();
+    }
+
+    var gtSegments = window.tree.all().filter(e => e.type == 1 && e.impl == "GT");
+    for (const gtSegment of gtSegments) {
+        window.tree.remove(gtSegment);
+    }
 }
 
 function switchBackgroundImage() {
@@ -112,8 +133,8 @@ function deleteGroundTruthCluster() {
 
 function convertDivGTToJsonSegment(divElement) {
     var cluster = {};
-    cluster.top = Number(divElement.dataset.x);
-    cluster.left = Number(divElement.dataset.y);
+    cluster.top = parseFloat(divElement.style.top) + parseFloat(divElement.dataset.y);
+    cluster.left = parseFloat(divElement.style.left) + parseFloat(divElement.dataset.x);
     cluster.width = divElement.offsetWidth;
     cluster.height = divElement.offsetHeight;
     cluster.right = cluster.left + cluster.width;
