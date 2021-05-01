@@ -1,5 +1,3 @@
-// import { intersection } from "./set-operations";
-
 class Selector {
     constructor(minX, minY, maxX, maxY) {
         this.minX = minX;
