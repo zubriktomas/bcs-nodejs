@@ -3,18 +3,10 @@
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
  * Year: 2021
  * License:  GNU GPLv3
- * Description: Main function program block
+ * Description: Box Vizualizer to show box neighbours, segments
  */
 
-
-const http = require('http');
-const svg = require('svg-builder');
 const { chromium } = require('playwright');
-const { isCluster } = require('../structures/EntityType');
-
-// module.exports.createSvgRepresentation = createSvgRepresentation;
-
-module.exports.vizualize = vizualize;
 
 function vizualize(data) {
 
@@ -23,7 +15,7 @@ function vizualize(data) {
     
     console.log(data.boxes.length);
     
-    const browser = await chromium.launch({ headless: false })
+    const browser = await chromium.launch({ headless: true })
     const context = await browser.newContext({ acceptDownloads: true });
     const page = await context.newPage();
     
@@ -82,7 +74,7 @@ function vizualize(data) {
     }, data);
 
     await page.screenshot({path: './output/rendered.png', fullPage: true});
-    // await browser.close();
+    await browser.close();
   }
   startBoxVizualizer(data);
 }
@@ -99,46 +91,6 @@ function buildHtmlTemplate() {
           </html>`;
 }
   
-  
-  // function createSvgRepresentation(data) {
-    
-    //   // Create new http server
-    //   const server = http.createServer((req, res) => {
-      
-      //     // Create box representation of webpage data
-      //     var html = buildSvg(req, data);
-      
-//     // Create http head
-//     res.writeHead(200, {
-//       'Content-Type': 'text/html',
-//       'Content-Length': html.length,
-//       'Expires': new Date().toUTCString()
-//     });
-//     res.end(html);
-
-//   }).listen(8090, async () => {
-
-//     // Launch Chromium browser
-//     const browser = await chromium.launch();
-//     const page = await browser.newPage();
-
-//     // Set size of viewport
-//     page.setViewportSize({
-//       width: 1000,
-//       height: 600
-//     });
-
-//     await page.goto('http://localhost:8090', {waitUntil: 'domcontentloaded'});
-
-//     // Take screenshot of rendered boxes
-//     await page.screenshot({path: './output/rendered.png', fullPage: true});
-
-//     browser.close();
-//     server.close();
-
-//   });
-// }
-
 // function createSvgRect(entity, props) {
 
 //   svg.rect({
@@ -184,22 +136,8 @@ function buildHtmlTemplate() {
 //     createSvgRect(data.entityB, isCluster(data.entityB) ? {stroke: 'GREEN', strokeWidth: 3} : {fill: 'GREEN', fillOpacity: 0.7}); //stroke color: GREEN
 //   }
 
-//   if(data.neighbours) {
-//     for (const neighbour of data.neighbours) {
-//       createSvgRect(neighbour, {fill: '#fc03df', fillOpacity: 0.7}); // color: MAGENTA
-//     }
-//   }
-
 //   if(data.cc) {
 //     createSvgRect(data.cc, {stroke: '#FF0000', strokeWidth: 2});
 //   }
 
-//   return `<!DOCTYPE html>
-//             <head>
-//               ${header}
-//             </head>
-//             <body>
-//               ${svg.render()}
-//             </body>
-//           </html>`;
-// }
+module.exports.vizualize = vizualize;

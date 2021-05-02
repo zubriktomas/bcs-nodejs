@@ -185,52 +185,16 @@ class ClusteringManager {
 
             var cc = new Cluster(rel.entityA, rel.entityB);
 
-            // if(isBetweenClusters(rel) && iterationExceeded(i)) {
-            //     console.log("isBetweenClusters:", rel.similarity.toFixed(2), "i:", i);
-            //     this.assignForVizualization(rel);
-            //     break;
-            // }
-
             if(this.overlaps(cc, rel)) {
                 continue;
             }
-
-            // if(iterationExceeded(i)) {
-            //     this.assignForVizualization(cc, rel);
-            //     break;
-            // }
-            // this.mergeOverlaps(cc);
 
             this.recalcBoxesAndClusters(cc); 
             this.recalcNeighboursAndRelations(cc);
             this.clusters.set(cc.id, cc);
         }
+
         
-
-        function convertCluster(cluster) {
-            var newCluster = {};
-            newCluster.left = cluster.left;
-            newCluster.top = cluster.top;
-            newCluster.right = cluster.right;
-            newCluster.bottom = cluster.bottom;
-            newCluster.width = cluster.right - cluster.left;
-            newCluster.height = cluster.bottom - cluster.top;
-            newCluster.type = EntityType.cluster;
-            newCluster.segm = 'basic';
-            return newCluster;
-        }
-
-
-        var clusters = [];
-        for (const cluster of this.clusters.values()) {
-            clusters.push(convertCluster(cluster));
-        }
-    
-        var clustersJson = JSON.stringify(clusters);
-
-        writeFileSync('./output/segments.json', clustersJson, (err) => {
-            if (err) throw err;
-        });
     }
 
     // densityOverThreshold(cc) {
@@ -353,20 +317,20 @@ class ClusteringManager {
 
     vizualize() {
 
-        const convertBoxToBoxVizualize = (box) => {
-            var boxVizualize = {};
-            boxVizualize.left = box.left;
-            boxVizualize.top = box.top;
-            boxVizualize.right = box.right;
-            boxVizualize.bottom = box.bottom;
-            boxVizualize.width = box.width;
-            boxVizualize.height = box.height;
-            boxVizualize.color = box.color;
-            boxVizualize.oldColor = box.color;
-            boxVizualize.id = box.id;
-            boxVizualize.type = box.type;
-            boxVizualize.neighboursIds = Array.from(box.neighbours.keys()).map(n => n.id);
-            return boxVizualize;
+        const convertBoxToBoxVizualize = (b) => {
+            var box = {};
+            box.left = b.left;
+            box.top = b.top;
+            box.right = b.right;
+            box.bottom = b.bottom;
+            box.width = b.width;
+            box.height = b.height;
+            box.color = b.color;
+            box.oldColor = b.color;
+            box.id = b.id;
+            box.type = b.type;
+            box.neighboursIds = Array.from(b.neighbours.keys()).map(n => n.id);
+            return box;
         };
 
         var boxesToVizualize = [];
@@ -381,35 +345,22 @@ class ClusteringManager {
         };
 
         vizualizer.vizualize(data);
-        // vizualizer.createSvgRepresentation({
-        //     boxes: this.boxesOk.values(),
-        //     // boxes: this.extractedBoxes ? this.extractedBoxes.values() : null,
-        //     // clusters: this.clusters ? this.clusters.values() : null,
-        //     cc: this.cc ? this.cc : null,
-        //     entityA: this.entityA ? this.entityA : null,
-        //     entityB: this.entityB ? this.entityB : null,
-        //     neighbours: this.neighbours ? this.neighbours.keys() : null,
-        //     document: {
-        //         width: this.pageDims.width,
-        //         height: this.pageDims.height
-        //     }
-        // });
     }
 }
 
-function exportBoxesToJson(boxesMap) {
+function exportBoxesToJson(boxesMap, filepath) {
     
-    function convertBox(box) {
-        var newBox = {};
-        newBox.left = box.left;
-        newBox.top = box.top;
-        newBox.right = box.right;
-        newBox.bottom = box.bottom;
-        newBox.width = box.width
-        newBox.height = box.height;
-        newBox.color = box.color;
-        newBox.type = EntityType.box;
-        return newBox;
+    const convertBox = (b) => {
+        var box = {};
+        box.left = b.left;
+        box.top = b.top;
+        box.right = b.right;
+        box.bottom = b.bottom;
+        box.width = b.width
+        box.height = b.height;
+        box.color = b.color;
+        box.type = b.type;
+        return box;
     }
 
     var boxesToExport = [];
@@ -419,26 +370,55 @@ function exportBoxesToJson(boxesMap) {
 
     var boxesJson = JSON.stringify(boxesToExport);
 
-    writeFileSync('./output/boxes.json', boxesJson, (err) => {
+    writeFileSync(filepath, boxesJson, (err) => {
         if (err) throw err;
     });
 
 }
+
+function exportClustersToJson(clustersMap, filepath) {
+    
+    const convertCluster = (c) => {
+        var cluster = {};
+        cluster.left = c.left;
+        cluster.top = c.top;
+        cluster.right = c.right;
+        cluster.bottom = c.bottom;
+        cluster.width = c.right - c.left;
+        cluster.height = c.bottom - c.top;
+        cluster.type = c.type;
+        cluster.segm = 'basic';
+        return cluster;
+    }
+
+    var clustersToExport = [];
+    for (const cluster of clustersMap.values()) {
+        clustersToExport.push(convertCluster(cluster));
+    }
+
+    var clustersJson = JSON.stringify(clustersToExport);
+
+    writeFileSync(filepath, clustersJson, (err) => {
+        if (err) throw err;
+    });
+}
+
 
 function process(extracted, argv) {
 
     var cm = new ClusteringManager(extracted);
     cm.removeContainers();
 
-    exportBoxesToJson(cm.boxesOk);
+    exportBoxesToJson(cm.boxesOk, './output/boxes.json');
 
     cm.findAllRelations();
     cm.createClusters(argv.CT);
+
+    exportClustersToJson(cm.clusters, './output/segments.json');
 
     console.log("allboxes", cm.allBoxesList.length);
     console.log("boxesOk", cm.boxesOk.size);
     console.log("boxesUnclustered", cm.boxes.size);
 
     cm.vizualize();
-
 }
