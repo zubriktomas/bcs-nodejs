@@ -9,24 +9,47 @@
 const { SelectorDirection } = require('../structures/Selector');
 const {EntityType, isBox, isCluster} = require('./EntityType');
 
+/**
+ * Constants
+ */
 const SQRT3 = Math.sqrt(3);
-const ONETHIRD = 1/3;
 
-
+/**
+ * Relation Structure to specify relation (similarity) between 2 entities
+ */
 class Relation {
+
+    /**
+     * Create relation between entities in some direction 
+     * @param {(Cluster|Box)} entityA 
+     * @param {(Cluster|Box)} entityB 
+     * @param {SelectorDirection} direction Optional (if it is not specified, it is calculated)
+     */
     constructor(entityA, entityB, direction) {
+
+        /* Basic info */
         this.entityA = entityA;
         this.entityB = entityB;
         this.direction = direction || this.calcDirection(entityA, entityB);
         this.id = this.generateId(entityA, entityB);
+
+        /* Absolute distance calculated immediately */
         this.absoluteDistance = this.calcAbsoluteDistance(entityA, entityB);
+
+        /* Similarity calculated on demand */
         this.similarity = null;
 
-        this.relativeDistance = null;
-        this.shapeSimilarity = null;
-        this.colorSimilarity = null;
+        // this.relativeDistance = null;
+        // this.shapeSimilarity = null;
+        // this.colorSimilarity = null;
     }
 
+    /**
+     * Generate ID of relation from entities IDs and direction
+     * @param {(Cluster|Box)} entityA 
+     * @param {(Cluster|Box)} entityB 
+     * @returns Relation ID
+     */
     generateId(entityA, entityB) {
         if(this.direction == SelectorDirection.right || this.direction == SelectorDirection.down) {
             return entityA.id + entityB.id;
@@ -37,16 +60,32 @@ class Relation {
         }
     }
 
+    /**
+     * Calculate projected overlap between entities
+     * @param {(Cluster|Box)} a 
+     * @param {(Cluster|Box)} b 
+     * @returns Projected overlap (x|y)
+     */
     calcProjectedOverlap(a, b) {
-        if(a.right >= b.left && a.left <= b.right) {
-            return 'x';
-        } else if (a.bottom >= b.top && a.top <= b.bottom) {
+        var condX = a.right >= b.left && a.left <= b.right;
+        var condY = a.bottom >= b.top && a.top <= b.bottom;
+        var condHaveEdgeX = a.right == b.left || a.left == b.right;
+
+        if(condX) {
+            return (condHaveEdgeX) ? 'y' : 'x';
+        } else if (condY) {
             return 'y';
         } else {
             return 'o';
         }
     }
 
+    /**
+     * Calculate direction between entities (a -> b)
+     * @param {(Cluster|Box)} a 
+     * @param {(Cluster|Box)} b 
+     * @returns SelectorDirection (down|up|right|left|other)
+     */
     calcDirection(a, b) {
         var pov = this.calcProjectedOverlap(a,b);
 
@@ -63,6 +102,12 @@ class Relation {
         }
     }
 
+    /**
+     * Calculate absolute distance between entities
+     * @param {(Cluster|Box)} entityA 
+     * @param {(Cluster|Box)} entityB 
+     * @returns Absolute distance between entities
+     */
     calcAbsoluteDistance(entityA, entityB) {
         var absoluteDistance;
         if(this.direction == SelectorDirection.right) {
@@ -79,6 +124,12 @@ class Relation {
         return absoluteDistance;
     }
 
+    /**
+     * Calculate relative distance between boxes
+     * @param {Box} boxA 
+     * @param {Box} boxB
+     * @returns Relative distance between boxes
+     */
     calcRelativeDistance(boxA, boxB) {
         var relA, relB, maxdA, maxdB;
 
@@ -88,11 +139,17 @@ class Relation {
         relA = this.absoluteDistance / maxdA;
         relB = this.absoluteDistance / maxdB;
 
-        this.relativeDistance = (relA + relB) / 2;
+        // this.relativeDistance = (relA + relB) / 2;
 
         return (relA + relB) / 2;
     }
 
+    /**
+     * Calculate shape similarity between boxes
+     * @param {Box} boxA 
+     * @param {Box} boxB
+     * @returns Shape similarity between boxes
+     */
     calcShapeSimilarity(boxA, boxB) {
         // Spolocne premenne pre oba vypocty
         var widthA, heightA, widthB, heightB;
@@ -127,10 +184,16 @@ class Relation {
         size = 1 - (Math.min(sizeA, sizeB) / Math.max(sizeA, sizeB));
 
         var res=(ratio + size) / 2;
-        this.shapeSimilarity = res;
+        // this.shapeSimilarity = res;
         return res;
     }
 
+    /**
+     * Calculate color similarity between boxes
+     * @param {Box} boxA 
+     * @param {Box} boxB
+     * @returns Color similarity between boxes
+     */
     calcColorSimilarity(boxA, boxB) {
         var colorA, colorB, rPart, gPart, bPart;
 
@@ -143,14 +206,20 @@ class Relation {
 
         var res = Math.sqrt(rPart + gPart + bPart) / SQRT3;
 
-        this.colorSimilarity = res;
+        // this.colorSimilarity = res;
         return res;
     }
 
+    /**
+     * Calculate base similarity between boxes
+     * @param {Box} boxA 
+     * @param {Box} boxB
+     * @returns Base similarity between boxes
+     */
     calcBaseSimilarity(boxA, boxB) {
         var relativeDistance = this.calcRelativeDistance(boxA, boxB);
 
-        /* Boxes are aligned next to each other  */
+        /* Boxes are aligned next to each other (share edge) */
         if(relativeDistance <= 0) {
             return 0;
         } else if (relativeDistance == 1) {
@@ -169,7 +238,9 @@ class Relation {
         }
     }
 
-    
+    /**
+     * Calculate similarity between relation entities (bb, bc, cb, cc)
+     */
     calcSimilarity() {
         var entityA = this.entityA;
         var entityB = this.entityB;
@@ -181,6 +252,12 @@ class Relation {
         }
     }
     
+    /**
+     * Calculate cluster similarity between entities (at least one entity has to be Cluster)
+     * @param {(Cluster|Box)} entityA 
+     * @param {(Cluster|Box)} entityB 
+     * @returns Cluster similarity
+     */
     calcClusterSimilarity(entityA, entityB) {
 
         if(isCluster(entityA)) {
@@ -192,6 +269,12 @@ class Relation {
         }
     }
 
+    /**
+     * Calculate relation cardinality between cluster and entity
+     * @param {Cluster} cluster
+     * @param {(Cluster|Box)} entity
+     * @returns Relation cardinality
+     */
     calcCardinality(cluster, entity) {
 
         var card = 0;
@@ -217,6 +300,12 @@ class Relation {
         return card ? card : 1;
     }
 
+    /**
+     * Calculate cumulative similarity between cluster and entity
+     * @param {Cluster} cluster
+     * @param {(Cluster|Box)} entity
+     * @returns Cumulative similarity
+     */
     calcCumulSimilarity(cluster, entity) {
         var rel, cumulSimilarity = 0;
         if(isBox(entity)) {
@@ -254,21 +343,19 @@ class Relation {
         }
         return cumulSimilarity;
     }
-    
-
-    toString() {
-        var relString = `\n Relation A: ${this.entityA.id} \n Relation B: ${this.entityB.id} \n Abs Distance: ${this.absoluteDistance}\n Direction:${this.direction} \n`;
-        relString += ` Similarity: ${this.similarity}\n`;
-        return relString;
-    }
 }
 
+/**
+ * Get object with RGB components from RGB string (aux. function)
+ * @param {string} rgbString Example: rgb(100, 100, 100)
+ * @returns RGB object with RGB components
+ */
 function getRgbFromString(rgbString) {
     var rgbArray, rgb = {}; 
 
     rgbArray = rgbString.replace(/[^\d,]/g, '').split(',');
 
-    /* RGB components normalized to interval <0,1> */
+    /* RGB components floored to integer values */
     rgb.r = Math.floor(rgbArray[0]);
     rgb.g = Math.floor(rgbArray[1]);
     rgb.b = Math.floor(rgbArray[2]);

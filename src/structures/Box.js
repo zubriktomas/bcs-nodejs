@@ -1,9 +1,26 @@
+ /**
+ * Project: Box Clustering Segmentation in Node.js
+ * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
+ * Year: 2021
+ * License:  GNU GPLv3
+ * Description: Box Structure used in clustering
+ */
+
 const { EntityType } = require("./EntityType");
 const Relation = require("./Relation");
 const { Selector, SelectorDirection } = require("./Selector");
 
+/**
+ * Box Structure used in clustering
+ */
 class Box {
+    /**
+     * Create Box from BoxInfo 
+     * @param {BoxInfo} box 
+     */
     constructor(box) {
+      
+        /* Box basic info */
       this.left = box.left;
       this.right = box.right;
       this.top = box.top;
@@ -13,12 +30,18 @@ class Box {
       this.color = box.color;
       this.id = box.id;
 
+      /* Box clustering info */
       this.type = EntityType.box;
       this.maxNeighbourDistance = 0;
-      this.neighbours = new Map(); // cannot serialize from browser context, must reinitialize in Node.js!
+      this.neighbours = new Map();
       this.cluster = null;
     }
 
+    /**
+     * Find all direct neighbours of (this) box 
+     * @param {ClusteringManager} cm 
+     * @param {SelectorDirection} direction 
+     */
     findDirectNeighbours(cm, direction) {
         var tree = cm.tree;
         var box = this;
@@ -32,7 +55,6 @@ class Box {
         const selectorHeight = 50;
     
         if(direction == SelectorDirection.right){
-    
             for (let maxX = box.right + selectorWidth; maxX < pageWidth + selectorWidth; maxX+=selectorWidth) {
     
                 selector = new Selector(box.right, box.top, maxX, box.bottom);

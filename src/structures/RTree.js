@@ -3,12 +3,21 @@
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
  * Year: 2021
  * License:  GNU GPLv3
- * Description: Functions useful for process of node extraction.
+ * Description: RTree Structure adapted for Cluster and Box Structures
  */
 
 const RBush = require('rbush');
+
+/**
+ * RTree Structure adapted for Cluster and Box Structures
+ */
 class RTree extends RBush {
 
+    /**
+     * Create BBox structure to load entity to RBush
+     * @param {(Cluster|Box)} entity 
+     * @returns RBush structure for working with tree
+     */
     toBBox(entity) {
         return {
             minX: entity.left,
@@ -19,7 +28,8 @@ class RTree extends RBush {
             type: entity.type
         };
     }
-
+    
+    /* Compare functions basically specifies the beginning of coordinate system (top,left)=(0,0) */
     compareMinX(a, b) {
         return a.left - b.left;
     }

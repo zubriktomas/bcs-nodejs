@@ -10,29 +10,46 @@ const {EntityType, isCluster, isBox} = require('../structures/EntityType');
 const Relation = require('./Relation');
 const {Selector} = require('./Selector');
 
+/**
+ * Cluster Structure that represents webpage segment
+ */
 class Cluster {
+
+    /**
+     * Create cluster from two entities (clusters, boxes)
+     * @param {(Cluster|Box)} entityA 
+     * @param {(Cluster|Box)} entityB 
+     */
     constructor(entityA, entityB) {
+
+        /* Basic info */
         this.left = null;
         this.top = null;
         this.right = null;
         this.bottom = null;
         this.id = null;
-
         this.type = EntityType.cluster;
 
+        /* Advanced info used in clustering */
         this.neighbours = new Map(); // entity => relation
         this.maxNeighbourDistance = 0;
+        this.boxes = new Map(); // BoxId => Box
 
-        this.boxes = new Map(); // boxId => box
+        /* Add boxes, recalc coordinates and update cluster ID */
         this.addBoxes(entityA);
         this.addBoxes(entityB);
-
     }
 
-    generateId() {
-        this.id = `(t: ${this.top}, l:${this.left}, b:${this.bottom}, r:${this.right})`;
+    /**
+     * Update cluster id by its current coordinates
+     */
+    updateId() {
+        this.id = `(t:${this.top},l:${this.left},b:${this.bottom},r:${this.right})`;
     }
 
+    /**
+     * Recalculate cluster coordinates given by its boxes' coordinates  
+     */
     recalcCoordinates() {
         var left, top, bottom, right;
 
@@ -41,6 +58,7 @@ class Cluster {
         right = Number.MIN_SAFE_INTEGER;
         bottom = Number.MIN_SAFE_INTEGER;
 
+        /* Get edge values from all boxes in cluster */
         for (const box of this.boxes.values()) {
             left = Math.min(left, box.left);
             top = Math.min(top, box.top);
@@ -48,12 +66,17 @@ class Cluster {
             right = Math.max(right, box.right);
         }
 
+        /* Update cluster coordinates */
         this.left = left;
         this.top = top;
         this.bottom = bottom;
         this.right = right;
     }
 
+    /**
+     * Add boxes to cluster from entity (box itself OR all boxes from other cluster)
+     * @param {*} entity 
+     */
     addBoxes(entity) {
 
         if(isCluster(entity)) {
@@ -63,13 +86,17 @@ class Cluster {
         } else {
             this.boxes.set(entity.id, entity);
         }
-
+        
         this.recalcCoordinates();
-        this.generateId();
+        this.updateId();
     }
 
+    /**
+     * Add cluster neighbour with calculated relation and similarity
+     * @param {(Cluster|Box)} entity 
+     * @returns Relation OR null (if entity is already a cluster's neighbour)
+     */
     addNeighbour(entity) {
-        /* vynecha duplikovanych susedov: A by bolo 2-krat, ale nebude */
         if(!this.neighbours.has(entity)) {
             var rel = new Relation(this, entity);
             rel.calcSimilarity();
@@ -80,6 +107,11 @@ class Cluster {
         }
     }
 
+    /**
+     * Delete cluster neighbour 
+     * @param {(Cluster|Box)} entity 
+     * @returns Relation connected with neighbour OR null (if entity is not cluster's neighbour)
+     */
     deleteNeighbour(entity) {
         if(this.neighbours.has(entity)) {
             var rel = this.neighbours.get(entity);
@@ -90,14 +122,19 @@ class Cluster {
         }
     }
 
+    /**
+     * Update cluster neighbours and relations
+     * @returns Relation delete list to update other entities from ClusteringManager context
+     */
     addNeighboursAndRelations() {
 
+        /* Initialize relation delete list */
         var relDelList = new Map();
 
-        /* cez vsetky boxy v clustri: C, D */
+        /* Loop over all cluster's boxes */
         for (const box of this.boxes.values()) {
 
-            /* cez vsetykch susedov boxov C: A,D   a D: A,C,E*/
+            /* Loop over all box's neighbours */
             for (const [bNeighbour, bRel] of box.neighbours.entries()) {
 
                 this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
@@ -205,34 +242,6 @@ class Cluster {
         return clusterString;
     }
 
-}
-
-A = '(t: 101, l:285, b:205.4375, r:453.4375, c:rgb(1, 87, 155))';
-B = '(t: 135, l:562, b:179.21875, r:1051.21875, c:rgb(27, 94, 32))';
-C = '(t: 258, l:288, b:367.4375, r:355.4375, c:rgb(245, 127, 23))';
-D = '(t: 277, l:392, b:472.21875, r:490.21875, c:rgb(183, 28, 28))';
-E = '(t: 225, l:632, b:442.21875, r:989.21875, c:rgb(74, 20, 140))';
-
-X1 = '(t: 258, l:288, b:472.21875, r:490.21875)';
-X2 = '(t: 135, l:562, b:442.21875, r:1051.21875)';
-X3 = '(t: 101, l:285, b:472.21875, r:490.21875)';
-X4 = '(t: 101, l:285, b:472.21875, r:1051.21875)';
-
-function mapper(id) {
-    if(id == A) return "A";
-    if(id == B) return "B";
-    if(id == C) return "C";
-    if(id == D) return "D";
-    if(id == E) return "E";
-    if(id == X1) return "X1";
-    if(id == X2) return "X2";
-    if(id == X3) return "X3";
-    if(id == X4) return "X4";
-    return "Xnew";
-}
-
-function neighsRelsMapToNames(entity) {
-    return Array.from(entity.neighbours.keys()).map(n => mapper(n.id));
 }
 
 module.exports = Cluster;
