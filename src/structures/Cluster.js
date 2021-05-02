@@ -199,6 +199,11 @@ class Cluster {
         // console.log("cluster Ncount", this.neighbours.size);
     }
 
+    /**
+     * Find all entities that overlap cluster (this)
+     * @param {RTree} tree 
+     * @returns List of overlapping entities
+     */
     getOverlappingEntities(tree) {
 
         /* Search entities in Rtree on coordinates specified by cluster itself */
@@ -206,6 +211,12 @@ class Cluster {
         return overlappingEntities;
     }
 
+    /**
+     * Check if cluster overlaps any other cluster
+     * @param {[]} overlapping List of overlapping entities
+     * @param {*} rel 
+     * @returns true|false
+     */
     overlapsAnyCluster(overlapping, rel) {
    
         /* Cluster Candidate is not in the tree yet, it is not needed to check its ID */
@@ -216,6 +227,12 @@ class Cluster {
         return overlappingCluster.length ? true : false;
     }
 
+    /**
+     *  Check if cluster overlaps any other box, that is not contained in cluster yet
+     * @param {*} overlapping 
+     * @param {*} rel 
+     * @returns true|false
+     */
     overlapsAnyBox(overlapping, rel) {
     
         /* Find all overlapping boxes, except those which constitute the cluster itself */
@@ -225,23 +242,21 @@ class Cluster {
         return overlappingBoxes.length ? true : false;
     }
 
+    /**
+     * Check if cluster contains entity visually
+     * @param {(Cluster|Box)} entity 
+     * @returns true|false
+     */
     containsVisually(entity) {
-        var topLeftInside, bottomRightInside;
 
-        topLeftInside = this.top <= entity.top && this.left <= entity.left;
-        bottomRightInside = this.bottom >= entity.bottom && this.right >= entity.right;
+        /* Check if top left corner is inside cluster */
+        var topLeftInside = this.top <= entity.top && this.left <= entity.left;
+
+        /* Check if bottom right corner is inside cluster */
+        var bottomRightInside = this.bottom >= entity.bottom && this.right >= entity.right;
 
         return topLeftInside && bottomRightInside;
     }
-
-    toString() {
-        var clusterString = `\n Cluster: ${this.id} \n |Neighbours|: ${this.neighbours.size}\n`;
-        for (const n of this.neighbours.keys()) {
-            clusterString += (n.id+"\n");
-        }
-        return clusterString;
-    }
-
 }
 
 module.exports = Cluster;

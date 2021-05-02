@@ -3,19 +3,16 @@
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
  * Year: 2021
  * License:  GNU GPLv3
- * Description: Main function program block
+ * Description: Main of Box Clustering Segmentation
  */
 
-// Import box vizualizer
-const vizualizer = require('./modules/box-vizualizer');
-
-// Import clustering module
+/* Import modules */
 const clustering = require('./modules/clustering');
 
-// Import playwright
+/* Import chromium from playwright */
 const { chromium } = require('playwright');
 
-
+/* Parse input arguments */
 const argv = require('yargs/yargs')(process.argv.slice(2))
   .usage('Usage: $0 [options] <url>')
   .example('$0 -W 1200 -H 800 http://cssbox.sf.net', '')
@@ -33,11 +30,13 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .help('h').alias('h', 'help')
   .argv;
 
+/* If url is not specified - close program immediately */
 if (argv._.length !== 1) {
   process.stderr.write('<url> is required. Use -h for help.\n');
   process.exit(1);
 }
 
+/* Get all args to local variables */
 const url = argv._[0];
 const viewportWidth = argv.W;
 const viewportHeight = argv.H;
@@ -45,21 +44,22 @@ const clusteringThreshold = argv.CT;
 const debug = argv.D;
 const saveScreenshot = argv.S;
 
-// Main process
+/* BCS main process */
 (async () => {
 
-  // Create browser instance
+  /* Create browser instance */
   const browser = await chromium.launch();
 
-  // Open new page in browser
+  /* Open new page in browser */
   const page = await browser.newPage();
 
+  /* Set viewport size specified by args */
   page.setViewportSize({
     width: viewportWidth,
     height: viewportHeight
   });
 
-  // Load webpage for segmentation process given by input argument
+  /* Load webpage by url */
   try {
     await page.goto(url);
     // await page.goto('http://cssbox.sf.net');
@@ -67,11 +67,12 @@ const saveScreenshot = argv.S;
     // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
     // await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
     // await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
-  } catch (error) {
-    console.log(error.message);
+  } catch (e) {
+    console.log(e.message);
     process.exit(1);
   }
 
+  /* Allow logging of messages from automated Chromium browser */
   if (debug) {
     page
       .on('console', message => console.log(`${message.type().substr(0, 3).toUpperCase()} ${message.text()}`))
@@ -79,12 +80,12 @@ const saveScreenshot = argv.S;
       .on('requestfailed', request => console.log(`${request.failure().errorText} ${request.url()}`))
   }
 
-  // Add JavaScript files into webpage for execution and processing in browser context
+  /* Add JavaScript files into webpage for execution of extraction process in browser context */
   await page.addScriptTag({ path: './src/structures/BoxInfo.js' });
   await page.addScriptTag({ path: './src/modules/box-extraction.js' });
   await page.addScriptTag({ url: 'https://unpkg.com/fast-average-color/dist/index.min.js' });
 
-  // Box Extraction Process - JavaScript code evaluated in web browser context
+  /* Box Extraction Process - JavaScript code evaluated in web browser context */
   const extracted = await page.evaluate(async () => {
 
     const t0 = performance.now();
@@ -92,8 +93,7 @@ const saveScreenshot = argv.S;
     const t1 = performance.now();
 
     return {
-      boxes: boxes.boxes,
-      boxesList: boxes.boxesList,
+      boxesList: boxes,
       document: {
         height: document.body.scrollHeight,
         width: document.body.scrollWidth
@@ -113,10 +113,7 @@ const saveScreenshot = argv.S;
   // console.log("Extraction time:", extracted.time, "ms");
 
   /* Start Clustering Process */
-  clustering.process(extracted, clusteringThreshold);
-
-  /* Visualize box tree representation of webpage and take screenshot */
-  // vizualizer.createSvgRepresentation(extracted);
+  clustering.process(extracted, argv);
 
   /* Success message */
   console.log("BCS has finished successfully!");

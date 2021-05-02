@@ -151,10 +151,10 @@ class Relation {
      * @returns Shape similarity between boxes
      */
     calcShapeSimilarity(boxA, boxB) {
-        // Spolocne premenne pre oba vypocty
+        /* Variables for calculation ratio and size similarity */
         var widthA, heightA, widthB, heightB;
 
-        // Premenne pre vypocet ratio
+        /* Variables for calculation ratio similarity */
         var ratioA,  ratioB,  ratio, maxRatio, minRatio;
 
         widthA = boxA.width;
@@ -175,7 +175,7 @@ class Relation {
         // ratioB = Math.abs(Math.log(widthB) - Math.log(heightB));
         // ratio = Math.abs(ratioA - ratioB);
 
-        // Premenne pre vypocet size
+        /* Variables for calculation size similarity */
         var sizeA, sizeB, size;
 
         sizeA = widthA * heightA;
@@ -183,9 +183,10 @@ class Relation {
 
         size = 1 - (Math.min(sizeA, sizeB) / Math.max(sizeA, sizeB));
 
-        var res=(ratio + size) / 2;
-        // this.shapeSimilarity = res;
-        return res;
+        /* Shape similarity as average of ratio and size */
+        var shapeSim = (ratio + size) / 2;
+        // this.shapeSimilarity = shapeSim;
+        return shapeSim;
     }
 
     /**
@@ -204,10 +205,10 @@ class Relation {
         gPart = Math.pow((colorA.g - colorB.g) / 255, 2);
         bPart = Math.pow((colorA.b - colorB.b) / 255, 2);
 
-        var res = Math.sqrt(rPart + gPart + bPart) / SQRT3;
+        var colorSim = Math.sqrt(rPart + gPart + bPart) / SQRT3;
 
-        // this.colorSimilarity = res;
-        return res;
+        // this.colorSimilarity = colorSim;
+        return colorSim;
     }
 
     /**

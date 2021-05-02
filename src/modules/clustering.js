@@ -1,9 +1,9 @@
 /**
- * Project: Box ClusteringManager Segmentation in Node.js
+ * Project: Box Clustering Segmentation in Node.js
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
  * Year: 2021
  * License:  GNU GPLv3
- * Description: Main function program block
+ * Description: Main clustering process (segmentation logic) of method BCS 
  */
 
 const { writeFileSync } = require('fs');
@@ -402,7 +402,7 @@ function exportBoxesToJson(boxesMap) {
 
 }
 
-function process(extracted, clusteringThreshold) {
+function process(extracted, argv) {
 
     var cm = new ClusteringManager(extracted);
     cm.removeContainers();
@@ -410,7 +410,7 @@ function process(extracted, clusteringThreshold) {
     exportBoxesToJson(cm.boxesOk);
 
     cm.findAllRelations();
-    cm.createClusters(clusteringThreshold);
+    cm.createClusters(argv.CT);
 
     console.log("allboxes", cm.allBoxesList.length);
     console.log("boxesOk", cm.boxesOk.size);

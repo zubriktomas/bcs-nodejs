@@ -13,12 +13,14 @@
 */
 async function extractBoxes(node) {
 
-  var boxes = {};
-
   /* List of extracted boxes */
-  var boxesList = [];
+  var boxes = [];
+
+  /* Call recursive extract, that access local (but "global") boxes list */
   await extract(node);
-  return {boxes:boxes, boxesList:boxesList};
+
+  /* Return extracted boxes */
+  return boxes;
 
   /**
    * Local recursive function for boxes extraction
@@ -29,17 +31,11 @@ async function extractBoxes(node) {
 
     if(isTextNode(node))
     {
-      var textBoxes = getTextBoxes(node);
-      textBoxes.forEach(textBox => {
-        boxes[textBox.id] = textBox;
-      });
-      boxesList = boxesList.concat(textBoxes);
+      boxes = boxes.concat(getTextBoxes(node));
     }
     else if(isImageNode(node))
     {
-      var imageBox = await getImageBox(node);
-      boxes[imageBox.id] = imageBox;
-      boxesList.push(imageBox);
+      boxes.push(await getImageBox(node));
     }
     else {
       /* Skip excluded nodes */
@@ -55,21 +51,11 @@ async function extractBoxes(node) {
         if(smallest == null) {
           return;
         } else if(isTextNode(smallest)) {
-          var textBoxes = getTextBoxes(smallest);
-          textBoxes.forEach(textBox => {
-            boxes[textBox.id] = textBox;
-          });
-          boxesList = boxesList.concat(textBoxes);
-
+          boxes = boxes.concat(getTextBoxes(smallest));
         } else if(isImageNode(smallest)) {
-          var imageBox = await getImageBox(smallest);
-          boxes[imageBox.id] = imageBox;
-          boxesList.push(imageBox);
-
+          boxes.push(await getImageBox(smallest));
         } else if(isElementNode(smallest)) {
-          var elementBox = await getElementBox(smallest);
-          boxes[elementBox.id] = elementBox;
-          boxesList.push(elementBox);
+          boxes.push(await getElementBox(smallest));
         }
 
       } else {
