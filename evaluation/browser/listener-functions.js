@@ -273,7 +273,7 @@ function convertSegmentToDiv(segment, segmentationImplType) {
         case Segmentation.reference: color = "rgba(128, 0, 0, 0.5)"; break;
         case Segmentation.basic: color = "rgba(0, 128, 0, 0.5)"; break;
         case Segmentation.extended: color = "rgba(0, 0, 128, 0.5)"; break;
-        default: color = rgba(0, 0, 0, 0.5); break;
+        default: color = "rgba(0, 0, 0, 0.5)"; break;
     }
 
     /* Create segment as with representative color set by segm. type */

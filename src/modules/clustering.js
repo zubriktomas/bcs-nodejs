@@ -353,24 +353,47 @@ class ClusteringManager {
 
     vizualize() {
 
-        vizualizer.createSvgRepresentation({
-            boxes: this.boxesOk.values(),
-            // boxes: this.extractedBoxes ? this.extractedBoxes.values() : null,
-            // clusters: this.clusters ? this.clusters.values() : null,
-            cc: this.cc ? this.cc : null,
-            entityA: this.entityA ? this.entityA : null,
-            entityB: this.entityB ? this.entityB : null,
-            neighbours: this.neighbours ? this.neighbours.keys() : null,
-            document: {
-                width: this.pageDims.width,
-                height: this.pageDims.height
-            }
-        });
-    }
+        const convertBoxToBoxVizualize = (box) => {
+            var boxVizualize = {};
+            boxVizualize.left = box.left;
+            boxVizualize.top = box.top;
+            boxVizualize.right = box.right;
+            boxVizualize.bottom = box.bottom;
+            boxVizualize.width = box.width;
+            boxVizualize.height = box.height;
+            boxVizualize.color = box.color;
+            boxVizualize.oldColor = box.color;
+            boxVizualize.id = box.id;
+            boxVizualize.type = box.type;
+            boxVizualize.neighboursIds = Array.from(box.neighbours.keys()).map(n => n.id);
+            return boxVizualize;
+        };
 
-    toString() {
-        var cmString = `\n |B|: ${this.boxes.size}\n |C|: ${this.clusters.size}\n |R|: ${this.relations.size}\n`;
-        return cmString;
+        var boxesToVizualize = [];
+        for (const box of this.boxesOk.values()) {
+            boxesToVizualize.push(convertBoxToBoxVizualize(box));
+        }
+
+        var data = {
+            boxes: boxesToVizualize,
+            width: this.pageDims.width,
+            height: this.pageDims.height
+        };
+
+        vizualizer.vizualize(data);
+        // vizualizer.createSvgRepresentation({
+        //     boxes: this.boxesOk.values(),
+        //     // boxes: this.extractedBoxes ? this.extractedBoxes.values() : null,
+        //     // clusters: this.clusters ? this.clusters.values() : null,
+        //     cc: this.cc ? this.cc : null,
+        //     entityA: this.entityA ? this.entityA : null,
+        //     entityB: this.entityB ? this.entityB : null,
+        //     neighbours: this.neighbours ? this.neighbours.keys() : null,
+        //     document: {
+        //         width: this.pageDims.width,
+        //         height: this.pageDims.height
+        //     }
+        // });
     }
 }
 
