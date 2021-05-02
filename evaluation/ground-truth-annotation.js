@@ -108,6 +108,7 @@ const startAnnotator = async () => {
         /* If ground truth segmentation was loaded, calculate metrics and create results table immediately */
         if (data.segmentations.gt.length) {
             createMetricsResultsTable();
+            showResultsModal();
         }
 
         /* Set body background image as webpage screenshot */

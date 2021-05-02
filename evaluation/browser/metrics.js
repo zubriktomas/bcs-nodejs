@@ -79,32 +79,35 @@ function getAllSegmentsContainingBox(segm, box) {
  */
 function calcPrecision(segm1, segm2) {
 
-    var boxesInSegment = getAllBoxesThatAreInSomeSegment(segm1);
-
-    var sumOuter = 0.0, sumInner = 0.0;
+    var segm1SegmentsBox, segm1SegmentsBox_, segm1IntersectionSize,
+        segm2SegmentsBox, segm2SegmentsBox_, segm2IntersectionSize,
+        sumOuter = 0.0, sumInner = 0.0,
+        boxesInSegment, boxesInSameSegmentAsBox, result;
+    
+    boxesInSegment = getAllBoxesThatAreInSomeSegment(segm1);
 
     for (const box of boxesInSegment) {
 
-        var boxesInSameSegmentAsBox = getAllBoxesInSegmentThatHasBox(segm1, box);
+        boxesInSameSegmentAsBox = getAllBoxesInSegmentThatHasBox(segm1, box);
 
         for (const box_ of boxesInSameSegmentAsBox) {
-            var segm1SegmentsBox = getAllSegmentsContainingBox(segm1, box);
-            var segm1SegmentsBox_ = getAllSegmentsContainingBox(segm1, box_);
+            segm1SegmentsBox = getAllSegmentsContainingBox(segm1, box);
+            segm1SegmentsBox_ = getAllSegmentsContainingBox(segm1, box_);
 
-            var segm2SegmentsBox = getAllSegmentsContainingBox(segm2, box);
-            var segm2SegmentsBox_ = getAllSegmentsContainingBox(segm2, box_);
+            segm2SegmentsBox = getAllSegmentsContainingBox(segm2, box);
+            segm2SegmentsBox_ = getAllSegmentsContainingBox(segm2, box_);
 
-            var segm1IntersectionSize = intersection(segm1SegmentsBox, segm1SegmentsBox_).size;
-            var segm2IntersectionSize = intersection(segm2SegmentsBox, segm2SegmentsBox_).size;
+            segm1IntersectionSize = intersection(segm1SegmentsBox, segm1SegmentsBox_).size;
+            segm2IntersectionSize = intersection(segm2SegmentsBox, segm2SegmentsBox_).size;
 
-            sumInner += (Math.min(segm1IntersectionSize, segm2IntersectionSize) / segm1IntersectionSize);
+            sumInner += segm1IntersectionSize ? (Math.min(segm1IntersectionSize, segm2IntersectionSize) / segm1IntersectionSize) : 0;
         }
 
-        sumOuter += (sumInner / boxesInSameSegmentAsBox.size);
+        sumOuter += boxesInSameSegmentAsBox.size ? (sumInner / boxesInSameSegmentAsBox.size) : 0;
         sumInner = 0.0;
     }
 
-    var result = sumOuter / boxesInSegment.size;
+    result = boxesInSegment.size ? sumOuter / boxesInSegment.size : 0;
 
     return result;
 }
@@ -194,12 +197,12 @@ function createMetricsResultsTable() {
     const createTableRow = (metricName, values) => {
         let resultsTableBodyRow = document.createElement('tr');
 
-        var maxFscore; 
-        if(metricName == Metrics.fscore) {
+        var maxFscore;
+        if (metricName == Metrics.fscore) {
             maxFscore = Math.max(values.reference, values.basic);
             resultsTableBodyRow.className = "fscore";
         }
-        
+
         let metric = document.createElement('td');
         metric.innerText = metricName;
 
@@ -208,7 +211,7 @@ function createMetricsResultsTable() {
 
         let reference = document.createElement('td');
         reference.innerText = values.reference;
-        reference.className = metricName == Metrics.fscore &&  maxFscore == values.reference ? "bold" : "";
+        reference.className = metricName == Metrics.fscore && maxFscore == values.reference ? "bold" : "";
 
         let basic = document.createElement('td');
         basic.innerText = values.basic;
@@ -239,7 +242,8 @@ function createMetricsResultsTable() {
         resultsTable.append(resultsTableHead);
 
         let resultsTableBody = document.createElement('tbody');
-        resultsTableBody.append(createTableRow("no. segments", nosegments));
+        var noGTSegments = document.querySelectorAll('.resize-drag').length;
+        resultsTableBody.append(createTableRow(`no. segments (GT: ${noGTSegments})`, nosegments));
         resultsTableBody.append(createTableRow(Metrics.fscore, fscore));
         resultsTableBody.append(createTableRow(Metrics.precision, precision));
         resultsTableBody.append(createTableRow(Metrics.recall, recall));
