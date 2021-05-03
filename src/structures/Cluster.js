@@ -136,10 +136,14 @@ class Cluster {
 
             /* Loop over all existing clusters to find out if any box from candidate cluster is direct neighbour of some cluster */
             for (const cluster of allClusters.values()) {
-                if(cluster.deleteNeighbour(box)) {
-                    /** NEMOZEM LEN TAK PRIDAT NEIGHBOURA!!!!! */
-                    cluster.addNeighbour(this);
-                }
+
+                var rel = cluster.deleteNeighbour(box);
+                if(rel) cluster.addNeighbour(this);
+                if(rel) relDelList.set(rel.id, rel);
+
+                rel = cluster.deleteNeighbour(box.cluster);
+                if(rel) cluster.addNeighbour(this);
+                if(rel) relDelList.set(rel.id, rel);
             }
 
             for (const boxRest of allBoxes.values()) {
@@ -154,34 +158,35 @@ class Cluster {
 
                 this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
 
-                if(bNeighbour.cluster) {
-                    var res = bNeighbour.cluster.deleteNeighbour(box);
+                // if(bNeighbour.cluster) {
+                //     var res = bNeighbour.cluster.deleteNeighbour(box);
 
-                    if(box.cluster)
-                        var res2 = bNeighbour.cluster.deleteNeighbour(box.cluster);
+                //     if(box.cluster)
+                //         var res2 = bNeighbour.cluster.deleteNeighbour(box.cluster);
 
-                    if(res) {
-                        // console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.id)} deleted!`);
-                        relDelList.set(res.id, res);
-                    }
+                //     if(res) {
+                //         // console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.id)} deleted!`);
+                //         relDelList.set(res.id, res);
+                //     }
 
-                    if(res2) {
-                        // console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.cluster.id)} deleted!`);
-                        relDelList.set(res2.id, res2);
-                    }
+                //     if(res2) {
+                //         // console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.cluster.id)} deleted!`);
+                //         relDelList.set(res2.id, res2);
+                //     }
 
-                    // bNeighbour.cluster.maxNeighbourDistance = Math.max(bNeighbour.cluster.maxNeighbourDistance, bRel.absoluteDistance);
+                //     // bNeighbour.cluster.maxNeighbourDistance = Math.max(bNeighbour.cluster.maxNeighbourDistance, bRel.absoluteDistance);
 
-                } else {
-                    relDelList.set(bRel.id, bRel);
-                }
+                // } else {
+                //     relDelList.set(bRel.id, bRel);
+                // }
 
                 relDelList.set(bRel.id, bRel);
 
                 /* vynecha z C: D, z D: C */
+                /* ak su si navzajom priamymi susedmi, boxy vo vytvaranom zhluku */
                 if(this.boxes.has(bNeighbour.id)) {
 
-                    relDelList.set(bRel.id, bRel);
+                    // relDelList.set(bRel.id, bRel);
                     continue;
                 }
 

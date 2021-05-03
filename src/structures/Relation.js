@@ -285,23 +285,43 @@ class Relation {
 
         var card = 0;
 
-        if(isCluster(entity)) {
+        if(isBox(entity)) {
+            for (const cBox of cluster.boxes.values()) {
+                if(direction == "BACK" && entity.neighbours.has(cBox)) {
+                    card++;
+                } else if (cBox.neighbours.has(entity)){
+                    card++;
+                }
+            }
+        } else {
             for (const cBox of cluster.boxes.values()) {
                 for (const eBox of entity.boxes.values()) {
                     /* Add cardinality only if relation is two directional */
                     if(cBox.neighbours.has(eBox)) {
                     // if(cBox.neighbours.has(eBox) && eBox.neighbours.has(cBox)) {
-                        card+=1;
+                        card++;
                     }
                 }
             }
-        } else {
-            if(!entity.cluster && cluster.neighbours.has(entity)) return 1;
-
-            for (const cBox of cluster.boxes.values()) {
-                card = cBox.neighbours.has(entity) ? card+1 : card;
-            }
         }
+
+        // if(isCluster(entity)) {
+        //     for (const cBox of cluster.boxes.values()) {
+        //         for (const eBox of entity.boxes.values()) {
+        //             /* Add cardinality only if relation is two directional */
+        //             if(cBox.neighbours.has(eBox)) {
+        //             // if(cBox.neighbours.has(eBox) && eBox.neighbours.has(cBox)) {
+        //                 card+=1;
+        //             }
+        //         }
+        //     }
+        // } else {
+        //     if(!entity.cluster && cluster.neighbours.has(entity)) return 1;
+
+        //     for (const cBox of cluster.boxes.values()) {
+        //         card = cBox.neighbours.has(entity) ? card+1 : card;
+        //     }
+        // }
         
         return card ? card : 1;
     }
