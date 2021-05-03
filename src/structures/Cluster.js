@@ -126,13 +126,28 @@ class Cluster {
      * Update cluster neighbours and relations
      * @returns Relation delete list to update other entities from ClusteringManager context
      */
-    addNeighboursAndRelations() {
+    addNeighboursAndRelations(allClusters, allBoxes) {
 
         /* Initialize relation delete list */
         var relDelList = new Map();
 
         /* Loop over all cluster's boxes */
         for (const box of this.boxes.values()) {
+
+            /* Loop over all existing clusters to find out if any box from candidate cluster is direct neighbour of some cluster */
+            for (const cluster of allClusters.values()) {
+                if(cluster.deleteNeighbour(box)) {
+                    /** NEMOZEM LEN TAK PRIDAT NEIGHBOURA!!!!! */
+                    cluster.addNeighbour(this);
+                }
+            }
+
+            for (const boxRest of allBoxes.values()) {
+                var rel = boxRest.neighbours.get(box);
+                if(rel) {
+                    relDelList.set(rel.id, rel);
+                }
+            }
 
             /* Loop over all box's neighbours */
             for (const [bNeighbour, bRel] of box.neighbours.entries()) {
@@ -155,7 +170,7 @@ class Cluster {
                         relDelList.set(res2.id, res2);
                     }
 
-                    bNeighbour.cluster.maxNeighbourDistance = Math.max(bNeighbour.cluster.maxNeighbourDistance, bRel.absoluteDistance);
+                    // bNeighbour.cluster.maxNeighbourDistance = Math.max(bNeighbour.cluster.maxNeighbourDistance, bRel.absoluteDistance);
 
                 } else {
                     relDelList.set(bRel.id, bRel);
@@ -166,7 +181,7 @@ class Cluster {
                 /* vynecha z C: D, z D: C */
                 if(this.boxes.has(bNeighbour.id)) {
 
-                    // relDelList.set(bRel.id, bRel);
+                    relDelList.set(bRel.id, bRel);
                     continue;
                 }
 

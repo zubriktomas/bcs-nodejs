@@ -27,6 +27,8 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .default('S', true).describe('S', 'Save screenshot of rendered page')
   .alias('D','debug').boolean('D')
   .default('D', false).describe('D', 'Allow errors printing from browser')
+  .alias('VI','vizualize-iteration').nargs('VI', 1)
+  .default('VI', 0).number('VI').describe('VI', 'Vizualize iteration step i')
   .help('h').alias('h', 'help')
   .argv;
 

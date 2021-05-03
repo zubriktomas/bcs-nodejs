@@ -262,10 +262,15 @@ class Relation {
     calcClusterSimilarity(entityA, entityB) {
 
         if(isCluster(entityA)) {
+            if(entityA.id === '(t:218.890625,l:29.890625,b:265.890625,r:92)') {
+                console.log(`eA: ${entityA.id}, eB: ${entityB.id}`);
+                console.log(`${this.calcCumulSimilarity(entityA, entityB)} / ${this.calcCardinality(entityA, entityB)}`);
+            }
             return (this.calcCumulSimilarity(entityA, entityB) / this.calcCardinality(entityA, entityB));
         }
 
         if(isCluster(entityB)) {
+            // console.log(`${this.calcCumulSimilarity(entityB, entityA)} / ${this.calcCardinality(entityB, entityA)}`);
             return (this.calcCumulSimilarity(entityB, entityA) / this.calcCardinality(entityB, entityA));
         }
     }
@@ -276,7 +281,7 @@ class Relation {
      * @param {(Cluster|Box)} entity
      * @returns Relation cardinality
      */
-    calcCardinality(cluster, entity) {
+    calcCardinality(cluster, entity, direction) {
 
         var card = 0;
 
@@ -284,8 +289,8 @@ class Relation {
             for (const cBox of cluster.boxes.values()) {
                 for (const eBox of entity.boxes.values()) {
                     /* Add cardinality only if relation is two directional */
-                    // if(cBox.neighbours.has(eBox)) {
-                    if(cBox.neighbours.has(eBox) && eBox.neighbours.has(cBox)) {
+                    if(cBox.neighbours.has(eBox)) {
+                    // if(cBox.neighbours.has(eBox) && eBox.neighbours.has(cBox)) {
                         card+=1;
                     }
                 }
@@ -307,38 +312,43 @@ class Relation {
      * @param {(Cluster|Box)} entity
      * @returns Cumulative similarity
      */
-    calcCumulSimilarity(cluster, entity) {
+    calcCumulSimilarity(cluster, entity, direction) {
         var rel, cumulSimilarity = 0;
         if(isBox(entity)) {
             
-            
             for (const cBox of cluster.boxes.values()) {
-                rel = cBox.neighbours.get(entity) || entity.neighbours.get(cBox);
-                if(rel) {
-                    var newRel = new Relation(cluster, entity.cluster ? entity.cluster : entity);
-
-                    var dist = newRel.absoluteDistance;
-                    var forward = dist/cluster.maxNeighbourDistance;
-                    var backward = dist/(entity.cluster ? entity.cluster.maxNeighbourDistance : entity.maxNeighbourDistance);
-                    
-                    newRel.relativeDistance = (forward+backward)/2;
-                    newRel.shapeSimilarity = rel.shapeSimilarity;
-                    newRel.colorSimilarity = rel.colorSimilarity;
-
-                    var sim = (newRel.relativeDistance + rel.shapeSimilarity + rel.colorSimilarity)/3;
-
-                    newRel.similarity = sim;
-
-                    // this.relativeDistance += rel.relativeDistance;
-                    // this.newSimilarity = -1;
-                    this.newRel = newRel;
-                    cumulSimilarity += (entity.cluster ? sim : rel.similarity);
+                if(direction == "BACK") {
+                    rel = entity.neighbours.get(cBox);
+                } else {
+                    rel = cBox.neighbours.get(entity);
                 }
-                // cumulSimilarity += rel ? rel.similarity : 0;
+                // rel = cBox.neighbours.get(entity) || entity.neighbours.get(cBox);
+                // if(rel) {
+                //     var newRel = new Relation(cluster, entity.cluster ? entity.cluster : entity);
+
+                //     var dist = newRel.absoluteDistance;
+                //     var forward = dist/cluster.maxNeighbourDistance;
+                //     var backward = dist/(entity.cluster ? entity.cluster.maxNeighbourDistance : entity.maxNeighbourDistance);
+                    
+                //     newRel.relativeDistance = (forward+backward)/2;
+                //     newRel.shapeSimilarity = rel.shapeSimilarity;
+                //     newRel.colorSimilarity = rel.colorSimilarity;
+
+                //     var sim = (newRel.relativeDistance + rel.shapeSimilarity + rel.colorSimilarity)/3;
+
+                //     newRel.similarity = sim;
+
+                //     // this.relativeDistance += rel.relativeDistance;
+                //     // this.newSimilarity = -1;
+                //     this.newRel = newRel;
+                //     // cumulSimilarity += (entity.cluster ? sim : rel.similarity);
+                //     cumulSimilarity += sim;
+                // }
+                cumulSimilarity += rel ? rel.similarity : 0;
             }
         } else {
             for (const cBox of cluster.boxes.values()) {
-                var sim = (this.calcCumulSimilarity(entity, cBox) / this.calcCardinality(entity, cBox));
+                var sim = (this.calcCumulSimilarity(entity, cBox, "BACK") / this.calcCardinality(entity, cBox, "BACK"));
                 cumulSimilarity += sim;
             }
         }
@@ -365,30 +375,6 @@ function getRgbFromString(rgbString) {
         rgb.a = parseInt(rgbArray[3]);
     }
     return rgb;
-}
-
-A = '(t: 101, l:285, b:205.4375, r:453.4375, c:rgb(1, 87, 155))';
-B = '(t: 135, l:562, b:179.21875, r:1051.21875, c:rgb(27, 94, 32))';
-C = '(t: 258, l:288, b:367.4375, r:355.4375, c:rgb(245, 127, 23))';
-D = '(t: 277, l:392, b:472.21875, r:490.21875, c:rgb(183, 28, 28))';
-E = '(t: 225, l:632, b:442.21875, r:989.21875, c:rgb(74, 20, 140))';
-
-X1 = '(t: 258, l:288, b:472.21875, r:490.21875)';
-X2 = '(t: 135, l:562, b:442.21875, r:1051.21875)';
-X3 = '(t: 101, l:285, b:472.21875, r:490.21875)';
-X4 = '(t: 101, l:285, b:472.21875, r:1051.21875)';
-
-function mapper(id) {
-    if(id == A) return "A";
-    if(id == B) return "B";
-    if(id == C) return "C";
-    if(id == D) return "D";
-    if(id == E) return "E";
-    if(id == X1) return "X1";
-    if(id == X2) return "X2";
-    if(id == X3) return "X3";
-    if(id == X4) return "X4";
-    return "Xnew";
 }
 
 module.exports = Relation;

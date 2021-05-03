@@ -18,10 +18,15 @@ module.exports.process = process;
 
 const iterationExceeded = (i) => {return i > 50};
 const isBetweenClusters = (rel) => {return isCluster(rel.entityA) && isCluster(rel.entityB);};
+const assert = (condition, message) => { 
+    if(!condition) throw Error('Assert failed: ' + (message || ''))
+};
 
 class ClusteringManager {
 
-    constructor(extracted) {
+    constructor(extracted, argv) {
+
+        this.argv = argv;
 
         /* Won't be changed */
         this.pageDims = {
@@ -58,7 +63,6 @@ class ClusteringManager {
 
     createRTree(boxesList) {
         const tree = new RTree();
-        // tree.load(Array.from(this.boxes.values()));
         tree.load(boxesList);
         return tree;
     }
@@ -66,7 +70,7 @@ class ClusteringManager {
     removeContainers() {
         var selector, overlapping;
     
-        /* Remove bigger containers that contain more than 2 boxes (probably background images) */
+        /* Remove bigger containers that contain more than 2 boxes (probably background images) | elements with absolute position */
         for (let box of this.boxes.values()) {
             selector = Selector.fromEntity(box);
             overlapping = this.tree.search(selector.narrowBy1Px());
@@ -115,21 +119,6 @@ class ClusteringManager {
         // console.log("CLUSTERING THRESHOLD = REL SIM/REL COUNT = ", this.clusteringThreshold);
     }
 
-    enhanceEveryBox() {
-
-        // for (const boxEntry of this.boxes.entries()) {
-        //     this.boxes.set(boxEntry.id, new Box)
-        // }
-
-        // for (let box of this.boxes.values()) {
-        //     box.findDirectNeighbours = findDirectNeighbours;
-        //     box.hasDirectNeighbour = function (otherBox) {
-        //         return box.neighbours.has(otherBox.id);
-        //     };
-        //     box.neighbours = new Map();
-        // }
-    }
-
     getBestRelation() {
         var bestRel, sim = Number.MAX_SAFE_INTEGER;
 
@@ -142,26 +131,6 @@ class ClusteringManager {
         return bestRel;
     }
 
-    assert(condition, message) {
-        if (!condition){
-        //   throw Error('Error: ' + (message || ''));
-            console.log('Test failed: ' + (message || ''));
-        }
-      }
-
-    getRelEntitiesTypes(rel){
-        var out = "";
-        out += isCluster(rel.entityA) ? "C " : "B ";
-        out += isCluster(rel.entityB) ? "C" : "B";
-        return out;
-    }
-
-    assignForVizualization(cc, rel) {
-        this.cc = cc;
-        this.entityA = rel.entityA;
-        this.entityB = rel.entityB;
-    }
-
     createClusters(clusteringThreshold) {
         var rel;
         var i=0;
@@ -170,18 +139,39 @@ class ClusteringManager {
         while(this.relations.size > 0) {
             i++;
             rel = this.getBestRelation();
-            // console.log(rel.similarity);
+
+            if(i == this.argv.VI) {
+                // console.log("next rel chosen", rel);
+                var data = {
+                    boxes: Array.from(this.boxesOk.values()).map(box => this.convertEntityForVizualizer(box)),
+                    clusters: Array.from(this.clusters.values()).map(cluster => this.convertEntityForVizualizer(cluster)),
+                    relations: Array.from(this.relations.keys()),
+                    bestRel: {relationId: rel.id, entityAId: rel.entityA.id, entityBId: rel.entityB.id, similarity: rel.similarity},
+                    width: this.pageDims.width,
+                    height: this.pageDims.height
+                };
+        
+                vizualizer.vizualize(data);
+                break;
+            }
+
+            if(!rel) {
+                console.log("No relations left!");
+                console.log("Number of segments:", this.clusters.size);
+                break;
+            }
+
             this.relations.delete(rel.id);
-            // continue;
 
             if(rel.similarity > clusteringThreshold) {
                 console.log(`Similarity > ${clusteringThreshold}`, rel.similarity);
                 console.log("Number of segments:", this.clusters.size);
                 break;
             } 
-            // else {
-            //     console.log(rel.similarity);
-            // }
+
+            
+
+
 
             var cc = new Cluster(rel.entityA, rel.entityB);
 
@@ -300,14 +290,14 @@ class ClusteringManager {
 
     recalcNeighboursAndRelations(cc) {
 
-        var relDelList = cc.addNeighboursAndRelations();
+        var relDelList = cc.addNeighboursAndRelations(this.clusters, this.boxes);
 
         for (const [ccNeighbour, ccRel] of cc.neighbours.entries()) {
             this.relations.set(ccRel.id, ccRel);
 
-            if(isCluster(ccNeighbour)) {
-                ccNeighbour.neighbours.set(cc, ccRel);
-            }
+            // if(isCluster(ccNeighbour)) {
+            //     ccNeighbour.neighbours.set(cc, ccRel);
+            // }
         }
 
         for (const relToDel of relDelList.keys()) {
@@ -315,31 +305,41 @@ class ClusteringManager {
         }
     }
 
-    vizualize() {
+    convertEntityForVizualizer(entity) {
+        var vizEntity = {};
+        vizEntity.left = entity.left;
+        vizEntity.top = entity.top;
+        vizEntity.right = entity.right;
+        vizEntity.bottom = entity.bottom;
+        /* If width, height and color are null - entity is cluster */
+        vizEntity.width = entity.width || entity.right - entity.left;
+        vizEntity.height = entity.height || entity.bottom - entity.top;
+        vizEntity.color = entity.color || "#29e";
+        vizEntity.oldColor = entity.color || "#29e";
+        vizEntity.id = entity.id;
+        vizEntity.type = entity.type;
+        vizEntity.neighboursIds = Array.from(entity.neighbours.keys()).map(n => n.id);
 
-        const convertBoxToBoxVizualize = (b) => {
-            var box = {};
-            box.left = b.left;
-            box.top = b.top;
-            box.right = b.right;
-            box.bottom = b.bottom;
-            box.width = b.width;
-            box.height = b.height;
-            box.color = b.color;
-            box.oldColor = b.color;
-            box.id = b.id;
-            box.type = b.type;
-            box.neighboursIds = Array.from(b.neighbours.keys()).map(n => n.id);
-            return box;
-        };
+        // console.log(Array.from(entity.neighbours.entries()));
 
-        var boxesToVizualize = [];
-        for (const box of this.boxesOk.values()) {
-            boxesToVizualize.push(convertBoxToBoxVizualize(box));
+        var neighboursIdsAndRelationsIds = [];
+        for (const [neighbour, relation] of entity.neighbours.entries()) {
+            neighboursIdsAndRelationsIds.push({neighbourId:neighbour.id, relationId: relation.id, similarity: relation.similarity});
+        }
+        vizEntity.neighboursIdsAndRelationsIds = neighboursIdsAndRelationsIds;
+
+
+        if(entity.type == EntityType.cluster) {
+            vizEntity.boxesIds = Array.from(entity.boxes.keys());
         }
 
+        return vizEntity;
+    };
+
+    vizualize() {
+
         var data = {
-            boxes: boxesToVizualize,
+            boxes: Array.from(this.boxesOk.values()).map(box => this.convertEntityForVizualizer(box)),
             width: this.pageDims.width,
             height: this.pageDims.height
         };
@@ -406,7 +406,7 @@ function exportClustersToJson(clustersMap, filepath) {
 
 function process(extracted, argv) {
 
-    var cm = new ClusteringManager(extracted);
+    var cm = new ClusteringManager(extracted, argv);
     cm.removeContainers();
 
     exportBoxesToJson(cm.boxesOk, './output/boxes.json');
@@ -416,9 +416,11 @@ function process(extracted, argv) {
 
     exportClustersToJson(cm.clusters, './output/segments.json');
 
+
     console.log("allboxes", cm.allBoxesList.length);
     console.log("boxesOk", cm.boxesOk.size);
     console.log("boxesUnclustered", cm.boxes.size);
 
-    cm.vizualize();
+    
+    // cm.vizualize();
 }
