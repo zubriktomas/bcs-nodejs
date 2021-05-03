@@ -262,17 +262,15 @@ class Relation {
     calcClusterSimilarity(entityA, entityB) {
 
         if(isCluster(entityA)) {
-            if(entityA.id === '(t:218.890625,l:29.890625,b:265.890625,r:92)') {
-                console.log(`eA: ${entityA.id}, eB: ${entityB.id}`);
-                console.log(`${this.calcCumulSimilarity(entityA, entityB)} / ${this.calcCardinality(entityA, entityB)}`);
-            }
             return (this.calcCumulSimilarity(entityA, entityB) / this.calcCardinality(entityA, entityB));
         }
-
+        
         if(isCluster(entityB)) {
-            // console.log(`${this.calcCumulSimilarity(entityB, entityA)} / ${this.calcCardinality(entityB, entityA)}`);
             return (this.calcCumulSimilarity(entityB, entityA) / this.calcCardinality(entityB, entityA));
         }
+        //     console.log(`eA: ${entityA.id}, eB: ${entityB.id}`);
+        //     console.log(`${this.calcCumulSimilarity(entityA, entityB)} / ${this.calcCardinality(entityA, entityB)}`);
+        // console.log(`${this.calcCumulSimilarity(entityB, entityA)} / ${this.calcCardinality(entityB, entityA)}`);
     }
 
     /**
