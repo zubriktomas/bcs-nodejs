@@ -51,6 +51,9 @@ class Relation {
      * @returns Relation ID
      */
     generateId(entityA, entityB) {
+        if(isCluster(entityA) || isCluster(entityB)) {
+            return entityA.id + entityB.id;
+        }
         if(this.direction == SelectorDirection.right || this.direction == SelectorDirection.down) {
             return entityA.id + entityB.id;
         } else if(this.direction == SelectorDirection.left || this.direction == SelectorDirection.up) {

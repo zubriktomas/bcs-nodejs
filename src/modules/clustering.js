@@ -169,18 +169,14 @@ class ClusteringManager {
                 break;
             } 
 
-            
-
-
-
             var cc = new Cluster(rel.entityA, rel.entityB);
 
             if(this.overlaps(cc, rel)) {
                 continue;
             }
 
-            this.recalcBoxesAndClusters(cc); 
-            this.recalcNeighboursAndRelations(cc);
+            this.removeEntities(cc); 
+            this.updateRelations(cc);
             this.clusters.set(cc.id, cc);
         }
 
@@ -272,7 +268,7 @@ class ClusteringManager {
 
     }
 
-    recalcBoxesAndClusters(cc) {
+    removeEntities(cc) {
 
         for (const box of cc.boxes.values()) {
             this.boxes.delete(box.id);
@@ -288,21 +284,25 @@ class ClusteringManager {
         this.tree.insert(cc);
     }
 
-    recalcNeighboursAndRelations(cc) {
+    updateRelations(cc) {
 
-        var relDelList = cc.addNeighboursAndRelations(this.clusters, this.boxes);
+        var relsToUpdate = cc.addNeighboursAndRelations(this.clusters, this.boxes);
 
-        for (const [ccNeighbour, ccRel] of cc.neighbours.entries()) {
-            this.relations.set(ccRel.id, ccRel);
-
-            // if(isCluster(ccNeighbour)) {
-            //     ccNeighbour.neighbours.set(cc, ccRel);
-            // }
+        for (const relToAdd of relsToUpdate.relAddSet) {
+            this.relations.set(relToAdd.id, relToAdd);
         }
 
-        for (const relToDel of relDelList.keys()) {
-            this.relations.delete(relToDel);
+        for (const relToDel of relsToUpdate.relDelSet) {
+            this.relations.delete(relToDel.id);
         }
+
+        // for (const relToAdd of relUpdateLists.relAddList.values()) {
+        //     this.relations.set(relToAdd.id, relToAdd);
+        // }
+
+        // for (const relToDelId of relUpdateLists.relDelList.keys()) {
+        //     this.relations.delete(relToDelId);
+        // }
     }
 
     convertEntityForVizualizer(entity) {

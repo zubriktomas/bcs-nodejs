@@ -126,97 +126,96 @@ class Cluster {
      * Update cluster neighbours and relations
      * @returns Relation delete list to update other entities from ClusteringManager context
      */
-    addNeighboursAndRelations(allClusters, allBoxes) {
+    addNeighboursAndRelations(clustersCommited, boxesUnclustered) {
 
         /* Initialize relation delete list */
-        var relDelList = new Map();
-
+        // var relDelList = new Map();
+        // var relAddList = new Map();
+        var relAddSet = new Set();
+        var relDelSet = new Set();
+    
         /* Loop over all cluster's boxes */
-        for (const box of this.boxes.values()) {
+        for (const ccBox of this.boxes.values()) {
 
             /* Loop over all existing clusters to find out if any box from candidate cluster is direct neighbour of some cluster */
-            for (const cluster of allClusters.values()) {
+            for (const cluster of clustersCommited.values()) {
 
-                var rel = cluster.deleteNeighbour(box);
-                if(rel) cluster.addNeighbour(this);
-                if(rel) relDelList.set(rel.id, rel);
+                // var relToDel = cluster.deleteNeighbour(ccBox.cluster);
+                // if(relToDel) {
+                //     cluster.addNeighbour(this);
+                //     relDelList.set(relToDel.id, relToDel);
+                // }
 
-                rel = cluster.deleteNeighbour(box.cluster);
-                if(rel) cluster.addNeighbour(this);
-                if(rel) relDelList.set(rel.id, rel);
+                // relToDel = cluster.deleteNeighbour(ccBox);
+                // if(relToDel) {
+                //     cluster.addNeighbour(this);
+                //     if(relTodel.id != "(t:568.28125,l:203,b:611.28125,r:761.671875)(t:861.265625,l:373.5,b:872.265625,r:847.296875)")
+                //     relDelList.set(relToDel.id, relToDel);
+                // }
+
+
+                var relToDel = ccBox.cluster ? cluster.deleteNeighbour(ccBox.cluster) : cluster.deleteNeighbour(ccBox);
+                if(relToDel) {
+                    var relToAdd = cluster.addNeighbour(this);
+                    // if(relToDel.id != "(t:568.28125,l:203,b:611.28125,r:761.671875)(t:861.265625,l:373.5,b:872.265625,r:847.296875)")
+                    if(relToAdd) { /*relAddList.set(relToAdd.id, relToAdd);*/ relAddSet.add(relToAdd);}
+                    // relDelList.set(relToDel.id, relToDel);
+                    relDelSet.add(relToDel);
+                } 
             }
 
-            for (const boxRest of allBoxes.values()) {
-                var rel = boxRest.neighbours.get(box);
-                if(rel) {
-                    relDelList.set(rel.id, rel);
+            for (const uBox of boxesUnclustered.values()) {
+                var relToDel = uBox.neighbours.get(ccBox);
+                if(relToDel) {
+                    // relDelList.set(relToDel.id, relToDel);
+                    relDelSet.add(relToDel)
                 }
             }
 
             /* Loop over all box's neighbours */
-            for (const [bNeighbour, bRel] of box.neighbours.entries()) {
+            for (const [bNeighbour, bRel] of ccBox.neighbours.entries()) {
 
-                this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
+                /* Extended */
+                // this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
 
-                // if(bNeighbour.cluster) {
-                //     var res = bNeighbour.cluster.deleteNeighbour(box);
+                // relDelList.set(bRel.id, bRel);
+                relDelSet.add(bRel);
 
-                //     if(box.cluster)
-                //         var res2 = bNeighbour.cluster.deleteNeighbour(box.cluster);
+                /* Skip If boxes inside candidate cluster ak su si navzajom priamymi susedmi, boxy vo vytvaranom zhluku */
+                // if(this.boxes.has(bNeighbour.id)) {
 
-                //     if(res) {
-                //         // console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.id)} deleted!`);
-                //         relDelList.set(res.id, res);
-                //     }
-
-                //     if(res2) {
-                //         // console.log(`From cluster ${mapper(bNeighbour.cluster.id)} neighbour ${mapper(box.cluster.id)} deleted!`);
-                //         relDelList.set(res2.id, res2);
-                //     }
-
-                //     // bNeighbour.cluster.maxNeighbourDistance = Math.max(bNeighbour.cluster.maxNeighbourDistance, bRel.absoluteDistance);
-
-                // } else {
-                //     relDelList.set(bRel.id, bRel);
+                //     // relDelList.set(bRel.id, bRel);
+                //     continue;
                 // }
-
-                relDelList.set(bRel.id, bRel);
-
-                /* vynecha z C: D, z D: C */
-                /* ak su si navzajom priamymi susedmi, boxy vo vytvaranom zhluku */
-                if(this.boxes.has(bNeighbour.id)) {
-
-                    // relDelList.set(bRel.id, bRel);
-                    continue;
-                }
 
                 /* ak je box v clustri, pridaj ako suseda cluster, inak pridaj samotny box */
-                var res = this.addNeighbour(bNeighbour.cluster ? bNeighbour.cluster : bNeighbour);
-                // if(res) console.log(`entity ${mapper((bNeighbour.cluster ? bNeighbour.cluster : bNeighbour).id)} added as ${mapper(this.id)} neighbour`);
-
-                /* Create new relation between cluster and entity, if entity(box) is not in the cluster and */
-                // if(!this.boxes.has(bNeighbour.id) && !this.neighbours.has(bNeighbour) && bNeighbour.cluster){
-                //     console.log("bNeighbour added as CC neighbour",mapper(bNeighbour.id));
-                //     this.addNeighbour(bNeighbour);
-                // } 
-
-                /** TOTO BY TU NEMALO BYT!! */
-                // if(isCluster(bNeighbour)) {
-                //     for (const x of bNeighbour.neighbours.keys()) {
-                //         if(x.cluster) {
-                //             bNeighbour.neighbours.delete(x);
-                //         }                        
-                //     }
-                // }
+                if(!this.boxes.has(bNeighbour.id)) {
+                    var relToAdd = this.addNeighbour(bNeighbour.cluster ? bNeighbour.cluster : bNeighbour);
+                    if(relToAdd) {/*relAddList.set(relToAdd.id, relToAdd);*/ relAddSet.add(relToAdd); }
+                }
             }
-
-            box.cluster = this;
-
-
-
+            ccBox.cluster = this;
         }
-        return relDelList;
-        // console.log("cluster Ncount", this.neighbours.size);
+
+        // console.log("del",relDelList.size, relDelSet.size);
+        // console.log("add", relAddList.size, relAddSet.size);
+
+        // if(relAddList.size != relAddSet.length) {
+
+            // for (const [id1,rel1] of relAddList.entries()) {
+            //     for (const rel2 of relAddSet.values()) {
+            //         if(id1 == rel2.id) {
+            //             // console.log("R1", rel1.similarity);
+            //             // console.log("R2", rel2.similarity);
+            //         }
+            //     }
+            // }
+
+            // console.log(relAddList);
+            // console.log(relAddSet);
+        // }
+
+        return {/*relDelList: relDelList, relAddList: relAddList,*/ relDelSet: relDelSet, relAddSet: relAddSet};
     }
 
     /**
