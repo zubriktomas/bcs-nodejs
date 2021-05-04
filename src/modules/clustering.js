@@ -268,41 +268,45 @@ class ClusteringManager {
 
     }
 
-    removeEntities(cc) {
+    removeEntities(clusterCandidate) {
 
-        for (const box of cc.boxes.values()) {
-            this.boxes.delete(box.id);
+        for (const ccBox of clusterCandidate.boxes.values()) {
+            this.boxes.delete(ccBox.id);
 
-            if(box.cluster) {
-                this.clusters.delete(box.cluster.id);
-                for (const cRel of box.cluster.neighbours.values()) {
+            /* If box has already been in cluster */
+            if(ccBox.cluster) {
+                
+                /* Delete cluster from map */
+                this.clusters.delete(ccBox.cluster.id);
+                
+                /* Delete all relations connected with cluster's neighbours */
+                for (const cRel of ccBox.cluster.neighbours.values()) {
                     this.relations.delete(cRel.id);
                 }
-                this.tree.remove(box.cluster);
+
+                /* Delete cluster from RTree */
+                this.tree.remove(ccBox.cluster);
             }
         }
-        this.tree.insert(cc);
+
+        /* Insert new cluster into RTree */
+        this.tree.insert(clusterCandidate);
     }
 
-    updateRelations(cc) {
+    updateRelations(clusterCandidate) {
 
-        var relsToUpdate = cc.addNeighboursAndRelations(this.clusters, this.boxes);
+        /* Update neighbours and relations of all boxes and clusters from cluster candidate context */
+        var relsToUpdate = clusterCandidate.updateAllNeighbours(this.clusters, this.boxes);
 
+        /* Add all relations from add set */
         for (const relToAdd of relsToUpdate.relAddSet) {
             this.relations.set(relToAdd.id, relToAdd);
         }
 
+        /* Delete all relations from delete set */
         for (const relToDel of relsToUpdate.relDelSet) {
             this.relations.delete(relToDel.id);
         }
-
-        // for (const relToAdd of relUpdateLists.relAddList.values()) {
-        //     this.relations.set(relToAdd.id, relToAdd);
-        // }
-
-        // for (const relToDelId of relUpdateLists.relDelList.keys()) {
-        //     this.relations.delete(relToDelId);
-        // }
     }
 
     convertEntityForVizualizer(entity) {

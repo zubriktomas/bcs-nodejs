@@ -126,48 +126,47 @@ class Cluster {
      * Update cluster neighbours and relations
      * @returns Relation delete list to update other entities from ClusteringManager context
      */
-    addNeighboursAndRelations(clustersCommited, boxesUnclustered) {
+     updateAllNeighbours(clustersCommited, boxesUnclustered) {
 
-        /* Initialize relation delete list */
-        // var relDelList = new Map();
-        // var relAddList = new Map();
-        var relAddSet = new Set();
-        var relDelSet = new Set();
+        /* Initialize sets of relations to add and to delete, and variables */
+        var relAddSet = new Set(), relToAdd;
+        var relDelSet = new Set(), relToDel;
     
-        /* Loop over all cluster's boxes */
+        /* Loop over all candidate cluster's boxes */
         for (const ccBox of this.boxes.values()) {
 
-            /* Loop over all existing clusters to find out if any box from candidate cluster is direct neighbour of some cluster */
-            for (const cluster of clustersCommited.values()) {
+            /* Loop over all commited (existing) clusters to find out if any box (or its cluster, if exists) from 
+             * candidate cluster is direct neighbour of some commited cluster */
+            for (const commCluster of clustersCommited.values()) {
 
-                // var relToDel = cluster.deleteNeighbour(ccBox.cluster);
-                // if(relToDel) {
-                //     cluster.addNeighbour(this);
-                //     relDelList.set(relToDel.id, relToDel);
-                // }
+                /* If box has already been in cluster, delete that cluster from commCluster neighbours, else delete box */
+                relToDel = ccBox.cluster ? commCluster.deleteNeighbour(ccBox.cluster) : commCluster.deleteNeighbour(ccBox);
 
-                // relToDel = cluster.deleteNeighbour(ccBox);
-                // if(relToDel) {
-                //     cluster.addNeighbour(this);
-                //     if(relTodel.id != "(t:568.28125,l:203,b:611.28125,r:761.671875)(t:861.265625,l:373.5,b:872.265625,r:847.296875)")
-                //     relDelList.set(relToDel.id, relToDel);
-                // }
-
-
-                var relToDel = ccBox.cluster ? cluster.deleteNeighbour(ccBox.cluster) : cluster.deleteNeighbour(ccBox);
+                /* Check if some neighbour was deleted */
                 if(relToDel) {
-                    var relToAdd = cluster.addNeighbour(this);
-                    // if(relToDel.id != "(t:568.28125,l:203,b:611.28125,r:761.671875)(t:861.265625,l:373.5,b:872.265625,r:847.296875)")
-                    if(relToAdd) { /*relAddList.set(relToAdd.id, relToAdd);*/ relAddSet.add(relToAdd);}
-                    // relDelList.set(relToDel.id, relToDel);
+                    
+                    /* Add deleted relation to relation delete set */
                     relDelSet.add(relToDel);
+
+                    /* If some neighbour was delete, we have to add candidate cluster (this) as neighbour of commited cluster */
+                    relToAdd = commCluster.addNeighbour(this);
+                    
+                    /* Check if candidate cluster was actually added as neighbour */
+                    if(relToAdd) { 
+
+                        /* If so, add it to relation add set */
+                        relAddSet.add(relToAdd);
+                    }
                 } 
             }
 
+            /* Loop over all unclustered boxes to find out if cluster candidate box is its direct neighbour */
             for (const uBox of boxesUnclustered.values()) {
+            
+                /* Just get relation */
                 var relToDel = uBox.neighbours.get(ccBox);
                 if(relToDel) {
-                    // relDelList.set(relToDel.id, relToDel);
+                    /* Add relation to delete set */
                     relDelSet.add(relToDel)
                 }
             }
@@ -175,47 +174,27 @@ class Cluster {
             /* Loop over all box's neighbours */
             for (const [bNeighbour, bRel] of ccBox.neighbours.entries()) {
 
-                /* Extended */
-                // this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
+                /* Extended */// this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
 
-                // relDelList.set(bRel.id, bRel);
+                /* Delete every relation between candidate cluster box and its all neighbours */
                 relDelSet.add(bRel);
 
-                /* Skip If boxes inside candidate cluster ak su si navzajom priamymi susedmi, boxy vo vytvaranom zhluku */
-                // if(this.boxes.has(bNeighbour.id)) {
-
-                //     // relDelList.set(bRel.id, bRel);
-                //     continue;
-                // }
-
-                /* ak je box v clustri, pridaj ako suseda cluster, inak pridaj samotny box */
+                /* Skip all relations between boxes inside cluster candidate, they are no longer needed (added into delete set by command above) */
                 if(!this.boxes.has(bNeighbour.id)) {
+                    /* If neighbour of box is already in some cluster, add that cluster as neighbour, if not add box */
                     var relToAdd = this.addNeighbour(bNeighbour.cluster ? bNeighbour.cluster : bNeighbour);
-                    if(relToAdd) {/*relAddList.set(relToAdd.id, relToAdd);*/ relAddSet.add(relToAdd); }
+                    if(relToAdd) { 
+                        relAddSet.add(relToAdd); 
+                    }
                 }
             }
+
+            /* After all recalculations concerning currently processed box, assign new cluster to it */
             ccBox.cluster = this;
         }
 
-        // console.log("del",relDelList.size, relDelSet.size);
-        // console.log("add", relAddList.size, relAddSet.size);
-
-        // if(relAddList.size != relAddSet.length) {
-
-            // for (const [id1,rel1] of relAddList.entries()) {
-            //     for (const rel2 of relAddSet.values()) {
-            //         if(id1 == rel2.id) {
-            //             // console.log("R1", rel1.similarity);
-            //             // console.log("R2", rel2.similarity);
-            //         }
-            //     }
-            // }
-
-            // console.log(relAddList);
-            // console.log(relAddSet);
-        // }
-
-        return {/*relDelList: relDelList, relAddList: relAddList,*/ relDelSet: relDelSet, relAddSet: relAddSet};
+        /* Return relation add and delete set in object */
+        return {relDelSet: relDelSet, relAddSet: relAddSet};
     }
 
     /**
