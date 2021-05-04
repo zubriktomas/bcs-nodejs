@@ -7,6 +7,8 @@
 const { chromium } = require('playwright');
 const { readFileSync, existsSync } = require('fs');
 const sizeOfImage = require('image-size');
+const { tryToLoadFile, FileType } = require('../src/modules/exporter');
+
 
 /* Constants */
 const bcsOutputFolder = './../output';
@@ -15,7 +17,6 @@ const dimensions = sizeOfImage(`${bcsOutputFolder}/webpage.png`); // Get dimensi
 const imageWidth = dimensions.width;
 const imageHeight = dimensions.height;
 const screenHeight = 1200;
-const FileType = Object.freeze({ png: 0, json: 1 });
 
 /* Parse and convert FiyLayout segments.xml to segments-ref.json */
 require('./areatree-parser').areaTreeParse();
@@ -78,7 +79,7 @@ const startAnnotator = async () => {
         /* Assign all useful variables to window object for global access */
         window.index = 1;
         window.bgA = `url("data:image/png;base64,${data.webpagePNG}")`;
-        window.bgB = `url("data:image/png;base64,${data.renderedPNG}")`;
+        window.bgB = `url("data:image/png;base64,${data.boxesPNG}")`;
         window.addEventListener('mousemove', e => { window.mouseX = e.pageX; window.mouseY = e.pageY; });
         /* Inject Notyf object for simple notification toast messages */
         window.notyf = new Notyf({
@@ -136,26 +137,26 @@ const startAnnotator = async () => {
 }
 startAnnotator();
 
-/**
- * Try to load file by type from filesystem
- * @param {*} filePath path to file 
- * @param {FileType} type file type (PNG or JSON)
- * @returns null or empty if not exists
- */
-function tryToLoadFile(filePath, type) {
-    try {
-        if (existsSync(filePath)) {
-            return type == FileType.png ? readFileSync(filePath).toString('base64') : JSON.parse(readFileSync(filePath, 'utf8'));
-        } else {
-            console.log(`File ${filePath} does not exist!`);
-            console.log("Returns 'null' (png) / '[]' (json)");
-            return type == FileType.png ? null : [];
-        }
-    } catch (e) {
-        console.error(e);
-        process.exit(1);
-    }
-}
+// /**
+//  * Try to load file by type from filesystem
+//  * @param {*} filePath path to file 
+//  * @param {FileType} type file type (PNG or JSON)
+//  * @returns null or empty if not exists
+//  */
+// function tryToLoadFile(filePath, type) {
+//     try {
+//         if (existsSync(filePath)) {
+//             return type == FileType.png ? readFileSync(filePath).toString('base64') : JSON.parse(readFileSync(filePath, 'utf8'));
+//         } else {
+//             console.log(`File ${filePath} does not exist!`);
+//             console.log("Returns 'null' (png) / '[]' (json)");
+//             return type == FileType.png ? null : [];
+//         }
+//     } catch (e) {
+//         console.error(e);
+//         process.exit(1);
+//     }
+// }
 
 /**
  * Load all files used by GT annotator (PNG and JSON files)
@@ -167,7 +168,7 @@ function tryToLoadFile(filePath, type) {
 function loadDataFromFileSystem(bcsOutputFolder, gtAnnotatorOutputFolder, gtSegmentsFilename) {
 
     const webpagePNG = tryToLoadFile(`${bcsOutputFolder}/webpage.png`, FileType.png);
-    const renderedPNG = tryToLoadFile(`${bcsOutputFolder}/rendered.png`, FileType.png);
+    const boxesPNG = tryToLoadFile(`${bcsOutputFolder}/boxes.png`, FileType.png);
     const boxes = tryToLoadFile(`${bcsOutputFolder}/boxes.json`, FileType.json);
     const segmentsBasic = tryToLoadFile(`${bcsOutputFolder}/segments.json`, FileType.json);
     const segmentsReference = tryToLoadFile('./input/segments-ref.json', FileType.json);
@@ -181,7 +182,7 @@ function loadDataFromFileSystem(bcsOutputFolder, gtAnnotatorOutputFolder, gtSegm
         imageWidth: imageWidth,
         imageHeight: imageHeight,
         webpagePNG: webpagePNG,
-        renderedPNG: renderedPNG
+        boxesPNG: boxesPNG
     }
     return data;
 }

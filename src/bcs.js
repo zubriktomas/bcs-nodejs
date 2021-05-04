@@ -18,7 +18,7 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .example('$0 -W 1200 -H 800 http://cssbox.sf.net', '')
   .strictOptions(true)
   .alias('CT', 'clustering-threshold').nargs('CT', 1)
-  .default('CT', 0.5).describe('CT', 'Clustering Threshold')
+  .default('CT', 0.5).describe('CT', 'Clustering Threshold (CT > 0.0 && CT < 1.0)')
   .alias('W', 'width').nargs('W', 1)
   .default('W', 1200).describe('W', 'Browser viewport width')
   .alias('H', 'height').nargs('H', 1)
@@ -28,23 +28,36 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .alias('D','debug').boolean('D')
   .default('D', false).describe('D', 'Allow errors printing from browser')
   .alias('VI','vizualize-iteration').nargs('VI', 1)
-  .default('VI', 0).number('VI').describe('VI', 'Vizualize iteration step i')
+  .default('VI', 0).number('VI').describe('VI', `Vizualize interactive iteration step i`)
+  .alias('I','show-info').boolean('I')
+  .default('I', false).describe('I', `Show extraction and clustering info`)
+  .boolean('basic').default('basic', false).describe('basic', `Use basic BCS implementation, default using extended`)
   .help('h').alias('h', 'help')
   .argv;
 
 /* If url is not specified - close program immediately */
 if (argv._.length !== 1) {
-  process.stderr.write('<url> is required. Use -h for help.\n');
+  console.error('<url> is required. Use -h for help.\n');
   process.exit(1);
 }
 
 /* Get all args to local variables */
-const url = argv._[0];
-const viewportWidth = argv.W;
-const viewportHeight = argv.H;
-const clusteringThreshold = argv.CT;
-const debug = argv.D;
-const saveScreenshot = argv.S;
+argv.url = argv._[0];
+
+if(parseFloat(argv.CT) != argv.CT || argv.CT < 0 || argv.CT > 1) {
+  console.error('Warning: Incorrect CT', argv.CT, 'Using default, 0.5');
+  argv.CT = 0.5;
+}
+
+if(!Number.isInteger(argv.W) || argv.W <= 0 || argv.W > 1920) {
+  console.error('Warning: Incorrect viewport width', argv.W, 'Using default', 1200);
+  argv.W = 1200;
+}
+
+if(!Number.isInteger(argv.H) || argv.H <= 0) {
+  console.error('Warning: Incorrect viewport height', argv.H, 'Using default', 800);
+  argv.H = 800;
+}
 
 /* BCS main process */
 (async () => {
@@ -57,25 +70,25 @@ const saveScreenshot = argv.S;
 
   /* Set viewport size specified by args */
   page.setViewportSize({
-    width: viewportWidth,
-    height: viewportHeight
+    width: argv.W,
+    height: argv.H
   });
 
   /* Load webpage by url */
   try {
-    await page.goto(url);
+    await page.goto(argv.url);
     // await page.goto('http://cssbox.sf.net');
     // await page.goto('https://en.wikipedia.org/wiki/Dyslalia', {waitUntil: 'domcontentloaded'});
     // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
     // await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
     // await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
   } catch (e) {
-    console.log(e.message);
+    console.error(`Error: Invalid URL '${argv.url}' Exit 1`);
     process.exit(1);
   }
 
   /* Allow logging of messages from automated Chromium browser */
-  if (debug) {
+  if (argv.debug) {
     page
       .on('console', message => console.log(`${message.type().substr(0, 3).toUpperCase()} ${message.text()}`))
       .on('pageerror', ({ message }) => console.log(message))
@@ -105,19 +118,25 @@ const saveScreenshot = argv.S;
   });
 
   /* Capture screenshot of webpage in PNG format */
-  if(saveScreenshot){
+  if(argv.saveScreenshot){
     await page.screenshot({ path: './output/webpage.png', fullPage: true });
   }
 
   /* Close browser instance (no longer needed) */
   await browser.close();
 
-  // console.log("Extraction time:", extracted.time, "ms");
+  if(argv.showInfo) {
+    var extractionTime = parseFloat(extracted.time.toFixed(2));
+    console.info("Info: Extraction time:", extractionTime, "ms");
+    console.info("Info: BCS implementation:", argv.basic ? "basic" : "extended");
+  }
 
   /* Start Clustering Process */
   clustering.process(extracted, argv);
 
   /* Success message */
-  console.log("BCS has finished successfully!");
+  if(argv.showInfo){
+    console.info("Info; BCS has finished successfully!");
+  }
 
 })();

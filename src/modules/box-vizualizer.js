@@ -7,6 +7,7 @@
  */
 
 const { chromium } = require('playwright');
+const { EntityType } = require('../structures/EntityType');
 
 const VizualizerOption = Object.freeze({onlyBoxes:0, boxesAndClusters:1});
 
@@ -46,13 +47,19 @@ const startBoxVizualizer = async (data) => {
     window.boxesMap = new Map();
     window.clustersMap = new Map();
     window.relationsList = data.relations;
+    if(data.bestRel)
     window.bestRel = data.bestRel;
 
     convertEntitiesToDivs(data.boxes);
     convertEntitiesToDivs(data.clusters ? data.clusters : []);
 
-    var relAId = data.bestRel.entityAId;
-    var relBId = data.bestRel.entityBId;
+
+    var relAId;
+    var relBId;
+
+    if(data.bestRel){
+    relAId = data.bestRel.entityAId;
+    relBId = data.bestRel.entityBId;
 
     if(window.boxesMap.has(relAId)) {
       window.boxesMap.get(relAId).oldColor = "#FF1600";
@@ -72,7 +79,7 @@ const startBoxVizualizer = async (data) => {
 
     document.getElementById(relAId).style.backgroundColor = "#FF1600";
     document.getElementById(relBId).style.backgroundColor = "#FF1600";
-
+    }
 
     function handleMouseHoverEvent(event) {
       var boxFromMap = window.boxesMap.get(event.target.id);
@@ -146,8 +153,6 @@ const startBoxVizualizer = async (data) => {
   // await browser.close();
 }
 
-
-
 function buildHtmlTemplate() {
   var header = `<style> body { margin: 0; padding:0; } </style>`;
 
@@ -159,6 +164,34 @@ function buildHtmlTemplate() {
             </body>
           </html>`;
 }
+
+function convertEntityForVizualizer(entity) {
+  var vizEntity = {};
+  vizEntity.left = entity.left;
+  vizEntity.top = entity.top;
+  vizEntity.right = entity.right;
+  vizEntity.bottom = entity.bottom;
+  /* If width, height and color are null - entity is cluster */
+  vizEntity.width = entity.width || entity.right - entity.left;
+  vizEntity.height = entity.height || entity.bottom - entity.top;
+  vizEntity.color = entity.color || "#29e";
+  vizEntity.oldColor = entity.color || "#29e";
+  vizEntity.id = entity.id;
+  vizEntity.type = entity.type;
+  vizEntity.neighboursIds = Array.from(entity.neighbours.keys()).map(n => n.id);
+
+  var neighboursIdsAndRelationsIds = [];
+  for (const [neighbour, relation] of entity.neighbours.entries()) {
+      neighboursIdsAndRelationsIds.push({neighbourId:neighbour.id, relationId: relation.id, similarity: relation.similarity});
+  }
+  vizEntity.neighboursIdsAndRelationsIds = neighboursIdsAndRelationsIds;
+
+  if(entity.type == EntityType.cluster) {
+      vizEntity.boxesIds = Array.from(entity.boxes.keys());
+  }
+
+  return vizEntity;
+};
   
 // function createSvgRect(entity, props) {
 
@@ -209,4 +242,4 @@ function buildHtmlTemplate() {
 //     createSvgRect(data.cc, {stroke: '#FF0000', strokeWidth: 2});
 //   }
 
-module.exports = {vizualize, vizualizeStep};
+module.exports = {vizualize, vizualizeStep, convertEntityForVizualizer, buildHtmlTemplate};
