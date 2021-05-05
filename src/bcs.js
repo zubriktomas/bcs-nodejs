@@ -134,7 +134,7 @@ if(!Number.isInteger(argv.H) || argv.H <= 0) {
   });
 
   /* Capture screenshot of webpage in PNG format */
-  if(argv.saveScreenshot){
+  if(argv.saveScreenshot || argv.export.includes(5) || argv.export.includes(6)){
     await page.screenshot({ path: './output/webpage.png', fullPage: true });
   }
 
@@ -143,16 +143,16 @@ if(!Number.isInteger(argv.H) || argv.H <= 0) {
 
   if(argv.showInfo) {
     var extractionTime = parseFloat(extracted.time.toFixed(2));
-    console.info("Info: Extraction time:", extractionTime, "ms");
-    console.info("Info: BCS implementation:", argv.basic ? "basic" : "extended");
+    console.info("Info: [Extract] Extraction time:", extractionTime, "ms");
+    console.info("Info: [Segment] BCS implementation:", argv.basic ? "basic" : "extended");
   }
 
-  /* Start Clustering Process */
-  clustering.process(extracted, argv);
+  /* Start Segmentation/Clustering Process */
+  clustering.createSegmentation(extracted, argv);
 
   /* Success message */
   if(argv.showInfo){
-    console.info("Info; BCS has finished successfully!");
+    console.info("Info: [Finish] BCS has finished successfully!");
   }
 
 })();

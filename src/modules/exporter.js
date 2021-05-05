@@ -90,15 +90,16 @@ function exportFiles(argv, data) {
         exportPNG({clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG})
 
         if (argv.showInfo) {
-            console.info("Info: All PNG and JSON files were exported");
+            console.info("Info: [Export] (6) All PNG and JSON files exported");
         }
+        return;
     }
 
     /* Boxes PNG */
     if(exportListString.includes(1)) {
         exportPNG({boxesList: boxesList, pageDims: pageDims});
         if (argv.showInfo) {
-            console.info("Info: Extracted boxes exported as PNG");
+            console.info("Info: [Export] (1) Boxes exported as PNG");
         }
     }
     
@@ -106,7 +107,7 @@ function exportFiles(argv, data) {
     if(exportListString.includes(2)) {
         exportBoxesToJson(boxesList, './output/boxes.json');
         if (argv.showInfo) {
-            console.info("Info: Extracted boxes exported as JSON");
+            console.info("Info: [Export] (2) Boxes exported as JSON");
         }
     }
     
@@ -114,7 +115,7 @@ function exportFiles(argv, data) {
     if(exportListString.includes(3)) {
         exportPNG({clustersList: clustersList, pageDims: pageDims});
         if (argv.showInfo) {
-            console.info("Info: Clusters exported as PNG");
+            console.info("Info: [Export] (3) Clusters exported as PNG");
         }
     }
     
@@ -122,7 +123,7 @@ function exportFiles(argv, data) {
     if(exportListString.includes(4)) {
         exportClustersToJson(clustersList, './output/segments.json');
         if (argv.showInfo) {
-            console.info("Info: Clusters exported as JSON");
+            console.info("Info: [Export] (4) Clusters exported as JSON");
         }
     }
 
@@ -130,6 +131,9 @@ function exportFiles(argv, data) {
     if(exportListString.includes(5)) {
         const webpagePNG = tryToLoadFile(`./output/webpage.png`, FileType.png);    
         exportPNG({clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG})
+        if (argv.showInfo) {
+            console.info("Info: [Export] (5) Clusters over webpage screenshot");
+        }
     }
 }
 

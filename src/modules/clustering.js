@@ -6,18 +6,14 @@
  * Description: Main clustering process (segmentation logic) of method BCS 
  */
 
-// const { writeFileSync } = require('fs');
-const vizualizer = require('./box-vizualizer');
+const { vizualizeStep, convertEntityForVizualizer} = require('./box-vizualizer');
 const Box = require('../structures/Box');
 const Cluster = require('../structures/Cluster');
 const RTree = require('../structures/RTree');
 const { Selector, SelectorDirection } = require('../structures/Selector');
 const { EntityType, isBox, isCluster } = require('../structures/EntityType');
 const { exportFiles } = require('./exporter');
-const { writeFileSync } = require('fs');
 
-
-module.exports.process = process;
 
 const assert = (condition, message) => { 
     if(!condition) throw Error('Assert failed: ' + (message || ''))
@@ -133,7 +129,7 @@ class ClusteringManager {
             rel = this.getBestRelation();
 
             if(++iteration == this.argv.VI) {
-                vizualizer.vizualize(this.getDataForVizualization());
+                vizualizeStep(this.getDataForVizualization(rel));
                 break;
             }
 
@@ -141,8 +137,8 @@ class ClusteringManager {
 
             if(rel.similarity > this.clusteringThreshold) {
                 if(this.argv.showInfo){
-                    console.info(`Info: Similarity > ${this.clusteringThreshold}`, rel.similarity);
-                    console.info("Info: Number of segments:", this.clusters.size);
+                    console.info(`Info: [Segment] Similarity > ${this.clusteringThreshold}`, rel.similarity);
+                    console.info("Info: [Segment] Number of segments:", this.clusters.size);
                 }
                 break;
             } 
@@ -187,24 +183,26 @@ class ClusteringManager {
     //     } while (!this.densityOverThreshold(cc));
     // }
 
-    overlaps(cc, rel) {
-        // var ob = overlapping.filter(entity => isBox(entity) && !(this.boxes.has(entity.id)) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
+    overlaps(cc) {
+
+        /* Get all overlapping entities */
         var overlapping = cc.getOverlappingEntities(this.tree);
 
-        /* Get all unclustered boxes except those that are being part of candidate cluster */
+        /* Get all unclustered boxes except those that are part of candidate cluster */
         var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
 
-        /* Get all clusters that candidate cluster contains visually */
+        /* Get all clusters that candidate cluster overlaps with */
         var oc = overlapping.filter(entity => isCluster(entity));
-        var clustersContainedVisually = oc.filter(cluster => cc.containsVisually(cluster));
-        // var oc = overlapping.filter(entity => isCluster(entity));
 
+        /* Get all clusters that candidate cluster contains visually */
+        var clustersContainedVisually = oc.filter(cluster => cc.containsVisually(cluster));
+
+        /* If cluster candidate overlaps with some other cluster and does not contain it visually */
         if(oc.length != clustersContainedVisually.length) {
             return true;
         }
 
-        // console.log("oc.length", oc.length);
-
+        /* Create map of clusters that will be ommited in last check for overlapping */
         var ommitClusters = new Map();
 
         for (const oBox of ob) {
@@ -216,53 +214,21 @@ class ClusteringManager {
             ommitClusters.set(oCluster.id, oCluster);
         }
 
-        // for (let i = 0; i < ob.length; i++) {
-        //     cc.addBoxes(ob[i]);
-        // }
 
-        // for (let i = 0; i < oc.length; i++) {
-        //     cc.addBoxes(oc[i]);
-        //     ommitClusters.set(oc[i].id, oc[i]);
-        // }
-
+        /* Check new overlaps with boxes after coordinates recalculation, if so, add them into cluster */
         overlapping = cc.getOverlappingEntities(this.tree);
-        // ob = overlapping.filter(entity => isBox(entity) && !cc.boxes.has(entity.id));
         var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
-
-        for (let i = 0; i < ob.length; i++) {
-            cc.addBoxes(ob[i]);
+        for (const oBox of ob) {
+            cc.addBoxes(oBox);
         }
 
+        /* Find overlapping entities one more time */
         overlapping = cc.getOverlappingEntities(this.tree);
         oc = overlapping.filter(entity => isCluster(entity) && !ommitClusters.has(entity.id));
-        // ob = overlapping.filter(entity => isBox(entity) && !cc.boxes.has(entity.id));
         var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
 
-        // return ob.length || oc.length;
-        return ob.length || oc.length;//|| !this.densityOverThreshold(cc);
-
-        // for (const box of this.boxes.values()) {
-        //     if(!cc.boxes.has(box.id) && cc.containsVisually(box)) {
-        //         return true;
-        //     }
-        // }
-
-        // for (const cluster of this.clusters.values()) {
-        //     if(!ommitClusters.has(cluster.id)) {
-        //         if(cc.containsVisually(cluster)) {
-        //             return true;
-        //         }
-        //     }
-        // }
-
-        // for (const cluster of ommitClusters.values()) {
-        //     this.clusters.delete(cluster.id);
-        //     this.tree.remove(cluster);
-        // }
-
-        return "break";
-
-
+        /* If there is any overlap, discard cluster candidate, otherwise recalculate neighbours and commit it as cluster */
+        return ob.length || oc.length;
     }
 
     removeEntities(clusterCandidate) {
@@ -306,41 +272,10 @@ class ClusteringManager {
         }
     }
 
-    // convertEntityForVizualizer(entity) {
-    //     var vizEntity = {};
-    //     vizEntity.left = entity.left;
-    //     vizEntity.top = entity.top;
-    //     vizEntity.right = entity.right;
-    //     vizEntity.bottom = entity.bottom;
-    //     /* If width, height and color are null - entity is cluster */
-    //     vizEntity.width = entity.width || entity.right - entity.left;
-    //     vizEntity.height = entity.height || entity.bottom - entity.top;
-    //     vizEntity.color = entity.color || "#29e";
-    //     vizEntity.oldColor = entity.color || "#29e";
-    //     vizEntity.id = entity.id;
-    //     vizEntity.type = entity.type;
-    //     vizEntity.neighboursIds = Array.from(entity.neighbours.keys()).map(n => n.id);
-
-    //     // console.log(Array.from(entity.neighbours.entries()));
-
-    //     var neighboursIdsAndRelationsIds = [];
-    //     for (const [neighbour, relation] of entity.neighbours.entries()) {
-    //         neighboursIdsAndRelationsIds.push({neighbourId:neighbour.id, relationId: relation.id, similarity: relation.similarity});
-    //     }
-    //     vizEntity.neighboursIdsAndRelationsIds = neighboursIdsAndRelationsIds;
-
-
-    //     if(entity.type == EntityType.cluster) {
-    //         vizEntity.boxesIds = Array.from(entity.boxes.keys());
-    //     }
-
-    //     return vizEntity;
-    // };
-
     getDataForVizualization(rel) {
         var data = {
-            boxes: Array.from(this.boxesAll.values()).map(box => vizualizer.convertEntityForVizualizer(box)),
-            clusters: Array.from(this.clusters.values()).map(cluster => vizualizer.convertEntityForVizualizer(cluster)),
+            boxes: Array.from(this.boxesAll.values()).map(box => convertEntityForVizualizer(box)),
+            clusters: Array.from(this.clusters.values()).map(cluster => convertEntityForVizualizer(cluster)),
             relations: Array.from(this.relations.keys()),
             bestRel: (!rel) ? null : {relationId: rel.id, entityAId: rel.entityA.id, entityBId: rel.entityB.id, similarity: rel.similarity},
             width: this.pageDims.width,
@@ -357,115 +292,18 @@ class ClusteringManager {
         }
         return data;
     }    
-
-    // vizualize() {
-
-    //     var data = {
-    //         boxes: Array.from(this.boxesAll.values()).map(box => vizualizer.convertEntityForVizualizer(box)),
-    //         // clusters: Array.from(this.clusters.values()).map(cluster => vizualizer.convertEntityForVizualizer(cluster)),
-    //         relations: Array.from(this.relations.keys()),
-    //         // bestRel: {relationId: rel.id, entityAId: rel.entityA.id, entityBId: rel.entityB.id, similarity: rel.similarity},
-    //         width: this.pageDims.width,
-    //         height: this.pageDims.height
-    //     };
-
-    //     // var data = {
-    //     //     boxes: Array.from(this.boxesAll.values()).map(box => vizualizer.convertEntityForVizualizer(box)),
-    //     //     width: this.pageDims.width,
-    //     //     height: this.pageDims.height
-    //     // };
-
-    //     vizualizer.vizualize(data);
-    // }
 }
 
-// function exportBoxesToJson(boxesMap, filepath) {
-    
-//     const convertBox = (b) => {
-//         var box = {};
-//         box.left = b.left;
-//         box.top = b.top;
-//         box.right = b.right;
-//         box.bottom = b.bottom;
-//         box.width = b.width
-//         box.height = b.height;
-//         box.color = b.color;
-//         box.type = b.type;
-//         return box;
-//     }
-
-//     var boxesToExport = [];
-//     for (const box of boxesMap.values()) {
-//         boxesToExport.push(convertBox(box));
-//     }
-
-//     var boxesJson = JSON.stringify(boxesToExport);
-
-//     writeFileSync(filepath, boxesJson, (err) => {
-//         if (err) throw err;
-//     });
-
-// }
-
-// function exportClustersToJson(clustersMap, filepath) {
-    
-//     const convertCluster = (c) => {
-//         var cluster = {};
-//         cluster.left = c.left;
-//         cluster.top = c.top;
-//         cluster.right = c.right;
-//         cluster.bottom = c.bottom;
-//         cluster.width = c.right - c.left;
-//         cluster.height = c.bottom - c.top;
-//         cluster.type = c.type;
-//         cluster.segm = 'basic';
-//         return cluster;
-//     }
-
-//     var clustersToExport = [];
-//     for (const cluster of clustersMap.values()) {
-//         clustersToExport.push(convertCluster(cluster));
-//     }
-
-//     var clustersJson = JSON.stringify(clustersToExport);
-
-//     writeFileSync(filepath, clustersJson, (err) => {
-//         if (err) throw err;
-//     });
-// }
-
-
-function process(extracted, argv) {
+function createSegmentation(extracted, argv) {
 
     var cm = new ClusteringManager(extracted, argv);
     cm.removeContainers();
-
-    // exportByOption(argv, ExportOption.boxesJSON, cm.boxesAll, './output/boxes.json');
-    // exportByOption(argv, ExportOption.boxesPNG, cm.getDataForVizualization(), './output/boxes.png');
-
     cm.findAllRelations();
-
-    // console.log(cm.relations.values());
-    // console.log("RELS COUNT:", cm.relations.size);
-
     cm.createClusters();
 
     if(!argv.export.includes(0)) {
         exportFiles(argv, cm.getDataForExport());
     }
-
-    // exportClustersToJson(cm.clusters, './output/segments.json');
-    // exportBoxesToJson(cm.boxesOk, './output/boxes.json');
-
-    
-    // exportByOption(argv, ExportOption.clustersJSON, cm.clusters, './output/segments.json');
-
-    // if(argv.showInfo) {
-    //     console.info("Info: allboxes count", cm.allBoxesList.length);
-    //     console.info("Info: valid boxesAll count", cm.boxesAll.size);
-    //     console.info("Info: boxesUnclustered", cm.boxes.size);
-    // }
-
-    
-    // cm.vizualize();
 }
+
+module.exports.createSegmentation = createSegmentation;
