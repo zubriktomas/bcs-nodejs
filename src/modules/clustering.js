@@ -272,6 +272,12 @@ class ClusteringManager {
             return true;
         }
 
+        /* If CC visually contains more clusters than one discard CC */
+        if(clustersContainedVisually.length > 1) {
+            if(this.argv.debug) console.info("Info [Debug]: CC discarded contains visually more than one cluster!");
+            return true;
+        }
+
         for (const oBox of oBoxes) {
             if(this.argv.debug) console.info("Info [Debug]: Overlapping box added to CC");
             cc.addBoxes(oBox);

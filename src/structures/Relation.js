@@ -142,7 +142,7 @@ class Relation {
         relA = this.absoluteDistance / maxdA;
         relB = this.absoluteDistance / maxdB;
 
-        // this.relativeDistance = (relA + relB) / 2;
+        this.relativeDistance = (relA + relB) / 2;
 
         return (relA + relB) / 2;
     }
@@ -189,7 +189,7 @@ class Relation {
 
         /* Shape similarity as average of ratio and size */
         var shapeSim = (ratio + size) / 2;
-        // this.shapeSimilarity = shapeSim;
+        this.shapeSimilarity = shapeSim;
         return shapeSim;
     }
 
@@ -211,7 +211,7 @@ class Relation {
 
         var colorSim = Math.sqrt(rPart + gPart + bPart) / SQRT3;
 
-        // this.colorSimilarity = colorSim;
+        this.colorSimilarity = colorSim;
         return colorSim;
     }
 
@@ -228,8 +228,8 @@ class Relation {
         if(relativeDistance <= 0) {
             return 0;
         } else if (relativeDistance == 1) {
-            var shapeSim = this.calcShapeSimilarity(boxA, boxB);
-            var colorSim = this.calcColorSimilarity(boxA, boxB);
+            this.calcShapeSimilarity(boxA, boxB);
+            this.calcColorSimilarity(boxA, boxB);
             return 1;
         } else {
             var relDist = relativeDistance;
@@ -309,25 +309,25 @@ class Relation {
             }
         }
 
-        // if(isCluster(entity)) {
-        //     for (const cBox of cluster.boxes.values()) {
-        //         for (const eBox of entity.boxes.values()) {
-        //             /* Add cardinality only if relation is two directional */
-        //             if(cBox.neighbours.has(eBox)) {
-        //             // if(cBox.neighbours.has(eBox) && eBox.neighbours.has(cBox)) {
-        //                 card+=1;
-        //             }
-        //         }
-        //     }
-        // } else {
-        //     if(!entity.cluster && cluster.neighbours.has(entity)) return 1;
-
-        //     for (const cBox of cluster.boxes.values()) {
-        //         card = cBox.neighbours.has(entity) ? card+1 : card;
-        //     }
-        // }
-        
         return card ? card : 1;
+    }
+
+    isTwoDirectionalAndProblematic() {
+        var entityA = this.entityA;
+        var entityB = this.entityB;
+
+        const isTwoDirectional = (a,b) => a.neighbours.has(b) && b.neighbours.has(a);
+        const isProblematic = (a, b, relAB, relBA) => isTwoDirectional(a,b) && relAB.similarity == 1 && relBA.similarity == 1;
+
+        // const isCardinalityOneInBothDirections = 
+
+        var isProblematicBool = isProblematic(entityA, entityB, entityA.neighbours.get(entityB), entityB.neighbours.get(entityA));
+
+        return isProblematicBool
+
+        // if(isProblematicBool) {
+        //     console.log("problematic relation found");
+        // }
     }
 
     /**
@@ -346,27 +346,100 @@ class Relation {
                 } else {
                     rel = cBox.neighbours.get(entity);
                 }
-                // rel = cBox.neighbours.get(entity) || entity.neighbours.get(cBox);
-                // if(rel) {
-                //     var newRel = new Relation(cluster, entity.cluster ? entity.cluster : entity);
+                var isTwoDirectional = cBox.neighbours.has(entity) && entity.neighbours.has(cBox);
 
-                //     var dist = newRel.absoluteDistance;
-                //     var forward = dist/cluster.maxNeighbourDistance;
-                //     var backward = dist/(entity.cluster ? entity.cluster.maxNeighbourDistance : entity.maxNeighbourDistance);
+                var relTwoDirectional;
+                if(isTwoDirectional) {
+
+                    // const clusterNextToProblematicEntityId = '(t:740.984375,l:27.1875,b:811.984375,r:71.21875)';
+                    // const problematicEntityId = '(t:816.984375,l:27.1875,b:830.984375,r:123.265625,c:rgb(6, 69, 173))';
+
+                    const hasRightNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.left).length;
+                    const hasLeftNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.right).length;
+                    const hasDownNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.up).length;
+                    const hasUpNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.down).length;
+
+                    // if(cluster.id == clusterNextToProblematicEntityId && problematicEntityId == entity.id) {
+                    //     console.log(hasRightNeighbours(entity));
+                    //     console.log(hasLeftNeighbours(entity));
+                    //     console.log(hasDownNeighbours(entity));
+                    //     console.log(hasUpNeighbours(entity));
+
+                    // }
+
+                    const hasOnlyUpDownNeighbours = (box) => !hasRightNeighbours(box) && !hasLeftNeighbours(box) && (hasDownNeighbours(box) > 0 || hasUpNeighbours(box) > 0);
+
+                    if(hasOnlyUpDownNeighbours(entity) && hasOnlyUpDownNeighbours(cBox)) {
+                        // console.log(entity.id);
+                        // console.log(999999);
+
+                        var criticalRelation = cBox.neighbours.get(entity);
+
+                        var trueEntity = entity.cluster ? entity.cluster : entity;
+
+                        var absoluteDistance = criticalRelation.absoluteDistance;
+                        var forward = absoluteDistance / cluster.maxNeighbourDistance;
+                        var backward = absoluteDistance / trueEntity.maxNeighbourDistance;
+
+                        var relativeDistance = (forward+backward)/2;
+
+                        console.log(criticalRelation.shapeSimilarity);
+                        console.log(criticalRelation.colorSimilarity);
+
+                        var shapeSim = criticalRelation.shapeSimilarity != null ? criticalRelation.shapeSimilarity : 1;
+                        var colorSim = criticalRelation.colorSimilarity != null ? criticalRelation.colorSimilarity : 1;
+                        
+                        var sim = (relativeDistance + shapeSim + colorSim)/3;
+    
+                        console.log(parseFloat(sim.toFixed(3)), parseFloat(criticalRelation.similarity.toFixed(3)));
+
+                        console.log("reldist before:", criticalRelation.relativeDistance);
+                        console.log("reldist after:", relativeDistance);
+
+                        cumulSimilarity += sim;
+                        continue;
+
+                    }
+
+                    // var rel1 = cBox.neighbours.has(entity);
+                    // var rel2 = entity.neighbours.has(cBox);
+                    // if(rel1.similarity == 1 && rel2.similarity == 1) {
+                    //     relTwoDirectional = rel1;
+                    // }
+                }
+
+                // var TEST = true;
+                // if(relTwoDirectional && TEST) {
+
+                //     console.log("HERE");
+
+                //     var trueEntity = entity.cluster ? entity.cluster : entity;
+
+                //     var absoluteDistance = relTwoDirectional.absoluteDistance;
+                //     var forward = absoluteDistance / cluster.maxNeighbourDistance;
+                //     var backward = absoluteDistance / trueEntity.maxNeighbourDistance;
+
+                //     var relativeDistance = (forward+backward)/2;
+                //     var shapeSim = relTwoDirectional.shapeSimilarity ? relTwoDirectional.shapeSimilarity : 1;
+                //     var colorSim = relTwoDirectional.colorSimilarity ? relTwoDirectional.colorSimilarity : 1;
                     
-                //     newRel.relativeDistance = (forward+backward)/2;
-                //     newRel.shapeSimilarity = rel.shapeSimilarity;
-                //     newRel.colorSimilarity = rel.colorSimilarity;
+                //     var sim = (relativeDistance + shapeSim + colorSim)/3;
 
-                //     var sim = (newRel.relativeDistance + rel.shapeSimilarity + rel.colorSimilarity)/3;
+                //     console.log(parseFloat(sim.toFixed(3)), parseFloat(relTwoDirectional.similarity.toFixed(3)));
+                    
+                //     // if(sim == Infinity) {
+                //     //     console.log("infinity");
+                //         // console.log(absoluteDistance);
+                //         // console.log(relativeDistance);
+                //         // console.log(forward);
+                //         // console.log(backward);
+                //         // console.log(shapeSim);
+                //         // console.log(colorSim);
+                //     // }
 
-                //     newRel.similarity = sim;
-
-                //     // this.relativeDistance += rel.relativeDistance;
-                //     // this.newSimilarity = -1;
-                //     this.newRel = newRel;
-                //     // cumulSimilarity += (entity.cluster ? sim : rel.similarity);
                 //     cumulSimilarity += sim;
+
+                //     continue;
                 // }
                 cumulSimilarity += rel ? rel.similarity : 0;
             }
