@@ -27,24 +27,22 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .default('S', true).describe('S', 'Save screenshot of rendered page')
   .alias('D','debug').boolean('D')
   .default('D', false).describe('D', 'Allow errors printing from browser')
-  .alias('VI','vizualize-iteration').nargs('VI', 1)
-  .default('VI', 0).number('VI').describe('VI', `Vizualize interactive iteration step i`)
+  .alias('VS','vizualize-iteration').nargs('VS', 1)
+  .default('VS', 0).number('VS').describe('VS', `Vizualize segmentation step (interactive)`)
   .alias('I','show-info').boolean('I')
   .default('I', false).describe('I', `Show extraction and clustering info`)
   .boolean('basic').default('basic', false).describe('basic', `Use basic BCS implementation, default using extended`)
   .alias('E', 'export').nargs('E', 1)
   .default('E', 0).describe('E', 
     `Export boxes and clusters: 
-    0 - default (export nothing)
+    0 - default 
     1 - boxes.png 
     2 - boxes.json 
     3 - clusters.png 
     4 - clusters.json 
     5 - clusters-over-webpage.png
     6 - all
-    Use multiple: f.e. -E 134, -E 51
-    Note: if 6 included -> everything is exported
-          if 0 included -> nothing is exported
+    Usage: f.e. -E 134, -E 51, -E *7* (all), -E *0* (none)  
     `)
   .alias('O','output-folder').nargs('O', 1).describe('O', 'Output folder')
   .help('h').alias('h', 'help')

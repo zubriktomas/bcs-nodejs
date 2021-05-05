@@ -10,14 +10,15 @@ const { chromium } = require('playwright');
 const { EntityType } = require('../structures/EntityType');
 
 /* Expect boxes and clusters data */
-function vizualizeStep(data) {
+function vizualizeStep(data, iteration) {
+
+  data.iteration = iteration;
+
   startBoxVizualizer(data);
 }
 
 /* Start Box vizualizer */
 const startBoxVizualizer = async (data) => {
-
-  console.log(data.boxes.length);
 
   const browser = await chromium.launch({ headless: false })
   const context = await browser.newContext({ acceptDownloads: true });
@@ -26,8 +27,8 @@ const startBoxVizualizer = async (data) => {
   page.on('close', () => browser.close());
 
   await page.setViewportSize({
-    width: data.width,
-    height: data.height
+    width: data.pageDims.width,
+    height: data.pageDims.height
   });
 
   await page.setContent(buildHtmlTemplate());

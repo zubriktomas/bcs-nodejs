@@ -128,8 +128,8 @@ class ClusteringManager {
         while(this.relations.size > 0) {
             rel = this.getBestRelation();
 
-            if(++iteration == this.argv.VI) {
-                vizualizeStep(this.getDataForVizualization(rel));
+            if(++iteration == this.argv.VS) {
+                vizualizeStep(this.getDataForVizualization(rel), iteration);
                 break;
             }
 
@@ -278,8 +278,7 @@ class ClusteringManager {
             clusters: Array.from(this.clusters.values()).map(cluster => convertEntityForVizualizer(cluster)),
             relations: Array.from(this.relations.keys()),
             bestRel: (!rel) ? null : {relationId: rel.id, entityAId: rel.entityA.id, entityBId: rel.entityB.id, similarity: rel.similarity},
-            width: this.pageDims.width,
-            height: this.pageDims.height
+            pageDims: this.pageDims,
         };
         return data;
     }
