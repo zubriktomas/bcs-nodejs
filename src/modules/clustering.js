@@ -14,23 +14,27 @@ const { Selector, SelectorDirection } = require('../structures/Selector');
 const { isBox, isCluster } = require('../structures/EntityType');
 const { exportFiles } = require('./exporter');
 
-
 const assert = (condition, message) => { 
     if(!condition) throw Error('Assert failed: ' + (message || ''))
 };
 
+/**
+ * Clustering Manager class that manages the whole segmentation/clustering process
+ */
 class ClusteringManager {
 
+    /**
+     * Create CM instance
+     * @param {*} extracted extracted data - boxes and pageDims
+     * @param {*} argv program arguments
+     */
     constructor(extracted, argv) {
 
         /* Assign arguments from main entry point */
         this.argv = argv;
 
-        /* Webpage dimension with defined width and full scrollHeight */
-        this.pageDims = {
-            height: extracted.document.height,
-            width: extracted.document.width
-        };
+        /* Webpage dimension with defined full scrollWidth and full scrollHeight */
+        this.pageDims = extracted.pageDims;
 
         /* Assign clustering threshold */
         this.clusteringThreshold = argv.CT;
@@ -94,23 +98,32 @@ class ClusteringManager {
         return new Map(boxesUnclustered.entries());
     }
 
+    /**
+     * Find all relations between all extracted boxes 
+     */
     findAllRelations() {
 
-        const pageContents = this.pageDims.width * this.pageDims.height;
-        var allBoxesContents = 0;
-        const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
+        // const pageContents = this.pageDims.width * this.pageDims.height;
+        // var allBoxesContents = 0;
+        // const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
+
+        /**
+         * For every box find its all neighbours in all directions (relations are unique! same relation calculated only once)
+         */
         for (let box of this.boxesUnclustered.values()) {
             box.findDirectNeighbours(this, SelectorDirection.right);
             box.findDirectNeighbours(this, SelectorDirection.down);
             box.findDirectNeighbours(this, SelectorDirection.left);
             box.findDirectNeighbours(this, SelectorDirection.up);
-            allBoxesContents += calcContents(box);
+            // allBoxesContents += calcContents(box);
         }
 
-        var r = 0;
+        // var r = 0;
+        
+        /* Calculate all relations similarity values */
         for (let relation of this.relations.values()) {
             relation.calcSimilarity();
-            r += relation.similarity;
+            // r += relation.similarity;
         }
 
         // this.clusteringThreshold = r / this.relations.size;
@@ -119,6 +132,10 @@ class ClusteringManager {
         // console.log("CLUSTERING THRESHOLD = REL SIM/REL COUNT = ", this.clusteringThreshold);
     }
 
+    /**
+     * Get best relation from relations set
+     * @returns relation with the smallest similarity value
+     */
     getBestRelation() {
         var bestRel, sim = Number.MAX_SAFE_INTEGER;
 
@@ -131,45 +148,60 @@ class ClusteringManager {
         return bestRel;
     }
 
+    /**
+     * Create clusters from calculated relations 
+     */
     createClusters() {
-        var rel, stepVizualized = false, iteration=0;
 
+        /* Variables */
+        var bestRel, stepVizualized = false, iteration = 0;
+
+        /* Loop over all relations and always take the best relation (with the smallest similarity) */
         while(this.relations.size > 0) {
-            rel = this.getBestRelation();
 
+            /* Find best relation */
+            bestRel = this.getBestRelation();
+
+            /* Vizualize step if defined by argument (VS) |  !Attention: stop segmentation process immediately! */
             if(++iteration == this.argv.VS) {
-                vizualizeStep(this.getDataForVizualization(rel), iteration);
+                vizualizeStep(this.getDataForVizualization(bestRel), iteration);
                 stepVizualized = true;
                 break;
             }
+            
+            /* Delete current best relation from relations map */
+            this.relations.delete(bestRel.id);
 
-            this.relations.delete(rel.id);
-
-            if(rel.similarity > this.clusteringThreshold) {
+            /* Check relation similarity, if it has exceeded CT, stop segmentation */
+            if(bestRel.similarity > this.clusteringThreshold) {
                 if(this.argv.showInfo){
-                    console.info(`Info: [Segment] Similarity > ${this.clusteringThreshold}`, rel.similarity);
+                    console.info(`Info: [Segment] Similarity > ${this.clusteringThreshold}`, bestRel.similarity);
                     console.info("Info: [Segment] Number of segments:", this.clusters.size);
                 }
                 break;
             } 
 
-            var cc = new Cluster(rel.entityA, rel.entityB);
+            /* Create new cluster candidate by relation entities */
+            var clusterCandidate = new Cluster(bestRel.entityA, bestRel.entityB);
 
-            if(this.overlaps(cc, rel)) {
+            /* If CC overlaps with some entity, continue with next best relation (current was already deleted) */
+            if(this.overlaps(clusterCandidate, bestRel)) {
                 continue;
             }
 
-            this.removeEntities(cc); 
-            this.updateRelations(cc);
-            this.clusters.set(cc.id, cc);
+            /* If CC passes overlaps test update all sets of entites, relations and RTree */
+            this.removeEntities(clusterCandidate); 
+            this.updateRelations(clusterCandidate);
+
+            /* Commit candidate cluster as valid cluster */
+            this.clusters.set(clusterCandidate.id, clusterCandidate);
         }
 
+        /* If vizualization step was specified, but value of iteration exceeded number of processed relations, show absolute result */
         if (!stepVizualized && this.argv.VS > 0) {
             vizualizeStep(this.getDataForVizualization(), ++iteration);
         }
     }
-
-    
 
     // densityOverThreshold(cc) {
     //     const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
@@ -183,22 +215,12 @@ class ClusteringManager {
     //     return ccBoxesContents/ccContents >= this.densityThreshold;
     // }
 
-    // mergeOverlaps(cc) {
-    //     var overlapping, oBoxes, oClusters, clustersSkip = new Map();
-    //     do {
-    //         overlapping = cc.getOverlappingEntities(this.tree);
-    //         oBoxes = overlapping.filter(entity => isBox(entity) && !cc.boxes.has(entity.id) && this.boxesUnclustered.has(entity.id));
-    //         oClusters = overlapping.filter(entity => isCluster(entity) && !clustersSkip.has(entity.id) );
-    //         for (let i = 0; i < oBoxes.length; i++) {
-    //             cc.addBoxes(oBoxes[i]);
-    //         }
-    //         for (let i = 0; i < oClusters.length; i++) {
-    //             cc.addBoxes(oClusters[i]);
-    //             clustersSkip.set(oClusters[i].id, oClusters[i]);
-    //         }
-    //     } while (!this.densityOverThreshold(cc));
-    // }
-
+    /**
+     * Check if cluster candidate overlaps with some entity by unallowed/unwanted manner
+     * @param {Cluster} cc 
+     * @param {Relation} rel 
+     * @returns true | false
+     */
     overlaps(cc, rel) {
 
         /* Create set of clusters that constitute relations itself (if any entity of relation is cluster) */
@@ -259,6 +281,10 @@ class ClusteringManager {
         return oBoxes.length || oClusters.length;
     }
 
+    /**
+     * Remove entites (boxes, clusters, relations) from sets AND/OR from RTree
+     * @param {*} clusterCandidate 
+     */
     removeEntities(clusterCandidate) {
 
         for (const ccBox of clusterCandidate.boxes.values()) {
@@ -284,6 +310,10 @@ class ClusteringManager {
         this.tree.insert(clusterCandidate);
     }
 
+    /**
+     * Update all relations and neighbours altogether
+     * @param {Cluster} clusterCandidate 
+     */
     updateRelations(clusterCandidate) {
 
         /* Update neighbours and relations of all boxes and clusters from cluster candidate context */
@@ -300,6 +330,11 @@ class ClusteringManager {
         }
     }
 
+    /**
+     * Get data for vizualization (boxes and clusters list (special format!), relations list, pageDims, bestRel)
+     * @param {Relation} rel if it is defined, it is vizualized 
+     * @returns data
+     */
     getDataForVizualization(rel) {
         var data = {
             boxes: Array.from(this.boxesValid.values()).map(box => convertEntityForVizualizer(box)),
@@ -311,6 +346,10 @@ class ClusteringManager {
         return data;
     }
 
+    /**
+     * Get data for export (boxes, clusters, pageDims)
+     * @returns data
+     */
     getDataForExport() {
         var data = {
             boxesMap: this.boxesValid,
@@ -321,6 +360,11 @@ class ClusteringManager {
     }    
 }
 
+/**
+ * Function exported for access to main (bcs.js)
+ * @param {*} extracted extracted data
+ * @param {*} argv program arguments
+ */
 function createSegmentation(extracted, argv) {
 
     var cm = new ClusteringManager(extracted, argv);

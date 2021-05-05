@@ -123,7 +123,7 @@ if(!Number.isInteger(argv.H) || argv.H <= 0) {
 
     return {
       boxesList: boxes,
-      document: {
+      pageDims: {
         height: document.body.scrollHeight,
         width: document.body.scrollWidth
       },
