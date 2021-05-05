@@ -19,7 +19,9 @@ const imageHeight = dimensions.height;
 const screenHeight = 1200;
 
 /* Parse and convert FiyLayout segments.xml to segments-ref.json */
-require('./areatree-parser').areaTreeParse();
+var aTreeParserInFile = './../../../fitlayout-jar/out/segments.xml';
+var aTreeParserOutFile = './input/segments-ref.json';
+require('./areatree-parser').areaTreeParse(aTreeParserInFile, aTreeParserOutFile);
 
 /* Parse arguments */
 const argv = require('yargs/yargs')(process.argv.slice(2))

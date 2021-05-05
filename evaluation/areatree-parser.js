@@ -7,9 +7,6 @@
 const { readFileSync, writeFileSync } = require('fs');
 const parser = require('xml2json');
 
-var inFile = './../../../fitlayout-jar/out/segments.xml';
-var outFile = './input/segments-ref.json';
-
 /**
  * Convert area structure to segment structure used in GT annotator
  * @param {*} area 
@@ -32,7 +29,7 @@ function convertAreaToSegment(area) {
  * Parse areaTree XML structure from FitLayout to JSON 
  * (! attention ! Have to specify path to segments.xml on you own)
  */
-function areaTreeParse() {
+function areaTreeParse(inFile, outFile) {
 
     const xmlData = readFileSync(inFile).toString();
     const json = JSON.parse(parser.toJson(xmlData));

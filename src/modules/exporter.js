@@ -6,185 +6,186 @@
  * Description: Box Vizualizer to show box neighbours, segments
  */
 
- const { writeFileSync } = require('fs');
- const { chromium } = require('playwright');
- const { readFileSync, existsSync } = require('fs');
+const { writeFileSync } = require('fs');
+const { chromium } = require('playwright');
+const { readFileSync, existsSync } = require('fs');
 const { buildHtmlTemplate } = require('./box-vizualizer');
 
 const FileType = Object.freeze({ png: 0, json: 1 });
 
- const ExportOption = Object.freeze({
-     boxesPNG: 0, 
-     boxesJSON: 1, 
-     clustersPNG: 3,
-     clustersJSON: 4,
-     clustersOverBoxes: 5,
-     clustersOverWebpage: 6,
-     all: 7
-});
+const exportPNG = async (data) => {
 
-// function loadDataFromFileSystem(bcsOutputFolder, gtAnnotatorOutputFolder, gtSegmentsFilename) {
+    const browser = await chromium.launch({ headless: true })
+    const context = await browser.newContext({ acceptDownloads: true });
+    const page = await context.newPage();
 
-//     const webpagePNG = tryToLoadFile(`${bcsOutputFolder}/webpage.png`, FileType.png);
-//     const renderedPNG = tryToLoadFile(`${bcsOutputFolder}/boxes.png`, FileType.png);
-//     const boxes = tryToLoadFile(`${bcsOutputFolder}/boxes.json`, FileType.json);
-//     const segmentsBasic = tryToLoadFile(`${bcsOutputFolder}/segments.json`, FileType.json);
-//     const segmentsReference = tryToLoadFile('./input/segments-ref.json', FileType.json);
-//     const segmentsGT = tryToLoadFile(`${gtAnnotatorOutputFolder}/${gtSegmentsFilename}`, FileType.json);
+    page.on('close', () => browser.close());
 
-//     const segmentations = { reference: segmentsReference, basic: segmentsBasic, gt: segmentsGT };
+    await page.setViewportSize({
+        width: data.pageDims.width,
+        height: data.pageDims.height
+    });
 
-//     var data = {
-//         boxes: boxes,
-//         segmentations: segmentations,
-//         imageWidth: imageWidth,
-//         imageHeight: imageHeight,
-//         webpagePNG: webpagePNG,
-//         renderedPNG: renderedPNG
-//     }
-//     return data;
-// }
+    await page.setContent(buildHtmlTemplate());
 
-function exportByOption(argv, option, data, filepath) {
+    /* Evaluate in browser context with loaded data from filesystem */
+    await page.evaluate(async (data) => {
 
-    const startExporter = async (data) => {
+        /* Set body background image as webpage screenshot */
+        if(data.webpagePNG){
+            document.body.style.backgroundImage = `url("data:image/png;base64,${data.webpagePNG}")`;
+        }
 
-        const browser = await chromium.launch({ headless: true })
-        const context = await browser.newContext({ acceptDownloads: true });
-        const page = await context.newPage();
-        
-        page.on('close', () => browser.close());
-        
-        await page.setViewportSize({
-            width: data.width,
-            height: data.height
-        });
-        
-        await page.setContent(buildHtmlTemplate());
-        
-        /* Evaluate in browser context with loaded data from filesystem */
-        await page.evaluate(async (data) => {
-            
-            convertEntitiesToDivs(data.boxes);
-            convertEntitiesToDivs(data.clusters ? data.clusters : []);
-            
-            function convertEntitiesToDivs(entities) {
-                
-                for (const entity of entities) {
-                    let div = document.createElement('div');
-                    div.id = entity.id;
-                    div.style.top = `${entity.top}px`;
-                    div.style.left = `${entity.left}px`;
-                    div.style.height = `${entity.height}px`;
-                    div.style.width = `${entity.width}px`;
-                    div.style.position = 'absolute';
-                    div.style.zIndex = entity.type == 0 ? 100 : 200;
-                    div.style.backgroundColor = entity.color;
-                    div.style.opacity = entity.type == 0 ? 1.0 : 0.4;
-                    document.body.appendChild(div);
-                }
+        document.body.style.height = `${data.pageDims.height}px`; 
+
+        convertEntitiesToDivs(data.boxesList ? data.boxesList : data.clustersList);
+
+        function convertEntitiesToDivs(entities) {
+
+            for (const entity of entities) {
+                let div = document.createElement('div');
+                div.style.top = `${entity.top}px`;
+                div.style.left = `${entity.left}px`;
+                div.style.height = `${entity.height}px`;
+                div.style.width = `${entity.width}px`;
+                div.style.position = 'absolute';
+                div.style.zIndex = 100;
+                div.style.backgroundColor = entity.type == 0 ? entity.color : "";
+                div.style.border = entity.type == 1 ? "2px solid #FF0000" : "";
+                document.body.appendChild(div);
             }
-            
-        }, data);
-        
-        await page.screenshot({path: './output/boxes.png', fullPage: true});
-        await browser.close();
+        }
+
+    }, data);
+
+    if(data.boxesList) {
+        await page.screenshot({ path: './output/boxes.png', fullPage: true });
+    } else if(data.clustersList && data.webpagePNG) {
+        await page.screenshot({ path: './output/segments-over-webpage.png', fullPage: true });
+    } else if(data.clustersList) {
+        await page.screenshot({ path: './output/segments.png', fullPage: true });
     }
 
-    switch (option) {
-        case ExportOption.boxesPNG:
-            startExporter(data);
-            break;
+    await browser.close();
+}
 
-        case ExportOption.boxesJSON:
-            exportBoxesToJson(data);
-            break;
 
-        case ExportOption.clustersPNG:
-            break;
+function exportFiles(argv, data) {
 
-        case ExportOption.clustersJSON:
-            exportClustersToJson(data);
-            break;
+    /* From program arguments, f.e. 1234567 */
+    var exportListString = argv.export;
 
-        case ExportOption.clustersOverBoxes:
-            break;
+    var pageDims = data.pageDims;
+    var clustersList = createClusterListForExport(data.clustersMap);
+    var boxesList = createBoxesListForExport(data.boxesMap);
     
-        case ExportOption.clustersOverWebpage:
-            break;
+    /* Export all files */
+    if(exportListString.includes(6)) {
+        exportPNG({boxesList: boxesList, pageDims: pageDims});
+        exportBoxesToJson(boxesList, './output/boxes.json');
+        exportPNG({clustersList: clustersList, pageDims: pageDims});
+        exportClustersToJson(clustersList, './output/segments.json');
 
-        case ExportOption.all:
-            break;
+        const webpagePNG = tryToLoadFile(`./output/webpage.png`, FileType.png);    
+        exportPNG({clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG})
 
-        default:
-            break;
+        if (argv.showInfo) {
+            console.info("Info: All PNG and JSON files were exported");
+        }
+    }
+
+    /* Boxes PNG */
+    if(exportListString.includes(1)) {
+        exportPNG({boxesList: boxesList, pageDims: pageDims});
+        if (argv.showInfo) {
+            console.info("Info: Extracted boxes exported as PNG");
+        }
     }
     
-    function exportClustersToJson(clustersMap) {
-        
-        const convertCluster = (c) => {
-            var cluster = {};
-            cluster.left = c.left;
-            cluster.top = c.top;
-            cluster.right = c.right;
-            cluster.bottom = c.bottom;
-            cluster.width = c.right - c.left;
-            cluster.height = c.bottom - c.top;
-            cluster.type = c.type;
-            cluster.segm = 'basic';
-            return cluster;
+    /* Boxes JSON */
+    if(exportListString.includes(2)) {
+        exportBoxesToJson(boxesList, './output/boxes.json');
+        if (argv.showInfo) {
+            console.info("Info: Extracted boxes exported as JSON");
         }
-        
-        var clustersToExport = [];
-        for (const cluster of clustersMap.values()) {
-            clustersToExport.push(convertCluster(cluster));
-        }
-        
-        var clustersJson = JSON.stringify(clustersToExport);
-        
-        if(argv.showInfo) {
-            console.info("Info: Clusters exported to JSON", filepath);
-        }
-        
-        writeFileSync(filepath, clustersJson, (err) => {
-            if (err) throw err;
-            
-        });
     }
     
-    function exportBoxesToJson(boxesMap) {
-        
-        const convertBox = (b) => {
-            var box = {};
-            box.left = b.left;
-            box.top = b.top;
-            box.right = b.right;
-            box.bottom = b.bottom;
-            box.width = b.width
-            box.height = b.height;
-            box.color = b.color;
-            box.type = b.type;
-            return box;
+    /* Segments PNG */
+    if(exportListString.includes(3)) {
+        exportPNG({clustersList: clustersList, pageDims: pageDims});
+        if (argv.showInfo) {
+            console.info("Info: Clusters exported as PNG");
         }
-        
-        var boxesToExport = [];
-        for (const box of boxesMap.values()) {
-            boxesToExport.push(convertBox(box));
-        }
-        
-        var boxesJson = JSON.stringify(boxesToExport);
-        
-        if(argv.showInfo) {
-            console.info("Info: Extracted boxes exported to JSON", filepath);
-        }
-        
-        writeFileSync(filepath, boxesJson, (err) => {
-            if (err) throw err;
-        });
-        
     }
     
-   
+    /* Segments JSON */
+    if(exportListString.includes(4)) {
+        exportClustersToJson(clustersList, './output/segments.json');
+        if (argv.showInfo) {
+            console.info("Info: Clusters exported as JSON");
+        }
+    }
+
+    /* Segments over webpage screenshot PNG */
+    if(exportListString.includes(5)) {
+        const webpagePNG = tryToLoadFile(`./output/webpage.png`, FileType.png);    
+        exportPNG({clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG})
+    }
+}
+
+function createClusterListForExport(clustersMap) {
+    const convertCluster = (c) => {
+        var cluster = {};
+        cluster.left = c.left;
+        cluster.top = c.top;
+        cluster.right = c.right;
+        cluster.bottom = c.bottom;
+        cluster.width = c.right - c.left;
+        cluster.height = c.bottom - c.top;
+        cluster.type = c.type;
+        cluster.segm = 'basic';
+        return cluster;
+    }
+    
+    var clustersToExport = [];
+    for (const cluster of clustersMap.values()) {
+        clustersToExport.push(convertCluster(cluster));
+    }
+
+    return clustersToExport;
+}
+
+function exportClustersToJson(clustersToExport, filepath) {
+    writeFileSync(filepath, JSON.stringify(clustersToExport), (err) => {
+        if (err) throw err;
+    });
+}
+
+function createBoxesListForExport(boxesMap) {
+    const convertBox = (b) => {
+        var box = {};
+        box.left = b.left;
+        box.top = b.top;
+        box.right = b.right;
+        box.bottom = b.bottom;
+        box.width = b.width
+        box.height = b.height;
+        box.color = b.color;
+        box.type = b.type;
+        return box;
+    }
+
+    var boxesToExport = [];
+    for (const box of boxesMap.values()) {
+        boxesToExport.push(convertBox(box));
+    }
+    return boxesToExport;
+}
+
+function exportBoxesToJson(boxesToExport, filepath) {
+    writeFileSync(filepath, JSON.stringify(boxesToExport), (err) => {
+        if (err) throw err;
+    });
 }
 
 /**
@@ -207,5 +208,5 @@ function tryToLoadFile(filePath, type) {
         process.exit(1);
     }
 }
-    
-module.exports = {exportByOption, ExportOption, tryToLoadFile, FileType};
+
+module.exports = { exportFiles, tryToLoadFile, FileType };

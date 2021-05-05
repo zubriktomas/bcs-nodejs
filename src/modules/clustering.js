@@ -13,7 +13,8 @@ const Cluster = require('../structures/Cluster');
 const RTree = require('../structures/RTree');
 const { Selector, SelectorDirection } = require('../structures/Selector');
 const { EntityType, isBox, isCluster } = require('../structures/EntityType');
-const { exportByOption, ExportOption } = require('./exporter');
+const { exportFiles } = require('./exporter');
+const { writeFileSync } = require('fs');
 
 
 module.exports.process = process;
@@ -132,7 +133,7 @@ class ClusteringManager {
             rel = this.getBestRelation();
 
             if(++iteration == this.argv.VI) {
-                vizualizer.vizualize(this.createDataForVizualization());
+                vizualizer.vizualize(this.getDataForVizualization());
                 break;
             }
 
@@ -336,7 +337,7 @@ class ClusteringManager {
     //     return vizEntity;
     // };
 
-    createDataForVizualization(rel) {
+    getDataForVizualization(rel) {
         var data = {
             boxes: Array.from(this.boxesAll.values()).map(box => vizualizer.convertEntityForVizualizer(box)),
             clusters: Array.from(this.clusters.values()).map(cluster => vizualizer.convertEntityForVizualizer(cluster)),
@@ -347,6 +348,15 @@ class ClusteringManager {
         };
         return data;
     }
+
+    getDataForExport() {
+        var data = {
+            boxesMap: this.boxesAll,
+            clustersMap: this.clusters,
+            pageDims: this.pageDims
+        }
+        return data;
+    }    
 
     // vizualize() {
 
@@ -430,8 +440,8 @@ function process(extracted, argv) {
     var cm = new ClusteringManager(extracted, argv);
     cm.removeContainers();
 
-    exportByOption(argv, ExportOption.boxesJSON, cm.boxesAll, './output/boxes.json');
-    exportByOption(argv, ExportOption.boxesPNG, cm.createDataForVizualization(), './output/boxes.png');
+    // exportByOption(argv, ExportOption.boxesJSON, cm.boxesAll, './output/boxes.json');
+    // exportByOption(argv, ExportOption.boxesPNG, cm.getDataForVizualization(), './output/boxes.png');
 
     cm.findAllRelations();
 
@@ -440,13 +450,21 @@ function process(extracted, argv) {
 
     cm.createClusters();
 
-    exportByOption(argv, ExportOption.clustersJSON, cm.clusters, './output/segments.json');
-
-    if(argv.showInfo) {
-        console.info("Info: allboxes count", cm.allBoxesList.length);
-        console.info("Info: valid boxesAll count", cm.boxesAll.size);
-        console.info("Info: boxesUnclustered", cm.boxes.size);
+    if(!argv.export.includes(0)) {
+        exportFiles(argv, cm.getDataForExport());
     }
+
+    // exportClustersToJson(cm.clusters, './output/segments.json');
+    // exportBoxesToJson(cm.boxesOk, './output/boxes.json');
+
+    
+    // exportByOption(argv, ExportOption.clustersJSON, cm.clusters, './output/segments.json');
+
+    // if(argv.showInfo) {
+    //     console.info("Info: allboxes count", cm.allBoxesList.length);
+    //     console.info("Info: valid boxesAll count", cm.boxesAll.size);
+    //     console.info("Info: boxesUnclustered", cm.boxes.size);
+    // }
 
     
     // cm.vizualize();

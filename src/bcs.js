@@ -32,6 +32,21 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .alias('I','show-info').boolean('I')
   .default('I', false).describe('I', `Show extraction and clustering info`)
   .boolean('basic').default('basic', false).describe('basic', `Use basic BCS implementation, default using extended`)
+  .alias('E', 'export').nargs('E', 1)
+  .default('E', 0).describe('E', 
+    `Export boxes and clusters: 
+    0 - default (export nothing)
+    1 - boxes.png 
+    2 - boxes.json 
+    3 - clusters.png 
+    4 - clusters.json 
+    5 - clusters-over-webpage.png
+    6 - all
+    Use multiple: f.e. -E 134, -E 51
+    Note: if 6 included -> everything is exported
+          if 0 included -> nothing is exported
+    `)
+  .alias('O','output-folder').nargs('O', 1).describe('O', 'Output folder')
   .help('h').alias('h', 'help')
   .argv;
 
@@ -43,6 +58,7 @@ if (argv._.length !== 1) {
 
 /* Get all args to local variables */
 argv.url = argv._[0];
+argv.export = String(argv.export)
 
 if(parseFloat(argv.CT) != argv.CT || argv.CT < 0 || argv.CT > 1) {
   console.error('Warning: Incorrect CT', argv.CT, 'Using default, 0.5');
