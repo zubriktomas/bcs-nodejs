@@ -42,7 +42,8 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
     4 - clusters.json 
     5 - clusters-over-webpage.png
     6 - all
-    Usage: f.e. -E 134, -E 51, -E *7* (all), -E *0* (none)  
+    7 - all-segmentation-steps as step[iteration].png (must be used as only option -E 7)
+    Usage: f.e. -E 134, -E 51, -E *6* (all), -E *0* (none)  
     `)
   .alias('O','output-folder').nargs('O', 1).describe('O', 'Output folder')
   .help('h').alias('h', 'help')

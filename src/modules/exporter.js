@@ -13,6 +13,7 @@ const { buildHtmlTemplate } = require('./box-vizualizer');
 
 const FileType = Object.freeze({ png: 0, json: 1 });
 
+/* Export PNG files by data parameter */
 const exportPNG = async (data) => {
 
     const browser = await chromium.launch({ headless: true })
@@ -32,11 +33,11 @@ const exportPNG = async (data) => {
     await page.evaluate(async (data) => {
 
         /* Set body background image as webpage screenshot */
-        if(data.webpagePNG){
+        if (data.webpagePNG) {
             document.body.style.backgroundImage = `url("data:image/png;base64,${data.webpagePNG}")`;
         }
 
-        document.body.style.height = `${data.pageDims.height}px`; 
+        document.body.style.height = `${data.pageDims.height}px`;
 
         convertEntitiesToDivs(data.boxesList ? data.boxesList : data.clustersList);
 
@@ -58,17 +59,47 @@ const exportPNG = async (data) => {
 
     }, data);
 
-    if(data.boxesList) {
+    if (data.boxesList) {
         await page.screenshot({ path: './output/boxes.png', fullPage: true });
-    } else if(data.clustersList && data.webpagePNG) {
+    } else if (data.clustersList && data.webpagePNG) {
         await page.screenshot({ path: './output/segments-over-webpage.png', fullPage: true });
-    } else if(data.clustersList) {
+    } else if (data.clustersList) {
         await page.screenshot({ path: './output/segments.png', fullPage: true });
     }
 
     await browser.close();
 }
 
+/* Export all segmentation steps */
+const exportAllSegmentationSteps = async (data) => {
+    const allSegmentationSteps = data.allSegmentationSteps;
+    const browser = await chromium.launch({ headless: true })
+    const page = await browser.newPage()
+    await page.setViewportSize({ width: data.pageDims.width, height: data.pageDims.height })
+  
+    for (const segmentationStep of allSegmentationSteps) {
+  
+      var html = "";
+      var relAId = segmentationStep.data.bestRel ? segmentationStep.data.bestRel.entityAId : "";
+      var relBId = segmentationStep.data.bestRel ? segmentationStep.data.bestRel.entityBId : "";
+  
+      for (const entity of segmentationStep.data.boxes) {
+        html += `<div style="top:${entity.top};left:${entity.left};width:${entity.width};height:${entity.height};
+        background-color:${entity.id == relAId || entity.id == relBId ? '#FF0000' : entity.color};position:absolute; z-index:100; ">
+        </div>`;
+      }
+      
+      for (const entity of segmentationStep.data.clusters) {
+        html += `<div style="top:${entity.top};left:${entity.left};width:${entity.width};height:${entity.height};
+        background-color:${entity.id == relAId || entity.id == relBId ? '#FF0000' : "#e6ab2e"}; opacity: 0.75; position:absolute; z-index:200; ">
+        </div>`;
+      }
+  
+      await page.setContent(html);
+      await page.screenshot({ path: `./output/steps/step${segmentationStep.iteration}.png`, fullPage: true });
+    }
+    await browser.close()
+  }
 
 function exportFiles(argv, data) {
 
@@ -78,49 +109,35 @@ function exportFiles(argv, data) {
     var pageDims = data.pageDims;
     var clustersList = createClusterListForExport(data.clustersMap);
     var boxesList = createBoxesListForExport(data.boxesMap);
-    
-    /* Export all files */
-    if(exportListString.includes(6)) {
-        exportPNG({boxesList: boxesList, pageDims: pageDims});
-        exportBoxesToJson(boxesList, './output/boxes.json');
-        exportPNG({clustersList: clustersList, pageDims: pageDims});
-        exportClustersToJson(clustersList, './output/segments.json');
 
-        const webpagePNG = tryToLoadFile(`./output/webpage.png`, FileType.png);    
-        exportPNG({clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG})
 
-        if (argv.showInfo) {
-            console.info("Info: [Export] (6) All PNG and JSON files exported");
-        }
-        return;
-    }
 
     /* Boxes PNG */
-    if(exportListString.includes(1)) {
-        exportPNG({boxesList: boxesList, pageDims: pageDims});
+    if (exportListString.includes(1)) {
+        exportPNG({ boxesList: boxesList, pageDims: pageDims });
         if (argv.showInfo) {
             console.info("Info: [Export] (1) Boxes exported as PNG");
         }
     }
-    
+
     /* Boxes JSON */
-    if(exportListString.includes(2)) {
+    if (exportListString.includes(2)) {
         exportBoxesToJson(boxesList, './output/boxes.json');
         if (argv.showInfo) {
             console.info("Info: [Export] (2) Boxes exported as JSON");
         }
     }
-    
+
     /* Segments PNG */
-    if(exportListString.includes(3)) {
-        exportPNG({clustersList: clustersList, pageDims: pageDims});
+    if (exportListString.includes(3)) {
+        exportPNG({ clustersList: clustersList, pageDims: pageDims });
         if (argv.showInfo) {
             console.info("Info: [Export] (3) Clusters exported as PNG");
         }
     }
-    
+
     /* Segments JSON */
-    if(exportListString.includes(4)) {
+    if (exportListString.includes(4)) {
         exportClustersToJson(clustersList, './output/segments.json');
         if (argv.showInfo) {
             console.info("Info: [Export] (4) Clusters exported as JSON");
@@ -128,12 +145,37 @@ function exportFiles(argv, data) {
     }
 
     /* Segments over webpage screenshot PNG */
-    if(exportListString.includes(5)) {
-        const webpagePNG = tryToLoadFile(`./output/webpage.png`, FileType.png);    
-        exportPNG({clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG})
+    if (exportListString.includes(5)) {
+        const webpagePNG = tryToLoadFile(`./output/webpage.png`, FileType.png);
+        exportPNG({ clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG })
         if (argv.showInfo) {
             console.info("Info: [Export] (5) Clusters over webpage screenshot");
         }
+    }
+
+    /* Export all files */
+    if (exportListString.includes(6)) {
+        exportPNG({ boxesList: boxesList, pageDims: pageDims });
+        exportBoxesToJson(boxesList, './output/boxes.json');
+        exportPNG({ clustersList: clustersList, pageDims: pageDims });
+        exportClustersToJson(clustersList, './output/segments.json');
+
+        const webpagePNG = tryToLoadFile(`./output/webpage.png`, FileType.png);
+        exportPNG({ clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG });
+
+        if (argv.showInfo) {
+            console.info("Info: [Export] (6) All PNG and JSON files exported");
+        }
+        return;
+    }
+
+    /* Export all segmentation steps as png files */
+    if (exportListString.includes(7) && exportListString.length == 1) {
+        if (argv.showInfo) {
+            console.info("Info: [Export] (7) All segmentation steps as PNG files");
+        }
+        console.info("Warning: [Export] Exporting all segmentation steps. Can take a while. Please wait...");
+        exportAllSegmentationSteps(data);
     }
 }
 
@@ -150,7 +192,7 @@ function createClusterListForExport(clustersMap) {
         cluster.segm = 'basic';
         return cluster;
     }
-    
+
     var clustersToExport = [];
     for (const cluster of clustersMap.values()) {
         clustersToExport.push(convertCluster(cluster));

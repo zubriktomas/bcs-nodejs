@@ -53,6 +53,8 @@ class ClusteringManager {
         /* Init empty map of clusters and relations */
         this.clusters = new Map();
         this.relations = new Map();
+
+        this.allSegmentationSteps = [];
     }
 
     reinitBoxes(boxesList) {
@@ -119,7 +121,7 @@ class ClusteringManager {
         }
 
         // var r = 0;
-        
+
         /* Calculate all relations similarity values */
         for (let relation of this.relations.values()) {
             relation.calcSimilarity();
@@ -158,12 +160,17 @@ class ClusteringManager {
 
         /* Loop over all relations and always take the best relation (with the smallest similarity) */
         while(this.relations.size > 0) {
+            iteration++;
 
             /* Find best relation */
             bestRel = this.getBestRelation();
 
+            if(this.argv.export.includes(7) && this.argv.export.length == 1){
+                this.allSegmentationSteps.push({iteration: iteration, data: this.getDataForVizualization(bestRel)} );
+            }
+
             /* Vizualize step if defined by argument (VS) |  !Attention: stop segmentation process immediately! */
-            if(++iteration == this.argv.VS) {
+            if(iteration == this.argv.VS) {
                 vizualizeStep(this.getDataForVizualization(bestRel), iteration);
                 stepVizualized = true;
                 break;
@@ -200,6 +207,10 @@ class ClusteringManager {
         /* If vizualization step was specified, but value of iteration exceeded number of processed relations, show absolute result */
         if (!stepVizualized && this.argv.VS > 0) {
             vizualizeStep(this.getDataForVizualization(), ++iteration);
+        }
+
+        if(this.argv.export.includes(7) && this.argv.export.length == 1){
+            this.allSegmentationSteps.push({iteration: iteration, data: this.getDataForVizualization()} );
         }
     }
 
@@ -372,7 +383,13 @@ function createSegmentation(extracted, argv) {
     cm.createClusters();
 
     if(!argv.export.includes(0)) {
-        exportFiles(argv, cm.getDataForExport());
+        
+        var dataForExport = cm.getDataForExport();
+
+        if(argv.export.includes(7) && argv.export.length == 1) {
+            dataForExport.allSegmentationSteps = cm.allSegmentationSteps;
+        } 
+        exportFiles(argv, dataForExport);
     }
 }
 
