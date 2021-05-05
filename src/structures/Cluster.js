@@ -3,7 +3,7 @@
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
  * Year: 2021
  * License:  GNU GPLv3
- * Description: Functions useful for process of node extraction.
+ * Description: Cluster Structure that contains multiple boxes.
  */
 
 const {EntityType, isCluster, isBox} = require('../structures/EntityType');
@@ -82,11 +82,13 @@ class Cluster {
      */
     addBoxes(entity) {
 
+        /* If given entity is cluster, add all boxes from it to new cluster */
         if(isCluster(entity)) {
             for (const box of entity.boxes.values()) {
                 this.boxes.set(box.id, box);
 
                 if(this.argv.extended){
+                    /* Recalculate max neighbour distance of cluster */
                     for (const bRel of box.neighbours.values()) {
                         this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
                     }
@@ -94,9 +96,11 @@ class Cluster {
 
             }
         } else {
+            /* If it is box, add only given box */
             this.boxes.set(entity.id, entity);
 
             if(!this.argv.extended) {
+                /* Recalculate max neighbour distance of cluster */
                 for (const bRel of entity.neighbours.values()) {
                     this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
                 }

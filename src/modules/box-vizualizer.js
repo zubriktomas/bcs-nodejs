@@ -3,7 +3,7 @@
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
  * Year: 2021
  * License:  GNU GPLv3
- * Description: Box Vizualizer to show box neighbours, segments
+ * Description: Box Vizualizer for vizualizing boxes, its neighbours and clusters
  */
 
 const { chromium } = require('playwright');
@@ -26,12 +26,10 @@ const startBoxVizualizer = async (data) => {
 
   page.on('close', () => browser.close());
 
-  // if (data.argv.debug) {
-    page
-      .on('console', message => console.log(`${message.type().substr(0, 3).toUpperCase()} ${message.text()}`))
-      .on('pageerror', ({ message }) => console.log(message))
-      .on('requestfailed', request => console.log(`${request.failure().errorText} ${request.url()}`))
-  // }
+  page
+    .on('console', message => console.log(`${message.type().substr(0, 3).toUpperCase()} ${message.text()}`))
+    .on('pageerror', ({ message }) => console.log(message))
+    .on('requestfailed', request => console.log(`${request.failure().errorText} ${request.url()}`))
 
   await page.setViewportSize({
     width: data.pageDims.width,

@@ -3,11 +3,11 @@
 * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
 * Year: 2021
 * License:  GNU GPLv3
-* Description: Functions useful for process of node extraction.
+* Description: Relation Strucutre for calculating similarity between given entities.
 */
 
 const { SelectorDirection } = require('../structures/Selector');
-const { EntityType, isBox, isCluster } = require('./EntityType');
+const { isBox, isCluster } = require('./EntityType');
 
 /**
  * Constants
@@ -238,11 +238,12 @@ class Relation {
             }
             return 1;
         } else {
+            /* Calculate all components of similarity */
             var relDist = relativeDistance;
             var shapeSim = this.calcShapeSimilarity(boxA, boxB);
             var colorSim = this.calcColorSimilarity(boxA, boxB);
-            // var sim = (relDist*0.2 + shapeSim*0.25 + colorSim*0.1) / 3;
-            // var sim = (relDist*ONETHIRD + shapeSim*ONETHIRD + colorSim*ONETHIRD) / 3;
+
+            /* Calculate base similarity between boxes */
             var sim = (relDist + shapeSim + colorSim) / 3;
             return sim;
         }
@@ -290,15 +291,14 @@ class Relation {
         var card = 0;
 
         if (isBox(entity)) {
+            /* calcCardinality is called only with BACK option, so checking if cBox has entity as neighbour was dead code, never accessed */
             for (const cBox of cluster.boxes.values()) {
                 if (direction == BACK && entity.neighbours.has(cBox)) {
                     card++;
                 } 
-                // else if (cBox.neighbours.has(entity)) {
-                //     card++;
-                // }
             }
         } else {
+            /* Calculate cardinality by BCS definition, card++ only in some box in cluster has direct neighbour box from another cluster */
             for (const cBox of cluster.boxes.values()) {
                 for (const eBox of entity.boxes.values()) {
                     if (cBox.neighbours.has(eBox)) {
