@@ -172,7 +172,8 @@ class Relation {
         minRatio = Math.min(ratioA, ratioB);
 
         var pom = (Math.pow(maxRatio, 2) - 1);
-        ratio = (maxRatio - minRatio) / ( pom?pom:1 / maxRatio );
+        /* TODO: 1 or 0.001 */
+        ratio = (maxRatio - minRatio) / ( pom?pom:0.001 / maxRatio );
 
         // ratioA = Math.abs(Math.log(widthA) - Math.log(heightA));
         // ratioB = Math.abs(Math.log(widthB) - Math.log(heightB));
@@ -290,7 +291,7 @@ class Relation {
             for (const cBox of cluster.boxes.values()) {
                 if(direction == "BACK" && entity.neighbours.has(cBox)) {
                     card++;
-                } else if (cBox.neighbours.has(entity)){
+                } else if (!direction && cBox.neighbours.has(entity)){
                     card++;
                 }
             }
@@ -298,7 +299,9 @@ class Relation {
             for (const cBox of cluster.boxes.values()) {
                 for (const eBox of entity.boxes.values()) {
                     /* Add cardinality only if relation is two directional */
-                    if(cBox.neighbours.has(eBox)) {
+                    if(direction == "BACK" && eBox.neighbours.has(cBox)){
+                        card++;
+                    } else if(!direction && cBox.neighbours.has(eBox)) {
                     // if(cBox.neighbours.has(eBox) && eBox.neighbours.has(cBox)) {
                         card++;
                     }

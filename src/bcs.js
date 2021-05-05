@@ -19,21 +19,23 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .strictOptions(true)
   .alias('CT', 'clustering-threshold').nargs('CT', 1)
   .default('CT', 0.5).describe('CT', 'Clustering Threshold (CT > 0.0 && CT < 1.0)')
+  .alias('DT', 'density-threshold').nargs('DT', 1)
+  .default('DT', 0).describe('DT', 'Density Threshold (DT >= 0 && DT < 1.0)')
   .alias('W', 'width').nargs('W', 1)
   .default('W', 1200).describe('W', 'Browser viewport width')
   .alias('H', 'height').nargs('H', 1)
   .default('H', 800).describe('H', 'Browser viewport height')
   .alias('S', 'save-screenshot').boolean('S')
   .default('S', true).describe('S', 'Save screenshot of rendered page')
-  .alias('D','debug').boolean('D')
+  .alias('D', 'debug').boolean('D')
   .default('D', false).describe('D', 'Allow errors printing from browser')
-  .alias('VS','vizualize-iteration').nargs('VS', 1)
+  .alias('VS', 'vizualize-iteration').nargs('VS', 1)
   .default('VS', 0).number('VS').describe('VS', `Vizualize segmentation step (interactive)`)
-  .alias('I','show-info').boolean('I')
+  .alias('I', 'show-info').boolean('I')
   .default('I', false).describe('I', `Show extraction and clustering info`)
   .boolean('basic').default('basic', false).describe('basic', `Use basic BCS implementation, default using extended`)
   .alias('E', 'export').nargs('E', 1)
-  .default('E', 0).describe('E', 
+  .default('E', 0).describe('E',
     `Export boxes and clusters: 
     0 - default 
     1 - boxes.png 
@@ -45,7 +47,7 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
     7 - all-segmentation-steps as step[iteration].png (must be used as only option -E 7)
     Usage: f.e. -E 134, -E 51, -E *6* (all), -E *0* (none)  
     `)
-  .alias('O','output-folder').nargs('O', 1).describe('O', 'Output folder')
+  .alias('O', 'output-folder').nargs('O', 1).describe('O', 'Output folder')
   .help('h').alias('h', 'help')
   .argv;
 
@@ -59,18 +61,23 @@ if (argv._.length !== 1) {
 argv.url = argv._[0];
 argv.export = String(argv.export)
 
-if(parseFloat(argv.CT) != argv.CT || argv.CT < 0 || argv.CT > 1) {
-  console.error('Warning: Incorrect CT', argv.CT, 'Using default, 0.5');
+if ((parseFloat(argv.CT) != argv.CT || argv.CT < 0 || argv.CT > 1) && argv.CT != "guess") {
+  console.warn('Warning: Incorrect CT', argv.CT, 'Using default', 0.5);
   argv.CT = 0.5;
 }
 
-if(!Number.isInteger(argv.W) || argv.W <= 0 || argv.W > 1920) {
-  console.error('Warning: Incorrect viewport width', argv.W, 'Using default', 1200);
+if ((parseFloat(argv.DT) != argv.DT || argv.DT < 0 || argv.DT > 1) && argv.DT != "guess") {
+  console.warn('Warning: Incorrect DT', argv.DT, 'Using default', 0.0);
+  argv.DT = 0.0;
+}
+
+if (!Number.isInteger(argv.W) || argv.W <= 0 || argv.W > 1920) {
+  console.warn('Warning: Incorrect viewport width', argv.W, 'Using default', 1200);
   argv.W = 1200;
 }
 
-if(!Number.isInteger(argv.H) || argv.H <= 0) {
-  console.error('Warning: Incorrect viewport height', argv.H, 'Using default', 800);
+if (!Number.isInteger(argv.H) || argv.H <= 0) {
+  console.warn('Warning: Incorrect viewport height', argv.H, 'Using default', 800);
   argv.H = 800;
 }
 
@@ -133,14 +140,14 @@ if(!Number.isInteger(argv.H) || argv.H <= 0) {
   });
 
   /* Capture screenshot of webpage in PNG format */
-  if(argv.saveScreenshot || argv.export.includes(5) || argv.export.includes(6)){
+  if (argv.saveScreenshot || argv.export.includes(5) || argv.export.includes(6)) {
     await page.screenshot({ path: './output/webpage.png', fullPage: true });
   }
 
   /* Close browser instance (no longer needed) */
   await browser.close();
 
-  if(argv.showInfo) {
+  if (argv.showInfo) {
     var extractionTime = parseFloat(extracted.time.toFixed(2));
     console.info("Info: [Extract] Extraction time:", extractionTime, "ms");
     console.info("Info: [Segment] BCS implementation:", argv.basic ? "basic" : "extended");
@@ -150,7 +157,7 @@ if(!Number.isInteger(argv.H) || argv.H <= 0) {
   clustering.createSegmentation(extracted, argv);
 
   /* Success message */
-  if(argv.showInfo){
+  if (argv.showInfo) {
     console.info("Info: [Finish] BCS has finished successfully!");
   }
 

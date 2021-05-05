@@ -18,6 +18,8 @@ const assert = (condition, message) => {
     if(!condition) throw Error('Assert failed: ' + (message || ''))
 };
 
+const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
+
 /**
  * Clustering Manager class that manages the whole segmentation/clustering process
  */
@@ -105,33 +107,46 @@ class ClusteringManager {
      */
     findAllRelations() {
 
-        // const pageContents = this.pageDims.width * this.pageDims.height;
-        // var allBoxesContents = 0;
-        // const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
+        /* Constants */
+        const pageContents = this.pageDims.width * this.pageDims.height, GUESS = "guess";
 
-        /**
-         * For every box find its all neighbours in all directions (relations are unique! same relation calculated only once)
-         */
+        /* Variables for guessing thresholds */
+        var similaritySum = 0, allBoxesContents = 0;
+
+        /* For every box find its all neighbours in all directions (relations are unique! same relation calculated only once) */
         for (let box of this.boxesUnclustered.values()) {
             box.findDirectNeighbours(this, SelectorDirection.right);
             box.findDirectNeighbours(this, SelectorDirection.down);
             box.findDirectNeighbours(this, SelectorDirection.left);
             box.findDirectNeighbours(this, SelectorDirection.up);
-            // allBoxesContents += calcContents(box);
+            
+            if(this.argv.DT == GUESS){
+                allBoxesContents += calcContents(box);
+            }
         }
-
-        // var r = 0;
 
         /* Calculate all relations similarity values */
         for (let relation of this.relations.values()) {
             relation.calcSimilarity();
-            // r += relation.similarity;
+
+            if(this.argv.CT == GUESS){
+                similaritySum += relation.similarity;
+            }
         }
 
-        // this.clusteringThreshold = r / this.relations.size;
-        // this.densityThreshold = allBoxesContents/pageContents;
-        // console.log("DENSITY THRESHOLD = BOXES CONTENTS/PAGE CONTENTS =", this.densityThreshold);
-        // console.log("CLUSTERING THRESHOLD = REL SIM/REL COUNT = ", this.clusteringThreshold);
+        /* Try to guess best Cluster Threshold */
+        if(this.argv.CT == GUESS) {
+            var guessCT = parseFloat((similaritySum / this.relations.size).toFixed(3));
+            this.clusteringThreshold = guessCT;
+            console.info("Info: [Threshold] Clustering Threshold guess", guessCT);
+        }
+
+        /* Try to guess best Density Threshold */
+        if(this.argv.DT == GUESS) {
+            var guessDT = parseFloat((allBoxesContents / pageContents).toFixed(3));
+            this.densityThreshold = guessDT;
+            console.info("Info: [Threshold] Density Threshold guess", guessDT);
+        }
     }
 
     /**
@@ -192,7 +207,7 @@ class ClusteringManager {
             var clusterCandidate = new Cluster(bestRel.entityA, bestRel.entityB);
 
             /* If CC overlaps with some entity, continue with next best relation (current was already deleted) */
-            if(this.overlaps(clusterCandidate, bestRel)) {
+            if(this.clusterDensityUnderThreshold(clusterCandidate) || this.overlaps(clusterCandidate, bestRel)) {
                 continue;
             }
 
@@ -214,17 +229,17 @@ class ClusteringManager {
         }
     }
 
-    // densityOverThreshold(cc) {
-    //     const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
-    //     var ccContents = calcContents(cc);
+    clusterDensityUnderThreshold(cc) {
 
-    //     var ccBoxesContents = 0;
-    //     for (const b of cc.boxes.values()) {
-    //         ccBoxesContents += calcContents(b);
-    //     }
+        var ccContents = calcContents(cc);
 
-    //     return ccBoxesContents/ccContents >= this.densityThreshold;
-    // }
+        var ccBoxesContents = 0;
+        for (const cBox of cc.boxes.values()) {
+            ccBoxesContents += calcContents(cBox);
+        }
+
+        return (ccBoxesContents/ccContents) < this.densityThreshold;
+    }
 
     /**
      * Check if cluster candidate overlaps with some entity by unallowed/unwanted manner
@@ -289,7 +304,7 @@ class ClusteringManager {
         }
 
         /* If there is any overlap, discard cluster candidate, otherwise recalculate neighbours and commit it as valid cluster */
-        return oBoxes.length || oClusters.length;
+        return oBoxes.length || oClusters.length || this.clusterDensityUnderThreshold(cc);
     }
 
     /**
