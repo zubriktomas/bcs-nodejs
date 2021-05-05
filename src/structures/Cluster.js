@@ -8,7 +8,7 @@
 
 const {EntityType, isCluster, isBox} = require('../structures/EntityType');
 const Relation = require('./Relation');
-const {Selector, SelectorDirection} = require('./Selector');
+const {Selector} = require('./Selector');
 
 /**
  * Cluster Structure that represents webpage segment
@@ -20,7 +20,10 @@ class Cluster {
      * @param {(Cluster|Box)} entityA 
      * @param {(Cluster|Box)} entityB 
      */
-    constructor(entityA, entityB) {
+    constructor(entityA, entityB, argv) {
+        
+        /*  */
+        this.argv = argv;
 
         /* Basic info */
         this.left = null;
@@ -83,16 +86,20 @@ class Cluster {
             for (const box of entity.boxes.values()) {
                 this.boxes.set(box.id, box);
 
-                for (const bRel of box.neighbours.values()) {
-                    this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
+                if(this.argv.extended){
+                    for (const bRel of box.neighbours.values()) {
+                        this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
+                    }
                 }
 
             }
         } else {
             this.boxes.set(entity.id, entity);
 
-            for (const bRel of entity.neighbours.values()) {
-                this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
+            if(!this.argv.extended) {
+                for (const bRel of entity.neighbours.values()) {
+                    this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
+                }
             }
         }
         
@@ -107,7 +114,7 @@ class Cluster {
      */
     addNeighbour(entity) {
         if(!this.neighbours.has(entity)) {
-            var rel = new Relation(this, entity);
+            var rel = new Relation(this, entity, null, this.argv.extended);
             rel.calcSimilarity();
             this.neighbours.set(entity, rel);
             return rel;
@@ -169,57 +176,23 @@ class Cluster {
                 } 
             }
 
-            // var inDirectionRight = 0;
-            // var inDirectionLeft = 0;
-            // var inDirectionUp = 0;
-            // var inDirectionDown = 0;
-
             /* Loop over all unclustered boxes to find out if cluster candidate box is its direct neighbour */
             for (const uBox of boxesUnclustered.values()) {
-
             
                 /* Just get relation */
                 var relToDel = uBox.neighbours.get(ccBox);
                 if(relToDel) {
-                    // if(relToDel.direction == SelectorDirection.down) {
-                    //     inDirectionDown++;
-                    // } else if(relToDel.direction == SelectorDirection.up) {
-                    //     inDirectionUp++;
-                    // } else if(relToDel.direction == SelectorDirection.left) {
-                    //     inDirectionLeft++;
-                    // } else if(relToDel.direction == SelectorDirection.right) {
-                    //     inDirectionRight++;
-                    // }
-                    // relToDel.isTwoDirectionalAndProblematic();
                     /* Add relation to delete set */
                     relDelSet.add(relToDel)
                 }
             }
 
-            // for (const uBox of boxesUnclustered.values()) {
-            //     var rel = uBox.neighbours.get(ccBox);
-            //     if(rel) { 
-            //         if(
-            //             (inDirectionDown==1 && inDirectionLeft!=1 && inDirectionRight!=1 && inDirectionUp !=1) ||  
-            //             (inDirectionDown!=1 && inDirectionLeft==1 && inDirectionRight!=1 && inDirectionUp != 1) ||
-            //             (inDirectionDown!=1 && inDirectionLeft!=1 && inDirectionRight==1 && inDirectionUp != 1) ||
-            //             (inDirectionDown!=1 && inDirectionLeft!=1 && inDirectionRight!=1 && inDirectionUp == 1)
-                        
-            //             ) {
-
-            //                 if(uBox.id == "(t:816.984375,l:27.1875,b:830.984375,r:123.265625,c:rgb(6, 69, 173))"){
-            //                     console.log(inDirectionDown, inDirectionLeft, inDirectionRight, inDirectionUp);
-            //                     rel.isTwoDirectionalAndProblematic();
-            //                 }
-            //         }
-            //     }
-            // }
-
             /* Loop over all box's neighbours */
             for (const [bNeighbour, bRel] of ccBox.neighbours.entries()) {
 
-                /* Extended */// 
-                this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
+                if(this.argv.extended) {
+                    this.maxNeighbourDistance = Math.max(this.maxNeighbourDistance, bRel.absoluteDistance);
+                }
 
                 /* Delete every relation between candidate cluster box and its all neighbours */
                 relDelSet.add(bRel);

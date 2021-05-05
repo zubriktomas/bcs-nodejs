@@ -1,18 +1,21 @@
- /**
- * Project: Box Clustering Segmentation in Node.js
- * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
- * Year: 2021
- * License:  GNU GPLv3
- * Description: Functions useful for process of node extraction.
- */
+/**
+* Project: Box Clustering Segmentation in Node.js
+* Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
+* Year: 2021
+* License:  GNU GPLv3
+* Description: Functions useful for process of node extraction.
+*/
 
 const { SelectorDirection } = require('../structures/Selector');
-const {EntityType, isBox, isCluster} = require('./EntityType');
+const { EntityType, isBox, isCluster } = require('./EntityType');
 
 /**
  * Constants
  */
 const SQRT3 = Math.sqrt(3);
+
+/* Direction of cumulative similarity calculation */
+const BACK = "BACK";
 
 /**
  * Relation Structure to specify relation (similarity) between 2 entities
@@ -25,7 +28,10 @@ class Relation {
      * @param {(Cluster|Box)} entityB 
      * @param {SelectorDirection} direction Optional (if it is not specified, it is calculated)
      */
-    constructor(entityA, entityB, direction) {
+    constructor(entityA, entityB, direction, extended) {
+
+        /* Program arguments */
+        this.extended = extended;
 
         /* Basic info */
         this.entityA = entityA;
@@ -38,10 +44,6 @@ class Relation {
 
         /* Similarity calculated on demand */
         this.similarity = null;
-
-        // this.relativeDistance = null;
-        // this.shapeSimilarity = null;
-        // this.colorSimilarity = null;
     }
 
     /**
@@ -51,12 +53,12 @@ class Relation {
      * @returns Relation ID
      */
     generateId(entityA, entityB) {
-        if(isCluster(entityA) || isCluster(entityB)) {
+        if (isCluster(entityA) || isCluster(entityB)) {
             return entityA.id + entityB.id;
         }
-        if(this.direction == SelectorDirection.right || this.direction == SelectorDirection.down) {
+        if (this.direction == SelectorDirection.right || this.direction == SelectorDirection.down) {
             return entityA.id + entityB.id;
-        } else if(this.direction == SelectorDirection.left || this.direction == SelectorDirection.up) {
+        } else if (this.direction == SelectorDirection.left || this.direction == SelectorDirection.up) {
             return entityB.id + entityA.id;
         } else {
             return null;
@@ -74,7 +76,7 @@ class Relation {
         var condY = a.bottom >= b.top && a.top <= b.bottom;
         var condHaveEdgeX = a.right == b.left || a.left == b.right;
 
-        if(condX) {
+        if (condX) {
             return (condHaveEdgeX) ? 'y' : 'x';
         } else if (condY) {
             return 'y';
@@ -90,9 +92,9 @@ class Relation {
      * @returns SelectorDirection (down|up|right|left|other)
      */
     calcDirection(a, b) {
-        var pov = this.calcProjectedOverlap(a,b);
+        var pov = this.calcProjectedOverlap(a, b);
 
-        if(a.bottom <= b.top && pov == 'x') {
+        if (a.bottom <= b.top && pov == 'x') {
             return SelectorDirection.down; /* it is reversed according to paper, because we want position of selector */
         } else if (a.top >= b.bottom && pov == 'x') {
             return SelectorDirection.up;
@@ -113,7 +115,7 @@ class Relation {
      */
     calcAbsoluteDistance(entityA, entityB) {
         var absoluteDistance;
-        if(this.direction == SelectorDirection.right) {
+        if (this.direction == SelectorDirection.right) {
             absoluteDistance = entityB.left - entityA.right;
         } else if (this.direction == SelectorDirection.down) {
             absoluteDistance = entityB.top - entityA.bottom;
@@ -142,8 +144,6 @@ class Relation {
         relA = this.absoluteDistance / maxdA;
         relB = this.absoluteDistance / maxdB;
 
-        this.relativeDistance = (relA + relB) / 2;
-
         return (relA + relB) / 2;
     }
 
@@ -158,7 +158,7 @@ class Relation {
         var widthA, heightA, widthB, heightB;
 
         /* Variables for calculation ratio similarity */
-        var ratioA,  ratioB,  ratio, maxRatio, minRatio;
+        var ratioA, ratioB, ratio, maxRatio, minRatio;
 
         widthA = boxA.width;
         heightA = boxA.height;
@@ -171,13 +171,11 @@ class Relation {
         maxRatio = Math.max(ratioA, ratioB);
         minRatio = Math.min(ratioA, ratioB);
 
+        /* ! Attention: pom is 0 for relation between square and rectangle with higher height ! Problem of definition */
         var pom = (Math.pow(maxRatio, 2) - 1);
-        /* TODO: 1 or 0.001 */
-        ratio = (maxRatio - minRatio) / ( pom?pom:0.001 / maxRatio );
 
-        // ratioA = Math.abs(Math.log(widthA) - Math.log(heightA));
-        // ratioB = Math.abs(Math.log(widthB) - Math.log(heightB));
-        // ratio = Math.abs(ratioA - ratioB);
+        /* By definition in BCS paper, 'pom' is about to be around zero, so "close" value to zero is used */
+        ratio = (maxRatio - minRatio) / (pom ? pom : 0.001 / maxRatio);
 
         /* Variables for calculation size similarity */
         var sizeA, sizeB, size;
@@ -189,7 +187,10 @@ class Relation {
 
         /* Shape similarity as average of ratio and size */
         var shapeSim = (ratio + size) / 2;
-        this.shapeSimilarity = shapeSim;
+
+        /* Problem with ratio calculation above can cause (extreme) exceeding of shapeSim, so it is floored to 1 */
+        shapeSim = shapeSim < 1 ? shapeSim : 1;
+
         return shapeSim;
     }
 
@@ -211,7 +212,6 @@ class Relation {
 
         var colorSim = Math.sqrt(rPart + gPart + bPart) / SQRT3;
 
-        this.colorSimilarity = colorSim;
         return colorSim;
     }
 
@@ -224,12 +224,18 @@ class Relation {
     calcBaseSimilarity(boxA, boxB) {
         var relativeDistance = this.calcRelativeDistance(boxA, boxB);
 
-        /* Boxes are aligned next to each other (share edge) */
-        if(relativeDistance <= 0) {
+        /* Boxes are aligned next to each other (share edge), avoid unexpected behaviour by checking if < 0 */
+        if (relativeDistance <= 0) {
             return 0;
-        } else if (relativeDistance == 1) {
-            this.calcShapeSimilarity(boxA, boxB);
-            this.calcColorSimilarity(boxA, boxB);
+
+        /* Avoid unexpected behaviour, floor all similarities to maximum: 1 */
+        } else if (relativeDistance >= 1) {
+
+            /* For extended implementation, shapeSimilarity and colorSimilartiy has to be accessible from Relation class */
+            if(this.extended){
+                this.shapeSimilarity = this.calcShapeSimilarity(boxA, boxB);
+                this.colorSimilarity = this.calcColorSimilarity(boxA, boxB);
+            }
             return 1;
         } else {
             var relDist = relativeDistance;
@@ -239,7 +245,6 @@ class Relation {
             // var sim = (relDist*ONETHIRD + shapeSim*ONETHIRD + colorSim*ONETHIRD) / 3;
             var sim = (relDist + shapeSim + colorSim) / 3;
             return sim;
-            // return sim <= 1 ? sim : 1;
         }
     }
 
@@ -250,13 +255,13 @@ class Relation {
         var entityA = this.entityA;
         var entityB = this.entityB;
 
-        if(isBox(entityA) && isBox(entityB)) {
+        if (isBox(entityA) && isBox(entityB)) {
             this.similarity = this.calcBaseSimilarity(entityA, entityB);
         } else {
             this.similarity = this.calcClusterSimilarity(entityA, entityB);
         }
     }
-    
+
     /**
      * Calculate cluster similarity between entities (at least one entity has to be Cluster)
      * @param {(Cluster|Box)} entityA 
@@ -265,16 +270,13 @@ class Relation {
      */
     calcClusterSimilarity(entityA, entityB) {
 
-        if(isCluster(entityA)) {
+        if (isCluster(entityA)) {
             return (this.calcCumulSimilarity(entityA, entityB) / this.calcCardinality(entityA, entityB));
         }
-        
-        if(isCluster(entityB)) {
+
+        if (isCluster(entityB)) {
             return (this.calcCumulSimilarity(entityB, entityA) / this.calcCardinality(entityB, entityA));
         }
-        //     console.log(`eA: ${entityA.id}, eB: ${entityB.id}`);
-        //     console.log(`${this.calcCumulSimilarity(entityA, entityB)} / ${this.calcCardinality(entityA, entityB)}`);
-        // console.log(`${this.calcCumulSimilarity(entityB, entityA)} / ${this.calcCardinality(entityB, entityA)}`);
     }
 
     /**
@@ -287,22 +289,19 @@ class Relation {
 
         var card = 0;
 
-        if(isBox(entity)) {
+        if (isBox(entity)) {
             for (const cBox of cluster.boxes.values()) {
-                if(direction == "BACK" && entity.neighbours.has(cBox)) {
+                if (direction == BACK && entity.neighbours.has(cBox)) {
                     card++;
-                } else if (!direction && cBox.neighbours.has(entity)){
-                    card++;
-                }
+                } 
+                // else if (cBox.neighbours.has(entity)) {
+                //     card++;
+                // }
             }
         } else {
             for (const cBox of cluster.boxes.values()) {
                 for (const eBox of entity.boxes.values()) {
-                    /* Add cardinality only if relation is two directional */
-                    if(direction == "BACK" && eBox.neighbours.has(cBox)){
-                        card++;
-                    } else if(!direction && cBox.neighbours.has(eBox)) {
-                    // if(cBox.neighbours.has(eBox) && eBox.neighbours.has(cBox)) {
+                    if (cBox.neighbours.has(eBox)) {
                         card++;
                     }
                 }
@@ -310,24 +309,6 @@ class Relation {
         }
 
         return card ? card : 1;
-    }
-
-    isTwoDirectionalAndProblematic() {
-        var entityA = this.entityA;
-        var entityB = this.entityB;
-
-        const isTwoDirectional = (a,b) => a.neighbours.has(b) && b.neighbours.has(a);
-        const isProblematic = (a, b, relAB, relBA) => isTwoDirectional(a,b) && relAB.similarity == 1 && relBA.similarity == 1;
-
-        // const isCardinalityOneInBothDirections = 
-
-        var isProblematicBool = isProblematic(entityA, entityB, entityA.neighbours.get(entityB), entityB.neighbours.get(entityA));
-
-        return isProblematicBool
-
-        // if(isProblematicBool) {
-        //     console.log("problematic relation found");
-        // }
     }
 
     /**
@@ -338,114 +319,65 @@ class Relation {
      */
     calcCumulSimilarity(cluster, entity, direction) {
         var rel, cumulSimilarity = 0;
-        if(isBox(entity)) {
-            
+        if (isBox(entity)) {
+
             for (const cBox of cluster.boxes.values()) {
-                if(direction == "BACK") {
+                if (direction == BACK) {
                     rel = entity.neighbours.get(cBox);
                 } else {
                     rel = cBox.neighbours.get(entity);
                 }
-                var isTwoDirectional = cBox.neighbours.has(entity) && entity.neighbours.has(cBox);
 
-                var relTwoDirectional;
-                if(isTwoDirectional) {
+                /* Recalculate critical relation between boxes one upon another with no left and right neighbours */
+                if (this.extended) {
 
-                    // const clusterNextToProblematicEntityId = '(t:740.984375,l:27.1875,b:811.984375,r:71.21875)';
-                    // const problematicEntityId = '(t:816.984375,l:27.1875,b:830.984375,r:123.265625,c:rgb(6, 69, 173))';
+                    var isRelTwoDirectional = cBox.neighbours.has(entity) && entity.neighbours.has(cBox);
 
-                    const hasRightNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.left).length;
-                    const hasLeftNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.right).length;
-                    const hasDownNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.up).length;
-                    const hasUpNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.down).length;
+                    /* Recalculate relation only if it is two directional and in backward direction */
+                    if (isRelTwoDirectional && direction == BACK) {
 
-                    // if(cluster.id == clusterNextToProblematicEntityId && problematicEntityId == entity.id) {
-                    //     console.log(hasRightNeighbours(entity));
-                    //     console.log(hasLeftNeighbours(entity));
-                    //     console.log(hasDownNeighbours(entity));
-                    //     console.log(hasUpNeighbours(entity));
+                        const hasRightNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.left).length;
+                        const hasLeftNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.right).length;
+                        const hasDownNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.up).length;
+                        const hasUpNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.down).length;
+                        const hasOnlyUpDownNeighbours = (box) => !hasRightNeighbours(box) && !hasLeftNeighbours(box) && (hasDownNeighbours(box) > 0 || hasUpNeighbours(box) > 0);
 
-                    // }
+                        if (hasOnlyUpDownNeighbours(entity) && hasOnlyUpDownNeighbours(cBox)) {
 
-                    const hasOnlyUpDownNeighbours = (box) => !hasRightNeighbours(box) && !hasLeftNeighbours(box) && (hasDownNeighbours(box) > 0 || hasUpNeighbours(box) > 0);
+                            /* Get relation from one side, does not matter */
+                            var criticalRelation = cBox.neighbours.get(entity);
 
-                    if(hasOnlyUpDownNeighbours(entity) && hasOnlyUpDownNeighbours(cBox)) {
-                        // console.log(entity.id);
-                        // console.log(999999);
+                            /* Get true entity for similarity calculation, if box(entity) is already in cluster, take cluster */
+                            var trueEntity = entity.cluster ? entity.cluster : entity;
 
-                        var criticalRelation = cBox.neighbours.get(entity);
+                            var absoluteDistance = criticalRelation.absoluteDistance;
+                            var forward = absoluteDistance / cluster.maxNeighbourDistance;
+                            var backward = absoluteDistance / trueEntity.maxNeighbourDistance;
 
-                        var trueEntity = entity.cluster ? entity.cluster : entity;
+                            /* Calculate new relative distance between entities */
+                            var relativeDistance = (forward + backward) / 2;
 
-                        var absoluteDistance = criticalRelation.absoluteDistance;
-                        var forward = absoluteDistance / cluster.maxNeighbourDistance;
-                        var backward = absoluteDistance / trueEntity.maxNeighbourDistance;
+                            /* Get original shape and color similarity */
+                            var shapeSim = criticalRelation.shapeSimilarity != null ? criticalRelation.shapeSimilarity : 1;
+                            var colorSim = criticalRelation.colorSimilarity != null ? criticalRelation.colorSimilarity : 1;
 
-                        var relativeDistance = (forward+backward)/2;
+                            /* Calculate similarity with new relative distance */
+                            var sim = (relativeDistance + shapeSim + colorSim) / 3;
 
-                        console.log(criticalRelation.shapeSimilarity);
-                        console.log(criticalRelation.colorSimilarity);
-
-                        var shapeSim = criticalRelation.shapeSimilarity != null ? criticalRelation.shapeSimilarity : 1;
-                        var colorSim = criticalRelation.colorSimilarity != null ? criticalRelation.colorSimilarity : 1;
-                        
-                        var sim = (relativeDistance + shapeSim + colorSim)/3;
-    
-                        console.log(parseFloat(sim.toFixed(3)), parseFloat(criticalRelation.similarity.toFixed(3)));
-
-                        console.log("reldist before:", criticalRelation.relativeDistance);
-                        console.log("reldist after:", relativeDistance);
-
-                        cumulSimilarity += sim;
-                        continue;
-
+                            /* Add similarity to cumulative similarity and continue in loop */
+                            cumulSimilarity += sim;
+                            continue;
+                        }
                     }
-
-                    // var rel1 = cBox.neighbours.has(entity);
-                    // var rel2 = entity.neighbours.has(cBox);
-                    // if(rel1.similarity == 1 && rel2.similarity == 1) {
-                    //     relTwoDirectional = rel1;
-                    // }
                 }
 
-                // var TEST = true;
-                // if(relTwoDirectional && TEST) {
-
-                //     console.log("HERE");
-
-                //     var trueEntity = entity.cluster ? entity.cluster : entity;
-
-                //     var absoluteDistance = relTwoDirectional.absoluteDistance;
-                //     var forward = absoluteDistance / cluster.maxNeighbourDistance;
-                //     var backward = absoluteDistance / trueEntity.maxNeighbourDistance;
-
-                //     var relativeDistance = (forward+backward)/2;
-                //     var shapeSim = relTwoDirectional.shapeSimilarity ? relTwoDirectional.shapeSimilarity : 1;
-                //     var colorSim = relTwoDirectional.colorSimilarity ? relTwoDirectional.colorSimilarity : 1;
-                    
-                //     var sim = (relativeDistance + shapeSim + colorSim)/3;
-
-                //     console.log(parseFloat(sim.toFixed(3)), parseFloat(relTwoDirectional.similarity.toFixed(3)));
-                    
-                //     // if(sim == Infinity) {
-                //     //     console.log("infinity");
-                //         // console.log(absoluteDistance);
-                //         // console.log(relativeDistance);
-                //         // console.log(forward);
-                //         // console.log(backward);
-                //         // console.log(shapeSim);
-                //         // console.log(colorSim);
-                //     // }
-
-                //     cumulSimilarity += sim;
-
-                //     continue;
-                // }
                 cumulSimilarity += rel ? rel.similarity : 0;
             }
         } else {
             for (const cBox of cluster.boxes.values()) {
-                var sim = (this.calcCumulSimilarity(entity, cBox, "BACK") / this.calcCardinality(entity, cBox, "BACK"));
+                /* Calculate backward cumulative similarity, treat differently, because not all relations are two directional 
+                 * It means that boxA can have other boxB as direct neighbour, but boxB need not have boxA as neighbour */
+                var sim = (this.calcCumulSimilarity(entity, cBox, BACK) / this.calcCardinality(entity, cBox, BACK));
                 cumulSimilarity += sim;
             }
         }
@@ -455,11 +387,11 @@ class Relation {
 
 /**
  * Get object with RGB components from RGB string (aux. function)
- * @param {string} rgbString Example: rgb(100, 100, 100)
+ * @param {string} rgbString Example: "rgb(100, 100, 100)"
  * @returns RGB object with RGB components
  */
 function getRgbFromString(rgbString) {
-    var rgbArray, rgb = {}; 
+    var rgbArray, rgb = {};
 
     rgbArray = rgbString.replace(/[^\d,]/g, '').split(',');
 
@@ -468,7 +400,7 @@ function getRgbFromString(rgbString) {
     rgb.g = Math.floor(rgbArray[1]);
     rgb.b = Math.floor(rgbArray[2]);
 
-    if(rgbArray.length == 4) {
+    if (rgbArray.length == 4) {
         rgb.a = parseInt(rgbArray[3]);
     }
     return rgb;

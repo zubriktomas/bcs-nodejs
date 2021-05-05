@@ -204,7 +204,7 @@ class ClusteringManager {
             } 
 
             /* Create new cluster candidate by relation entities */
-            var clusterCandidate = new Cluster(bestRel.entityA, bestRel.entityB);
+            var clusterCandidate = new Cluster(bestRel.entityA, bestRel.entityB, this.argv);
 
             /* If CC overlaps with some entity, continue with next best relation (current was already deleted) */
             if(this.clusterDensityUnderThreshold(clusterCandidate) || this.overlaps(clusterCandidate, bestRel)) {
@@ -273,8 +273,8 @@ class ClusteringManager {
         }
 
         /* If CC visually contains more clusters than one discard CC */
-        if(clustersContainedVisually.length > 1) {
-            if(this.argv.debug) console.info("Info [Debug]: CC discarded contains visually more than one cluster!");
+        if(clustersContainedVisually.length > 0) {
+            if(this.argv.debug) console.info("Info [Debug]: CC discarded immediately overlaps other cluster!");
             return true;
         }
 

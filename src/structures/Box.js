@@ -99,7 +99,7 @@ class Box {
         var tmpRelations = [], shortestDistance = Number.MAX_SAFE_INTEGER;
     
         for (const neighbour of neighbours) {
-            var rel = new Relation(box, neighbour, direction);
+            var rel = new Relation(box, neighbour, direction, cm.argv.extended);
             tmpRelations.push(rel);
             if(rel.absoluteDistance < shortestDistance) {
                 shortestDistance = rel.absoluteDistance;

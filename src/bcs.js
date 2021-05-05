@@ -33,7 +33,7 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .default('VS', 0).number('VS').describe('VS', `Vizualize segmentation step (interactive)`)
   .alias('I', 'show-info').boolean('I')
   .default('I', false).describe('I', `Show extraction and clustering info`)
-  .boolean('basic').default('basic', false).describe('basic', `Use basic BCS implementation, default using extended`)
+  .boolean('extended').default('extended', false).describe('extended', `Use extended BCS implementation, default using basic`)
   .alias('E', 'export').nargs('E', 1)
   .default('E', 0).describe('E',
     `Export boxes and clusters: 
@@ -150,7 +150,7 @@ if (!Number.isInteger(argv.H) || argv.H <= 0) {
   if (argv.showInfo) {
     var extractionTime = parseFloat(extracted.time.toFixed(2));
     console.info("Info: [Extract] Extraction time:", extractionTime, "ms");
-    console.info("Info: [Segment] BCS implementation:", argv.basic ? "basic" : "extended");
+    console.info("Info: [Segment] BCS implementation:", argv.extended ? "extended" : "basic");
   }
 
   /* Start Segmentation/Clustering Process */
