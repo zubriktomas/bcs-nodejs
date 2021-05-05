@@ -123,13 +123,14 @@ class ClusteringManager {
     }
 
     createClusters() {
-        var rel, iteration=0;
+        var rel, stepVizualized = false, iteration=0;
 
         while(this.relations.size > 0) {
             rel = this.getBestRelation();
 
             if(++iteration == this.argv.VS) {
                 vizualizeStep(this.getDataForVizualization(rel), iteration);
+                stepVizualized = true;
                 break;
             }
 
@@ -153,7 +154,13 @@ class ClusteringManager {
             this.updateRelations(cc);
             this.clusters.set(cc.id, cc);
         }
+
+        if (!stepVizualized && this.argv.VS > 0) {
+            vizualizeStep(this.getDataForVizualization(), ++iteration);
+        }
     }
+
+    
 
     // densityOverThreshold(cc) {
     //     const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
@@ -168,22 +175,26 @@ class ClusteringManager {
     // }
 
     // mergeOverlaps(cc) {
-    //     var overlapping, ob, oc, ommitClusters = new Map();
+    //     var overlapping, ob, oc, clustersSkip = new Map();
     //     do {
     //         overlapping = cc.getOverlappingEntities(this.tree);
     //         ob = overlapping.filter(entity => isBox(entity) && !cc.boxes.has(entity.id) && this.boxes.has(entity.id));
-    //         oc = overlapping.filter(entity => isCluster(entity) && !ommitClusters.has(entity.id) );
+    //         oc = overlapping.filter(entity => isCluster(entity) && !clustersSkip.has(entity.id) );
     //         for (let i = 0; i < ob.length; i++) {
     //             cc.addBoxes(ob[i]);
     //         }
     //         for (let i = 0; i < oc.length; i++) {
     //             cc.addBoxes(oc[i]);
-    //             ommitClusters.set(oc[i].id, oc[i]);
+    //             clustersSkip.set(oc[i].id, oc[i]);
     //         }
     //     } while (!this.densityOverThreshold(cc));
     // }
 
-    overlaps(cc) {
+    overlaps(cc, rel) {
+
+        var relClusters = new Set();
+        if(isCluster(rel.entityA)) relClusters.add(rel.entityA.id);
+        if(isCluster(rel.entityB)) relClusters.add(rel.entityB.id);
 
         /* Get all overlapping entities */
         var overlapping = cc.getOverlappingEntities(this.tree);
@@ -191,43 +202,60 @@ class ClusteringManager {
         /* Get all unclustered boxes except those that are part of candidate cluster */
         var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
 
-        /* Get all clusters that candidate cluster overlaps with */
-        var oc = overlapping.filter(entity => isCluster(entity));
+        /* Get all clusters that candidate cluster overlaps with and are not part of current relation */
+        // var oc = overlapping.filter(entity => isCluster(entity) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
+        var oc = overlapping.filter(entity => isCluster(entity) && !relClusters.has(entity.id));
 
         /* Get all clusters that candidate cluster contains visually */
         var clustersContainedVisually = oc.filter(cluster => cc.containsVisually(cluster));
 
         /* If cluster candidate overlaps with some other cluster and does not contain it visually */
         if(oc.length != clustersContainedVisually.length) {
+            if(this.argv.debug) console.info("Info [Debug]: CC discarded immediately overlaps other cluster!");
             return true;
         }
 
         /* Create map of clusters that will be ommited in last check for overlapping */
-        var ommitClusters = new Map();
+        // var clustersSkip = new Map();
+        
+        /* Add clusters to skip set if entity relation is cluster */
+        // if(isCluster(rel.entityA)) clustersSkip.set(rel.entityA.id, rel.entityA);
+        // if(isCluster(rel.entityB)) clustersSkip.set(rel.entityB.id, rel.entityB);
 
         for (const oBox of ob) {
+            if(this.argv.debug) console.info("Info [Debug]: Overlapping box added to CC");
             cc.addBoxes(oBox);
         }
 
-        for (const oCluster of oc) {
-            cc.addBoxes(oCluster);
-            ommitClusters.set(oCluster.id, oCluster);
-        }
+        /* Attention! This code is unreachable */
+        // console.log(oc);
+        // for (const oCluster of oc) {
+        //     if(this.argv.debug) console.info("Info [Debug]: All boxes from overlapping cluster added to CC");
+        //     cc.addBoxes(oCluster);
+        //     clustersSkip.set(oCluster.id, oCluster);
+        // }
 
-
-        /* Check new overlaps with boxes after coordinates recalculation, if so, add them into cluster */
+        /* Try to add new possible overlaps with unclustered boxes if any */
         overlapping = cc.getOverlappingEntities(this.tree);
         var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
         for (const oBox of ob) {
+            if(this.argv.debug) console.info("Info [Debug]: New overlapping boxes added to CC");
             cc.addBoxes(oBox);
         }
 
-        /* Find overlapping entities one more time */
+        /* Check overlaps after adding boxes in previous step */
         overlapping = cc.getOverlappingEntities(this.tree);
-        oc = overlapping.filter(entity => isCluster(entity) && !ommitClusters.has(entity.id));
+        // oc = overlapping.filter(entity => isCluster(entity) && !clustersSkip.has(entity.id));
+        oc = overlapping.filter(entity => isCluster(entity) && !relClusters.has(entity.id));
         var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
 
-        /* If there is any overlap, discard cluster candidate, otherwise recalculate neighbours and commit it as cluster */
+        if(this.argv.debug) {
+            if(oc.length > 0) console.log("Info [Debug]: CC discarded, overlaps cluster!");
+            if(ob.length > 0) console.log("Info [Debug]: CC discarded, overlaps box!"); 
+            if(oc.length == 0 && ob.length == 0) console.log("Info [Debug]: CC no overlaps! Merging!");
+        }
+
+        /* If there is any overlap, discard cluster candidate, otherwise recalculate neighbours and commit it as valid cluster */
         return ob.length || oc.length;
     }
 

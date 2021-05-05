@@ -26,6 +26,13 @@ const startBoxVizualizer = async (data) => {
 
   page.on('close', () => browser.close());
 
+  // if (data.argv.debug) {
+    page
+      .on('console', message => console.log(`${message.type().substr(0, 3).toUpperCase()} ${message.text()}`))
+      .on('pageerror', ({ message }) => console.log(message))
+      .on('requestfailed', request => console.log(`${request.failure().errorText} ${request.url()}`))
+  // }
+
   await page.setViewportSize({
     width: data.pageDims.width,
     height: data.pageDims.height
