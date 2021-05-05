@@ -11,7 +11,7 @@ const Box = require('../structures/Box');
 const Cluster = require('../structures/Cluster');
 const RTree = require('../structures/RTree');
 const { Selector, SelectorDirection } = require('../structures/Selector');
-const { EntityType, isBox, isCluster } = require('../structures/EntityType');
+const { isBox, isCluster } = require('../structures/EntityType');
 const { exportFiles } = require('./exporter');
 
 
@@ -23,22 +23,30 @@ class ClusteringManager {
 
     constructor(extracted, argv) {
 
+        /* Assign arguments from main entry point */
         this.argv = argv;
 
-        /* Won't be changed */
+        /* Webpage dimension with defined width and full scrollHeight */
         this.pageDims = {
             height: extracted.document.height,
             width: extracted.document.width
         };
 
+        /* Assign clustering threshold */
         this.clusteringThreshold = argv.CT;
-        this.densityThreshold = 0;
-        this.allBoxesList = extracted.boxesList; // all extracted boxes, must be processed for containers detection and deletion
+        this.densityThreshold = argv.DT ? argv.DT : 0;
+        
+        /* All extracted boxes, further processed for detection & deletion of containers (boxes that visually contain other boxes) 
+         * This map of boxes is dynamically changed throughout a segmentation process. */
+        this.boxesUnclustered = this.reinitBoxes(extracted.boxesList); 
+        
+        /* Create RTree from list of unclustered boxes */
+        this.tree = this.createRTree(this.boxesUnclustered);
+        
+        /* All valid boxes for vizualization purposes (not changed, static) */
+        this.boxesValid = this.removeContainers(this.boxesUnclustered); // !! Attention: also remove containers from boxesUnclustered !!
 
-        /* Dynamically changed throughout the segmentation process */
-        this.boxes = this.reinitBoxes(extracted.boxesList); // in the beginning all unclustered boxes, change while clustering 
-        this.boxesAll = null; // all boxes all the time, for vizualization purposes
-        this.tree = this.createRTree(Array.from(this.boxes.values()));
+        /* Init empty map of clusters and relations */
         this.clusters = new Map();
         this.relations = new Map();
     }
@@ -53,36 +61,37 @@ class ClusteringManager {
         return boxesMap;
     }
 
-    createRTree(boxesList) {
+    createRTree(boxesUnclusteredMap) {
+        var boxesList = Array.from(boxesUnclusteredMap.values());
         const tree = new RTree();
         tree.load(boxesList);
         return tree;
     }
 
-    removeContainers() {
+    removeContainers(boxesUnclustered) {
         var selector, overlapping;
-    
-        /* Remove bigger containers that contain more than 2 boxes (probably background images) | elements with absolute position */
-        for (let box of this.boxes.values()) {
+
+        /* Remove bigger containers that contain more than 2 boxes (probably background images) - elements with absolute positions */
+        for (let box of boxesUnclustered.values()) {
             selector = Selector.fromEntity(box);
             overlapping = this.tree.search(selector.narrowBy1Px());
             if(overlapping.length > 2) { 
-                this.boxes.delete(box.id);
+                boxesUnclustered.delete(box.id);
                 this.tree.remove(box);
             }
         }
 
         /* Remove smaller containers now */
-        for (let box of this.boxes.values()) {
+        for (let box of boxesUnclustered.values()) {
             selector = Selector.fromEntity(box);
             overlapping = this.tree.search(selector.narrowBy1Px());
             if(overlapping.length > 1) { 
-                this.boxes.delete(box.id);
+                boxesUnclustered.delete(box.id);
                 this.tree.remove(box);
             }
         }
 
-        this.boxesAll = new Map(this.boxes.entries());
+        return new Map(boxesUnclustered.entries());
     }
 
     findAllRelations() {
@@ -90,7 +99,7 @@ class ClusteringManager {
         const pageContents = this.pageDims.width * this.pageDims.height;
         var allBoxesContents = 0;
         const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
-        for (let box of this.boxes.values()) {
+        for (let box of this.boxesUnclustered.values()) {
             box.findDirectNeighbours(this, SelectorDirection.right);
             box.findDirectNeighbours(this, SelectorDirection.down);
             box.findDirectNeighbours(this, SelectorDirection.left);
@@ -175,94 +184,85 @@ class ClusteringManager {
     // }
 
     // mergeOverlaps(cc) {
-    //     var overlapping, ob, oc, clustersSkip = new Map();
+    //     var overlapping, oBoxes, oClusters, clustersSkip = new Map();
     //     do {
     //         overlapping = cc.getOverlappingEntities(this.tree);
-    //         ob = overlapping.filter(entity => isBox(entity) && !cc.boxes.has(entity.id) && this.boxes.has(entity.id));
-    //         oc = overlapping.filter(entity => isCluster(entity) && !clustersSkip.has(entity.id) );
-    //         for (let i = 0; i < ob.length; i++) {
-    //             cc.addBoxes(ob[i]);
+    //         oBoxes = overlapping.filter(entity => isBox(entity) && !cc.boxes.has(entity.id) && this.boxesUnclustered.has(entity.id));
+    //         oClusters = overlapping.filter(entity => isCluster(entity) && !clustersSkip.has(entity.id) );
+    //         for (let i = 0; i < oBoxes.length; i++) {
+    //             cc.addBoxes(oBoxes[i]);
     //         }
-    //         for (let i = 0; i < oc.length; i++) {
-    //             cc.addBoxes(oc[i]);
-    //             clustersSkip.set(oc[i].id, oc[i]);
+    //         for (let i = 0; i < oClusters.length; i++) {
+    //             cc.addBoxes(oClusters[i]);
+    //             clustersSkip.set(oClusters[i].id, oClusters[i]);
     //         }
     //     } while (!this.densityOverThreshold(cc));
     // }
 
     overlaps(cc, rel) {
 
-        var relClusters = new Set();
-        if(isCluster(rel.entityA)) relClusters.add(rel.entityA.id);
-        if(isCluster(rel.entityB)) relClusters.add(rel.entityB.id);
+        /* Create set of clusters that constitute relations itself (if any entity of relation is cluster) */
+        var clustersSkip = new Set();
+        if(isCluster(rel.entityA)) clustersSkip.add(rel.entityA.id);
+        if(isCluster(rel.entityB)) clustersSkip.add(rel.entityB.id);
 
         /* Get all overlapping entities */
         var overlapping = cc.getOverlappingEntities(this.tree);
 
         /* Get all unclustered boxes except those that are part of candidate cluster */
-        var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
+        var oBoxes = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxesUnclustered.has(entity.id));
 
         /* Get all clusters that candidate cluster overlaps with and are not part of current relation */
-        // var oc = overlapping.filter(entity => isCluster(entity) && entity.id != rel.entityA.id && entity.id != rel.entityB.id);
-        var oc = overlapping.filter(entity => isCluster(entity) && !relClusters.has(entity.id));
+        var oClusters = overlapping.filter(entity => isCluster(entity) && !clustersSkip.has(entity.id));
 
         /* Get all clusters that candidate cluster contains visually */
-        var clustersContainedVisually = oc.filter(cluster => cc.containsVisually(cluster));
+        var clustersContainedVisually = oClusters.filter(cluster => cc.containsVisually(cluster));
 
         /* If cluster candidate overlaps with some other cluster and does not contain it visually */
-        if(oc.length != clustersContainedVisually.length) {
+        if(oClusters.length != clustersContainedVisually.length) {
             if(this.argv.debug) console.info("Info [Debug]: CC discarded immediately overlaps other cluster!");
             return true;
         }
 
-        /* Create map of clusters that will be ommited in last check for overlapping */
-        // var clustersSkip = new Map();
-        
-        /* Add clusters to skip set if entity relation is cluster */
-        // if(isCluster(rel.entityA)) clustersSkip.set(rel.entityA.id, rel.entityA);
-        // if(isCluster(rel.entityB)) clustersSkip.set(rel.entityB.id, rel.entityB);
-
-        for (const oBox of ob) {
+        for (const oBox of oBoxes) {
             if(this.argv.debug) console.info("Info [Debug]: Overlapping box added to CC");
             cc.addBoxes(oBox);
         }
 
-        /* Attention! This code is unreachable */
-        // console.log(oc);
-        // for (const oCluster of oc) {
-        //     if(this.argv.debug) console.info("Info [Debug]: All boxes from overlapping cluster added to CC");
-        //     cc.addBoxes(oCluster);
-        //     clustersSkip.set(oCluster.id, oCluster);
-        // }
+        /* Reachable only if some cluster is visually contained in CC, otherwise oClusters empty */
+        for (const oCluster of oClusters) {
+            if(this.argv.debug) console.info("Info [Debug]: All boxes from visually contained cluster added to CC");
+            cc.addBoxes(oCluster);
+            clustersSkip.add(oCluster.id);
+        }
 
         /* Try to add new possible overlaps with unclustered boxes if any */
         overlapping = cc.getOverlappingEntities(this.tree);
-        var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
-        for (const oBox of ob) {
+        oBoxes = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxesUnclustered.has(entity.id));
+        for (const oBox of oBoxes) {
             if(this.argv.debug) console.info("Info [Debug]: New overlapping boxes added to CC");
             cc.addBoxes(oBox);
         }
 
-        /* Check overlaps after adding boxes in previous step */
+        /* Check overlaps after adding boxes in previous step, if any discard CC (overlaps == true) */
         overlapping = cc.getOverlappingEntities(this.tree);
-        // oc = overlapping.filter(entity => isCluster(entity) && !clustersSkip.has(entity.id));
-        oc = overlapping.filter(entity => isCluster(entity) && !relClusters.has(entity.id));
-        var ob = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxes.has(entity.id));
+        oClusters = overlapping.filter(entity => isCluster(entity) && !clustersSkip.has(entity.id));
+        oBoxes = overlapping.filter(entity => isBox(entity) && !(cc.boxes.has(entity.id)) && this.boxesUnclustered.has(entity.id));
 
         if(this.argv.debug) {
-            if(oc.length > 0) console.log("Info [Debug]: CC discarded, overlaps cluster!");
-            if(ob.length > 0) console.log("Info [Debug]: CC discarded, overlaps box!"); 
-            if(oc.length == 0 && ob.length == 0) console.log("Info [Debug]: CC no overlaps! Merging!");
+            if(oClusters.length > 0) console.log("Info [Debug]: CC discarded, overlaps cluster!");
+            if(oBoxes.length > 0) console.log("Info [Debug]: CC discarded, overlaps box!"); 
+            if(oClusters.length == 0 && oBoxes.length == 0) console.log("Info [Debug]: CC no overlaps! Merging!");
         }
 
         /* If there is any overlap, discard cluster candidate, otherwise recalculate neighbours and commit it as valid cluster */
-        return ob.length || oc.length;
+        return oBoxes.length || oClusters.length;
     }
 
     removeEntities(clusterCandidate) {
 
         for (const ccBox of clusterCandidate.boxes.values()) {
-            this.boxes.delete(ccBox.id);
+            this.boxesUnclustered.delete(ccBox.id);
 
             /* If box has already been in cluster */
             if(ccBox.cluster) {
@@ -280,14 +280,14 @@ class ClusteringManager {
             }
         }
 
-        /* Insert new cluster into RTree */
+        /* Insert new cluster (CC) into RTree */
         this.tree.insert(clusterCandidate);
     }
 
     updateRelations(clusterCandidate) {
 
         /* Update neighbours and relations of all boxes and clusters from cluster candidate context */
-        var relsToUpdate = clusterCandidate.updateAllNeighbours(this.clusters, this.boxes);
+        var relsToUpdate = clusterCandidate.updateAllNeighbours(this.clusters, this.boxesUnclustered);
 
         /* Add all relations from add set */
         for (const relToAdd of relsToUpdate.relAddSet) {
@@ -302,7 +302,7 @@ class ClusteringManager {
 
     getDataForVizualization(rel) {
         var data = {
-            boxes: Array.from(this.boxesAll.values()).map(box => convertEntityForVizualizer(box)),
+            boxes: Array.from(this.boxesValid.values()).map(box => convertEntityForVizualizer(box)),
             clusters: Array.from(this.clusters.values()).map(cluster => convertEntityForVizualizer(cluster)),
             relations: Array.from(this.relations.keys()),
             bestRel: (!rel) ? null : {relationId: rel.id, entityAId: rel.entityA.id, entityBId: rel.entityB.id, similarity: rel.similarity},
@@ -313,7 +313,7 @@ class ClusteringManager {
 
     getDataForExport() {
         var data = {
-            boxesMap: this.boxesAll,
+            boxesMap: this.boxesValid,
             clustersMap: this.clusters,
             pageDims: this.pageDims
         }
@@ -324,7 +324,6 @@ class ClusteringManager {
 function createSegmentation(extracted, argv) {
 
     var cm = new ClusteringManager(extracted, argv);
-    cm.removeContainers();
     cm.findAllRelations();
     cm.createClusters();
 
