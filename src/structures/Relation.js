@@ -291,16 +291,21 @@ class Relation {
         var card = 0;
 
         if (isBox(entity)) {
-            /* calcCardinality is called only with BACK option, so checking if cBox has entity as neighbour was dead code, never accessed */
+            
             for (const cBox of cluster.boxes.values()) {
+                /* Increment cardinality in backward direction */
                 if (direction == BACK && entity.neighbours.has(cBox)) {
                     card++;
-                } 
+                /* If direction is not specified, it means forward direction */
+                } else if (!direction && cBox.neighbours.has(entity)) {
+                    card++;
+                }
             }
         } else {
-            /* Calculate cardinality by BCS definition, card++ only in some box in cluster has direct neighbour box from another cluster */
+            /* Calculate cardinality by BCS definition */ 
             for (const cBox of cluster.boxes.values()) {
                 for (const eBox of entity.boxes.values()) {
+                    /* Increment cardinality only if some box in cluster has direct neighbour box from another cluster */
                     if (cBox.neighbours.has(eBox)) {
                         card++;
                     }

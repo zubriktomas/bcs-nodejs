@@ -6,18 +6,21 @@
  * Description: Extraction process of boxes from webpage (root node)
  */
 
+const COLOR_GREY = "rgb(128, 128, 128)";
+
 /**
 * Extracts all relevant boxes for given web page from specified root node
 * @param {Node} node Root node of extraction process
+* @param {boolean} ignoreImage ignore avg color calculation, use default grey
 * @returns List of boxes
 */
-async function extractBoxes(node) {
+async function extractBoxes(node, ignoreImages) {
 
   /* List of extracted boxes */
   var boxes = [];
 
   /* Call recursive extract, that access local (but "global") boxes list */
-  await extract(node);
+  await extract(node, ignoreImages);
 
   /* Return extracted boxes */
   return boxes;
@@ -25,9 +28,10 @@ async function extractBoxes(node) {
   /**
    * Local recursive function for boxes extraction
    * @param {Node} node Root node
+   * @param {boolean} ignoreImage ignore avg color calculation, use default grey
    * @returns void
    */
-  async function extract(node) {
+  async function extract(node, ignoreImages) {
 
     if(isTextNode(node))
     {
@@ -35,7 +39,7 @@ async function extractBoxes(node) {
     }
     else if(isImageNode(node))
     {
-      boxes.push(await getImageBox(node));
+      boxes.push(await getImageBox(node, ignoreImages));
     }
     else {
       /* Skip excluded nodes */
@@ -53,9 +57,9 @@ async function extractBoxes(node) {
         } else if(isTextNode(smallest)) {
           boxes = boxes.concat(getTextBoxes(smallest));
         } else if(isImageNode(smallest)) {
-          boxes.push(await getImageBox(smallest));
+          boxes.push(await getImageBox(smallest, ignoreImages));
         } else if(isElementNode(smallest)) {
-          boxes.push(await getElementBox(smallest));
+          boxes.push(await getElementBox(smallest, ignoreImages));
         }
 
       } else {
@@ -64,7 +68,7 @@ async function extractBoxes(node) {
 
         /* Recursively extract boxes from child nodes */
         for (const childNode of childNodes) {
-          await extract(childNode);
+          await extract(childNode, ignoreImages);
         }
       }
     }
@@ -81,7 +85,7 @@ async function getBgImgColorAsync(node) {
   assert(isElementNode(node));
 
   /* Local constant */
-  const COLOR_GREY = "rgb(128, 128, 128)";
+  // const COLOR_GREY = "rgb(128, 128, 128)";
 
   /* Module for average color extraction */
   const fac = new FastAverageColor();
@@ -140,9 +144,10 @@ function getBgColor(node) {
 /**
  * Get element box from element node
  * @param {Node} node 
+ * @param {boolean} ignoreImage ignore avg color calculation, use default grey
  * @returns BoxInfo
  */
- async function getElementBox(node) {
+ async function getElementBox(node, ignoreImages) {
 
   assert(isElementNode(node), "Parameter in function getElementBox() has to be ElementNode!");
 
@@ -153,7 +158,11 @@ function getBgColor(node) {
   if(hasBackgroundColor(node)) { 
     color = getBgColor(node);
   } else if (hasBackgroundImage(node)) {
-    color = await getBgImgColorAsync(node);
+    if(ignoreImages) {
+      color = COLOR_GREY;
+    } else {
+      color = await getBgImgColorAsync(node);
+    }
   }
 
   return new BoxInfo(bbox, color);
@@ -162,17 +171,20 @@ function getBgColor(node) {
 /**
  * Get image box from image node
  * @param {Node} node 
+ * @param {boolean} ignoreImage ignore avg color calculation, use default grey
  * @returns BoxInfo
  */
-async function getImageBox(node) {
+async function getImageBox(node, ignoreImages) {
 
   assert(isImageNode(node));
 
   var bbox, color;
   
   bbox = getBoundingBox(node);
-  
-  if((color = getBgImgColor(node)) == "rgb(0,0,0)") {
+
+  if(ignoreImages) {
+    color = COLOR_GREY;
+  } else if((color = getBgImgColor(node)) == "rgb(0,0,0)") {
       color = await getBgImgColorAsync(node);
   }
     

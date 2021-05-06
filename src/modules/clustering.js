@@ -14,10 +14,9 @@ const { Selector, SelectorDirection } = require('../structures/Selector');
 const { isBox, isCluster } = require('../structures/EntityType');
 const { exportFiles } = require('./exporter');
 
-const assert = (condition, message) => { 
-    if(!condition) throw Error('Assert failed: ' + (message || ''))
-};
+const assert = (condition, message) => { if(!condition) throw Error('Assert failed: ' + (message || '')) };
 
+/* Calculate contents of entity (W * H) */
 const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
 
 /**
@@ -50,7 +49,8 @@ class ClusteringManager {
         this.tree = this.createRTree(this.boxesUnclustered);
         
         /* All valid boxes for vizualization purposes (not changed, static) */
-        this.boxesValid = this.removeContainers(this.boxesUnclustered); // !! Attention: also remove containers from boxesUnclustered !!
+        // !! Attention: also remove containers from boxesUnclustered !!
+        this.boxesValid = argv.RC ? this.removeContainers(this.boxesUnclustered) : new Map(this.boxesUnclustered.entries());
 
         /* Init empty map of clusters and relations */
         this.clusters = new Map();
@@ -59,6 +59,11 @@ class ClusteringManager {
         this.allSegmentationSteps = [];
     }
 
+    /**
+     * Reinitialize boxes as Box structures, because they were serialized from browser in extraction process
+     * @param {*} boxesList extracted boxes list
+     * @returns map of Box structures
+     */
     reinitBoxes(boxesList) {
         var boxesMap = new Map();
 
@@ -69,6 +74,11 @@ class ClusteringManager {
         return boxesMap;
     }
 
+    /**
+     * Create RTree from map of boxes, for containers removing and searching
+     * @param {*} boxesUnclusteredMap 
+     * @returns RTree with boxes
+     */
     createRTree(boxesUnclusteredMap) {
         var boxesList = Array.from(boxesUnclusteredMap.values());
         const tree = new RTree();
@@ -76,6 +86,11 @@ class ClusteringManager {
         return tree;
     }
 
+    /**
+     * Remove containers boxes from extracted boxes
+     * @param {*} boxesUnclustered 
+     * @returns boxes without containers
+     */
     removeContainers(boxesUnclustered) {
         var selector, overlapping;
 
@@ -180,6 +195,7 @@ class ClusteringManager {
             /* Find best relation */
             bestRel = this.getBestRelation();
 
+            /* If only export option is to export all segmentation steps, very computation extensive! */
             if(this.argv.export.includes(7) && this.argv.export.length == 1){
                 this.allSegmentationSteps.push({iteration: iteration, data: this.getDataForVizualization(bestRel)} );
             }
@@ -197,7 +213,8 @@ class ClusteringManager {
             /* Check relation similarity, if it has exceeded CT, stop segmentation */
             if(bestRel.similarity > this.clusteringThreshold) {
                 if(this.argv.showInfo){
-                    console.info(`Info: [Segment] Similarity > ${this.clusteringThreshold}`, bestRel.similarity);
+                    var simFloat = parseFloat(bestRel.similarity.toFixed(3));
+                    console.info(`Info: [Segment] Similarity > ${this.clusteringThreshold}`, simFloat);
                     console.info("Info: [Segment] Number of segments:", this.clusters.size);
                 }
                 break;
@@ -224,11 +241,17 @@ class ClusteringManager {
             vizualizeStep(this.getDataForVizualization(), ++iteration);
         }
 
+        /* Export last step, after segmentation stopped and broke the loop */
         if(this.argv.export.includes(7) && this.argv.export.length == 1){
-            this.allSegmentationSteps.push({iteration: iteration, data: this.getDataForVizualization()} );
+            this.allSegmentationSteps.push({iteration: ++iteration, data: this.getDataForVizualization()} );
         }
     }
 
+    /**
+     * Check if cluster densitiy is under threshold (if it is OK)
+     * @param {Cluster} cc 
+     * @returns true | false
+     */
     clusterDensityUnderThreshold(cc) {
 
         var ccContents = calcContents(cc);
@@ -267,16 +290,20 @@ class ClusteringManager {
         var clustersContainedVisually = oClusters.filter(cluster => cc.containsVisually(cluster));
 
         /* If cluster candidate overlaps with some other cluster and does not contain it visually */
-        if(oClusters.length != clustersContainedVisually.length) {
-            if(this.argv.debug) console.info("Info [Debug]: CC discarded immediately overlaps other cluster!");
-            return true;
+        if(!this.argv.aggresive) {
+            if(oClusters.length != clustersContainedVisually.length) {
+                if(this.argv.debug) console.info("Info [Debug]: CC discarded immediately overlaps other cluster!");
+                return true;
+            }
         }
 
-        /* If CC visually contains more clusters than one discard CC */
-        if(clustersContainedVisually.length > 0) {
-            if(this.argv.debug) console.info("Info [Debug]: CC discarded immediately overlaps other cluster!");
-            return true;
-        }
+        /* Disacrd CC if visually contains any cluster in basic segmentation */
+        // if(!this.argv.extended){
+        //     if(oClusters.length > 0) {
+        //         if(this.argv.debug) console.info("Info [Debug]: CC discarded immediately overlaps (contains) other cluster!");
+        //         return true;
+        //     }
+        // }
 
         for (const oBox of oBoxes) {
             if(this.argv.debug) console.info("Info [Debug]: Overlapping box added to CC");
@@ -401,7 +428,14 @@ function createSegmentation(extracted, argv) {
 
     var cm = new ClusteringManager(extracted, argv);
     cm.findAllRelations();
+
+    if(argv.showInfo)
+    console.time("Info: [Segment] Clustering time");
+
     cm.createClusters();
+
+    if(argv.showInfo)
+    console.timeEnd("Info: [Segment] Clustering time");
 
     if(!argv.export.includes(0)) {
         

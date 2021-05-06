@@ -18,9 +18,9 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .example('$0 -W 1200 -H 800 http://cssbox.sf.net', '')
   .strictOptions(true)
   .alias('CT', 'clustering-threshold').nargs('CT', 1)
-  .default('CT', 0.5).describe('CT', 'Clustering Threshold (CT > 0.0 && CT < 1.0)')
+  .default('CT', 0.5).describe('CT', `Clustering Threshold (CT > 0.0 && CT < 1.0) OR 'guess'`)
   .alias('DT', 'density-threshold').nargs('DT', 1)
-  .default('DT', 0).describe('DT', 'Density Threshold (DT >= 0 && DT < 1.0)')
+  .default('DT', 0).describe('DT', `Density Threshold (DT >= 0 && DT < 1.0) OR 'guess'`)
   .alias('W', 'width').nargs('W', 1)
   .default('W', 1200).describe('W', 'Browser viewport width')
   .alias('H', 'height').nargs('H', 1)
@@ -47,7 +47,12 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
     7 - all-segmentation-steps as step[iteration].png (must be used as only option -E 7)
     Usage: f.e. -E 134, -E 51, -E *6* (all), -E *0* (none)  
     `)
-  .alias('O', 'output-folder').nargs('O', 1).describe('O', 'Output folder')
+  .alias('A', 'aggresive').boolean('A')
+  .default('A', false).describe('A', `Aggresive clustering - try to cluster all overlapping clusters`)
+  .alias('RC', 'remove-containers').boolean('RC')
+  .default('RC', true).describe('RC', `Remove containers - boxes that visually contains other boxes`)
+  .alias('IM', 'ignore-images').boolean('IM')
+  .default('IM', false).describe('IM', `Ignore images average color, use default grey (Extraction option)`)
   .help('h').alias('h', 'help')
   .argv;
 
@@ -61,14 +66,29 @@ if (argv._.length !== 1) {
 argv.url = argv._[0];
 argv.export = String(argv.export)
 
+if(argv.RC == false && argv.extended == false) {
+  console.warn('Warning: RC option can be used only in extended. Ignored.');
+  argv.RC = true;
+}
+
+if(argv.A == true && argv.extended == false) {
+  console.warn('Warning: Aggresive option can be used only in extended. Ignored.');
+  argv.A = false;
+}
+
 if ((parseFloat(argv.CT) != argv.CT || argv.CT < 0 || argv.CT > 1) && argv.CT != "guess") {
   console.warn('Warning: Incorrect CT', argv.CT, 'Using default', 0.5);
   argv.CT = 0.5;
 }
 
-if ((parseFloat(argv.DT) != argv.DT || argv.DT < 0 || argv.DT > 1) && argv.DT != "guess") {
-  console.warn('Warning: Incorrect DT', argv.DT, 'Using default', 0.0);
-  argv.DT = 0.0;
+if ((parseFloat(argv.DT) != argv.DT || argv.DT < 0 || argv.DT > 1)) {
+  if(!argv.extended) {
+    console.warn('Warning: Density Threshold can not be used with basic implementation! Ignored.');
+    argv.DT = 0.0;
+  } else if(argv.DT != "guess") {
+    console.warn('Warning: Incorrect DT', argv.DT, 'Using default', 0.0);
+    argv.DT = 0.0;
+  } 
 }
 
 if (!Number.isInteger(argv.W) || argv.W <= 0 || argv.W > 1920) {
@@ -81,6 +101,27 @@ if (!Number.isInteger(argv.H) || argv.H <= 0) {
   argv.H = 800;
 }
 
+/* Print args info */
+if (argv.showInfo) {
+  console.info("Info: [Argument] URL:", argv.url);
+  console.info("Info: [Argument] Clustering Threshold:", argv.CT);
+  console.info("Info: [Argument] Viewport width:", argv.W);
+  console.info("Info: [Argument] Viewport height:", argv.H);
+  console.info("Info: [Argument] Save screenshot:", argv.S);
+  console.info("Info: [Argument] Debug:", argv.D);
+  console.info("Info: [Argument] BCS implementation:", argv.extended ? "extended" : "basic");
+  console.info("Info: [Argument] Vizualize step (iteration):", argv.VS);
+  console.info("Info: [Argument] Export options:", argv.E);
+  console.info("Info: [Argument] Ignore images (average color):", argv.IM);
+
+  if(argv.extended) {
+    console.info("Info: [Argument] Remove containers:", argv.RC);
+    console.info("Info: [Argument] Aggresive clustering:", argv.A);
+  }
+}
+
+
+
 /* BCS main process */
 (async () => {
 
@@ -89,6 +130,8 @@ if (!Number.isInteger(argv.H) || argv.H <= 0) {
 
   /* Open new page in browser */
   const page = await browser.newPage();
+
+  var width = argv.W;
 
   /* Set viewport size specified by args */
   page.setViewportSize({
@@ -122,11 +165,13 @@ if (!Number.isInteger(argv.H) || argv.H <= 0) {
   await page.addScriptTag({ path: './src/modules/box-extraction.js' });
   await page.addScriptTag({ url: 'https://unpkg.com/fast-average-color/dist/index.min.js' });
 
+
+  var ignoreImages = argv.IM;
   /* Box Extraction Process - JavaScript code evaluated in web browser context */
-  const extracted = await page.evaluate(async () => {
+  const extracted = await page.evaluate(async (ignoreImages) => {
 
     const t0 = performance.now();
-    const boxes = await extractBoxes(document.body);
+    const boxes = await extractBoxes(document.body, ignoreImages);
     const t1 = performance.now();
 
     return {
@@ -137,7 +182,7 @@ if (!Number.isInteger(argv.H) || argv.H <= 0) {
       },
       time: t1 - t0
     };
-  });
+  }, ignoreImages);
 
   /* Capture screenshot of webpage in PNG format */
   if (argv.saveScreenshot || argv.export.includes(5) || argv.export.includes(6)) {
