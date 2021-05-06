@@ -11,7 +11,7 @@ const { chromium } = require('playwright');
 const { readFileSync, existsSync } = require('fs');
 const { buildHtmlTemplate } = require('./box-vizualizer');
 
-const FileType = Object.freeze({ png: 0, json: 1 });
+const FileType = Object.freeze({ png: 0, json: 1, xml: 2});
 
 /* Export PNG files by data parameter */
 const exportPNG = async (data) => {
@@ -243,10 +243,18 @@ function exportBoxesToJson(boxesToExport, filepath) {
 function tryToLoadFile(filePath, type) {
     try {
         if (existsSync(filePath)) {
-            return type == FileType.png ? readFileSync(filePath).toString('base64') : JSON.parse(readFileSync(filePath, 'utf8'));
+            if(type == FileType.xml) {
+                return readFileSync(filePath).toString();
+            } else if(type == FileType.png) {
+                return readFileSync(filePath).toString('base64');
+            } else if(type == FileType.json) {
+                return JSON.parse(readFileSync(filePath, 'utf8'));
+            }
+
+            // return type == FileType.png ? readFileSync(filePath).toString('base64') : JSON.parse(readFileSync(filePath, 'utf8'));
         } else {
             console.error(`Error: File ${filePath} does not exist!`);
-            console.error(`       Returns 'null' (png) / '[]' (json)`);
+            console.error(`       Returns 'null' (png) / '[]' (json, xml)`);
             return type == FileType.png ? null : [];
         }
     } catch (e) {

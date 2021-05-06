@@ -6,6 +6,7 @@
 
 const { readFileSync, writeFileSync } = require('fs');
 const parser = require('xml2json');
+const { tryToLoadFile, FileType } = require('../src/modules/exporter');
 
 /**
  * Convert area structure to segment structure used in GT annotator
@@ -31,7 +32,8 @@ function convertAreaToSegment(area) {
  */
 function areaTreeParse(inFile, outFile) {
 
-    const xmlData = readFileSync(inFile).toString();
+    // const xmlData = readFileSync(inFile).toString();
+    const xmlData = tryToLoadFile(inFile, FileType.xml);
     const json = JSON.parse(parser.toJson(xmlData));
     const areaList = json.areaTree.area.area;
     var segments = [];
@@ -40,9 +42,13 @@ function areaTreeParse(inFile, outFile) {
         segments.push(segment);
     }
     var segmentsJson = JSON.stringify(segments);
-    writeFileSync(outFile, segmentsJson, (err) => {
-        if (err) throw err;
-    });
+
+    if(outFile) {
+        writeFileSync(outFile, segmentsJson, (err) => {
+            if (err) throw err;
+        });
+    }
+    return segmentsJson;
 }
 
-module.exports.areaTreeParse = areaTreeParse;
+module.exports = { areaTreeParse };

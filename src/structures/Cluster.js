@@ -118,7 +118,7 @@ class Cluster {
      */
     addNeighbour(entity) {
         if(!this.neighbours.has(entity)) {
-            var rel = new Relation(this, entity, null, this.argv.extended);
+            var rel = new Relation(this, entity, null, this.argv);
             rel.calcSimilarity();
             this.neighbours.set(entity, rel);
             return rel;

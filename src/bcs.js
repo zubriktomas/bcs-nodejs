@@ -53,6 +53,8 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .default('RC', true).describe('RC', `Remove containers - boxes that visually contains other boxes`)
   .alias('IM', 'ignore-images').boolean('IM')
   .default('IM', false).describe('IM', `Ignore images average color, use default grey (Extraction option)`)
+  .alias('WVEC', 'weight-vector').nargs('WVEC', 1)
+  .default('WVEC', '[1,1,1]').describe('WVEC', `Use weight vector for similarity calculation`)
   .help('h').alias('h', 'help')
   .argv;
 
@@ -62,16 +64,31 @@ if (argv._.length !== 1) {
   process.exit(1);
 }
 
+/* Process weight vector from argument */
+try {
+  var weightVector = JSON.parse(argv.WVEC);
+  const isWeightVectorValueOK = (value) => value == parseFloat(value) && value >= 0 && value <= 1;
+  if (weightVector.length != 3 || !isWeightVectorValueOK(weightVector[0]) || !isWeightVectorValueOK(weightVector[1]) || !isWeightVectorValueOK(weightVector[2])) {
+    console.warn('Warning: Weight vector is invalid. Using default', [1, 1, 1]);
+    argv.WVEC = [1, 1, 1];
+  } else {
+    argv.WVEC = weightVector;
+  }
+} catch (e) {
+  console.warn('Warning: Weight vector is invalid. Using default', [1, 1, 1]);
+  argv.WVEC = [1, 1, 1];
+}
+
 /* Get all args to local variables */
 argv.url = argv._[0];
 argv.export = String(argv.export)
 
-if(argv.RC == false && argv.extended == false) {
+if (argv.RC == false && argv.extended == false) {
   console.warn('Warning: RC option can be used only in extended. Ignored.');
   argv.RC = true;
 }
 
-if(argv.A == true && argv.extended == false) {
+if (argv.A == true && argv.extended == false) {
   console.warn('Warning: Aggresive option can be used only in extended. Ignored.');
   argv.A = false;
 }
@@ -82,13 +99,13 @@ if ((parseFloat(argv.CT) != argv.CT || argv.CT < 0 || argv.CT > 1) && argv.CT !=
 }
 
 if ((parseFloat(argv.DT) != argv.DT || argv.DT < 0 || argv.DT > 1)) {
-  if(!argv.extended) {
+  if (!argv.extended) {
     console.warn('Warning: Density Threshold can not be used with basic implementation! Ignored.');
     argv.DT = 0.0;
-  } else if(argv.DT != "guess") {
+  } else if (argv.DT != "guess") {
     console.warn('Warning: Incorrect DT', argv.DT, 'Using default', 0.0);
     argv.DT = 0.0;
-  } 
+  }
 }
 
 if (!Number.isInteger(argv.W) || argv.W <= 0 || argv.W > 1920) {
@@ -114,7 +131,7 @@ if (argv.showInfo) {
   console.info("Info: [Argument] Export options:", argv.E);
   console.info("Info: [Argument] Ignore images (average color):", argv.IM);
 
-  if(argv.extended) {
+  if (argv.extended) {
     console.info("Info: [Argument] Remove containers:", argv.RC);
     console.info("Info: [Argument] Aggresive clustering:", argv.A);
   }

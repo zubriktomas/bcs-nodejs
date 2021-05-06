@@ -204,6 +204,12 @@ function getTextBoxes(textNode) {
   /* Representative color of every text box is parent's color of text */
   color = getStyle(textNode.parentElement).color;
 
+  /* Regex taken from: https://stackoverflow.com/questions/14741291/how-to-check-if-the-css-background-color-is-white */
+  const checkWhite = (color) => color.match(/^(?:white|#fff(?:fff)?|rgba?\(\s*255\s*,\s*255\s*,\s*255\s*(?:,\s*1\s*)?\))$/i);
+
+  /* Change white color to slightly greyer color, because boxes are not visible in vizualization */
+  color = checkWhite(color) ? "rgb(240, 240, 240)" : color;
+
   /* Get multiple bounding boxes - text node can be wrapped into multiple lines */
   bboxes = getBoundingBoxes(textNode);
 

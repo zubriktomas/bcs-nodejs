@@ -97,7 +97,8 @@ class ClusteringManager {
         /* Remove bigger containers that contain more than 2 boxes (probably background images) - elements with absolute positions */
         for (let box of boxesUnclustered.values()) {
             selector = Selector.fromEntity(box);
-            overlapping = this.tree.search(selector.narrowBy1Px());
+            /* Narrowed by 2px for more precise results | originally it was 1px */
+            overlapping = this.tree.search(selector.narrowBy1Px().narrowBy1Px());
             if(overlapping.length > 2) { 
                 boxesUnclustered.delete(box.id);
                 this.tree.remove(box);
@@ -107,7 +108,7 @@ class ClusteringManager {
         /* Remove smaller containers now */
         for (let box of boxesUnclustered.values()) {
             selector = Selector.fromEntity(box);
-            overlapping = this.tree.search(selector.narrowBy1Px());
+            overlapping = this.tree.search(selector.narrowBy1Px().narrowBy1Px());
             if(overlapping.length > 1) { 
                 boxesUnclustered.delete(box.id);
                 this.tree.remove(box);

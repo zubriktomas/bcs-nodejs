@@ -28,10 +28,10 @@ class Relation {
      * @param {(Cluster|Box)} entityB 
      * @param {SelectorDirection} direction Optional (if it is not specified, it is calculated)
      */
-    constructor(entityA, entityB, direction, extended) {
+    constructor(entityA, entityB, direction, argv) {
 
         /* Program arguments */
-        this.extended = extended;
+        this.argv = argv;
 
         /* Basic info */
         this.entityA = entityA;
@@ -232,7 +232,7 @@ class Relation {
         } else if (relativeDistance >= 1) {
 
             /* For extended implementation, shapeSimilarity and colorSimilartiy has to be accessible from Relation class */
-            if(this.extended){
+            if(this.argv.extended){
                 this.shapeSimilarity = this.calcShapeSimilarity(boxA, boxB);
                 this.colorSimilarity = this.calcColorSimilarity(boxA, boxB);
             }
@@ -243,8 +243,11 @@ class Relation {
             var shapeSim = this.calcShapeSimilarity(boxA, boxB);
             var colorSim = this.calcColorSimilarity(boxA, boxB);
 
+            /* Weight vector for calculating similarity, allow more customization and testing */
+            var w = this.argv.WVEC;
+
             /* Calculate base similarity between boxes */
-            var sim = (relDist + shapeSim + colorSim) / 3;
+            var sim = (relDist * w[0] + shapeSim * w[1] + colorSim * w[2]) / 3;
             return sim;
         }
     }
@@ -334,7 +337,7 @@ class Relation {
                 }
 
                 /* Recalculate critical relation between boxes one upon another with no left and right neighbours */
-                if (this.extended) {
+                if (this.argv.extended) {
 
                     var isRelTwoDirectional = cBox.neighbours.has(entity) && entity.neighbours.has(cBox);
 
@@ -366,8 +369,11 @@ class Relation {
                             var shapeSim = criticalRelation.shapeSimilarity != null ? criticalRelation.shapeSimilarity : 1;
                             var colorSim = criticalRelation.colorSimilarity != null ? criticalRelation.colorSimilarity : 1;
 
+                            /* Weight vector for similarity calculation */
+                            var w = this.argv.WVEC;
+
                             /* Calculate similarity with new relative distance */
-                            var sim = (relativeDistance + shapeSim + colorSim) / 3;
+                            var sim = (relativeDistance * w[0] + shapeSim * w[1] + colorSim * w[2]) / 3;
 
                             /* Add similarity to cumulative similarity and continue in loop */
                             cumulSimilarity += sim;

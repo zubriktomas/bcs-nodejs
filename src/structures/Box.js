@@ -112,7 +112,7 @@ class Box {
     
         /* Loop over all 'neighbours', resp. all boxes in specified direction found by Selector */
         for (const neighbour of neighbours) {
-            var rel = new Relation(box, neighbour, direction, cm.argv.extended);
+            var rel = new Relation(box, neighbour, direction, cm.argv);
             tmpRelations.push(rel);
 
             /* Determine shortest absolute distance in that direction, to truly find direct neighbours */

@@ -8,7 +8,7 @@ const { chromium } = require('playwright');
 const { readFileSync, existsSync } = require('fs');
 const sizeOfImage = require('image-size');
 const { tryToLoadFile, FileType } = require('../src/modules/exporter');
-
+const { areaTreeParse } = require('./areatree-parser');
 
 /* Constants */
 const bcsOutputFolder = './../output';
@@ -20,8 +20,8 @@ const screenHeight = 1200;
 
 /* Parse and convert FiyLayout segments.xml to segments-ref.json */
 var aTreeParserInFile = './../../../fitlayout-jar/out/segments.xml';
-var aTreeParserOutFile = './input/segments-ref.json';
-require('./areatree-parser').areaTreeParse(aTreeParserInFile, aTreeParserOutFile);
+// var aTreeParserOutFile = './input/segments-ref.json';
+// require('./areatree-parser').areaTreeParse(aTreeParserInFile, aTreeParserOutFile);
 
 /* Parse arguments */
 const argv = require('yargs/yargs')(process.argv.slice(2))
@@ -45,7 +45,8 @@ const urlSubstring = url.startsWith("https") ? url.substring(8) : url.startsWith
 const gtSegmentsFilename = `ground-truth-segments[${urlSubstring}].json`;
 
 /* Load PNG (webpage and boxes screenshots) and JSON (segmentations) files from filesystem */
-const data = loadDataFromFileSystem(bcsOutputFolder, gtAnnotatorOutputFolder, gtSegmentsFilename);
+// const data = loadDataFromFileSystem(bcsOutputFolder, gtAnnotatorOutputFolder, gtSegmentsFilename);
+const data = loadDataFromFileSystem(bcsOutputFolder, aTreeParserInFile);
 
 /* Start Ground Truth annotator */
 const startAnnotator = async () => {
@@ -65,7 +66,7 @@ const startAnnotator = async () => {
     await page.setContent(contentHtml);
 
     /* Add all script (and style) tags */
-    await page.addScriptTag({ path: './browser/enums.js'});
+    await page.addScriptTag({ path: './browser/enums.js' });
     await page.addScriptTag({ type: 'module', path: './browser/interact.js' });
     await page.addScriptTag({ path: './browser/listener-functions.js' });
     await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/rbush@3.0.1/rbush.min.js' });
@@ -107,7 +108,7 @@ const startAnnotator = async () => {
 
         /* Assign RTree to window for global access */
         window.tree = tree;
-        
+
         /* If ground truth segmentation was loaded, calculate metrics and create results table immediately */
         if (data.segmentations.gt.length) {
             createMetricsResultsTable();
@@ -117,7 +118,7 @@ const startAnnotator = async () => {
         /* Set body background image as webpage screenshot */
         document.body.style.backgroundImage = window.bgA;
         /* It is important to assign body height higher than imageHeight for scrolling down */
-        document.body.style.height = `${data.imageHeight + 200}px`; 
+        document.body.style.height = `${data.imageHeight + 200}px`;
 
         /* Modal events listeners */
         document.addEventListener("keydown", e => selectFunctionByCodeKey(e, data.segmentations));
@@ -167,14 +168,19 @@ startAnnotator();
  * @param {*} gtSegmentsFilename GT export file filename
  * @returns data as object
  */
-function loadDataFromFileSystem(bcsOutputFolder, gtAnnotatorOutputFolder, gtSegmentsFilename) {
+// function loadDataFromFileSystem(bcsOutputFolder, gtAnnotatorOutputFolder, gtSegmentsFilename) {
+
+function loadDataFromFileSystem(bcsOutputFolder, xmlInFile) {
 
     const webpagePNG = tryToLoadFile(`${bcsOutputFolder}/webpage.png`, FileType.png);
     const boxesPNG = tryToLoadFile(`${bcsOutputFolder}/boxes.png`, FileType.png);
     const boxes = tryToLoadFile(`${bcsOutputFolder}/boxes.json`, FileType.json);
     const segmentsBasic = tryToLoadFile(`${bcsOutputFolder}/segments.json`, FileType.json);
     const segmentsReference = tryToLoadFile('./input/segments-ref.json', FileType.json);
-    const segmentsGT = tryToLoadFile(`${gtAnnotatorOutputFolder}/${gtSegmentsFilename}`, FileType.json);
+    // const segmentsGT = tryToLoadFile(`${gtAnnotatorOutputFolder}/${gtSegmentsFilename}`, FileType.json);
+    // const segmentsGT = JSON.parse(areaTreeParse(xmlInFile));
+const segmentsGT = [];
+    // console.log(segmentsGT);
 
     const segmentations = { reference: segmentsReference, basic: segmentsBasic, gt: segmentsGT };
 
