@@ -22,7 +22,7 @@ function convertAreaToSegment(area) {
     segment.width = segment.right - segment.left;
     segment.height = segment.bottom - segment.top;
     segment.type = 1;
-    segment.segm = 'reference';
+    // segment.segm = 'reference';
     return segment;
 }
 

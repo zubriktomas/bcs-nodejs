@@ -147,7 +147,7 @@ function calcMetricsBetweenSegmentations(segm1, segm2) {
  * @returns Metrics as object
  */
 function calcMetricsWithGroundTruth(segm) {
-    return calcMetricsBetweenSegmentations(segm, Segmentation.GT);
+    return calcMetricsBetweenSegmentations(segm, Segmentation.segmentationGT);
 }
 
 /**
@@ -156,36 +156,41 @@ function calcMetricsWithGroundTruth(segm) {
 function createMetricsResultsTable() {
     const resultsDiv = document.querySelector("div.results");
 
-    var tableHeaders = ["Metric", "Baseline", "Reference", "Basic"];
+    var tableHeaders = ["Metric", "Baseline", "Segmentation 1", "Segmentation 2", "Segmentation 3"];
 
     var resultBaseline = calcMetricsWithGroundTruth(Segmentation.baseline);
-    var resultReference = calcMetricsWithGroundTruth(Segmentation.reference);
-    var resultBasic = calcMetricsWithGroundTruth(Segmentation.basic);
+    var resultSegmentation1 = calcMetricsWithGroundTruth(Segmentation.segmentation1);
+    var resultSegmentation2 = calcMetricsWithGroundTruth(Segmentation.segmentation2);
+    var resultSegmentation3 = calcMetricsWithGroundTruth(Segmentation.segmentation3);
 
     var allSegments = window.tree.all().filter(e => e.type == 1);
 
     var nosegments = {
         baseline: allSegments.filter(e => e.segm == Segmentation.baseline).length,
-        reference: allSegments.filter(e => e.segm == Segmentation.reference).length,
-        basic: allSegments.filter(e => e.segm == Segmentation.basic).length
+        segmentation1: allSegments.filter(e => e.segm == Segmentation.segmentation1).length,
+        segmentation2: allSegments.filter(e => e.segm == Segmentation.segmentation2).length,
+        segmentation3: allSegments.filter(e => e.segm == Segmentation.segmentation3).length
     };
 
     var fscore = {
         baseline: resultBaseline.fscore.toFixed(2),
-        reference: resultReference.fscore.toFixed(2),
-        basic: resultBasic.fscore.toFixed(2)
+        segmentation1: resultSegmentation1.fscore.toFixed(2),
+        segmentation2: resultSegmentation2.fscore.toFixed(2),
+        segmentation3: resultSegmentation3.fscore.toFixed(2)
     };
 
     var precision = {
         baseline: resultBaseline.precision.toFixed(2),
-        reference: resultReference.precision.toFixed(2),
-        basic: resultBasic.precision.toFixed(2)
+        segmentation1: resultSegmentation1.precision.toFixed(2),
+        segmentation2: resultSegmentation2.precision.toFixed(2),
+        segmentation3: resultSegmentation3.precision.toFixed(2)
     };
 
     var recall = {
         baseline: resultBaseline.recall.toFixed(2),
-        reference: resultReference.recall.toFixed(2),
-        basic: resultBasic.recall.toFixed(2)
+        segmentation1: resultSegmentation1.recall.toFixed(2),
+        segmentation2: resultSegmentation2.recall.toFixed(2),
+        segmentation3: resultSegmentation3.recall.toFixed(2)
     };
 
     /**
@@ -199,7 +204,11 @@ function createMetricsResultsTable() {
 
         var maxFscore;
         if (metricName == Metrics.fscore) {
-            maxFscore = Math.max(values.reference, values.basic);
+            maxFscore = Math.max(
+                isNaN(values.segmentation1) ? 0 : values.segmentation1, 
+                isNaN(values.segmentation2) ? 0 : values.segmentation2, 
+                isNaN(values.segmentation3) ? 0 : values.segmentation3
+            );
             resultsTableBodyRow.className = "fscore";
         }
 
@@ -209,15 +218,19 @@ function createMetricsResultsTable() {
         let baseline = document.createElement('td');
         baseline.innerText = values.baseline;
 
-        let reference = document.createElement('td');
-        reference.innerText = values.reference;
-        reference.className = metricName == Metrics.fscore && maxFscore == values.reference ? "bold" : "";
+        let segmentation1 = document.createElement('td');
+        segmentation1.innerText = values.segmentation1;
+        segmentation1.className = metricName == Metrics.fscore && maxFscore == values.segmentation1 ? "bold" : "";
 
-        let basic = document.createElement('td');
-        basic.innerText = values.basic;
-        basic.className = metricName == Metrics.fscore && maxFscore == values.basic ? "bold" : "";
+        let segmentation2 = document.createElement('td');
+        segmentation2.innerText = values.segmentation2;
+        segmentation2.className = metricName == Metrics.fscore && maxFscore == values.segmentation2 ? "bold" : "";
 
-        resultsTableBodyRow.append(metric, baseline, reference, basic);
+        let segmentation3 = document.createElement('td');
+        segmentation3.innerText = values.segmentation3;
+        segmentation3.className = metricName == Metrics.fscore && maxFscore == values.segmentation3 ? "bold" : "";
+
+        resultsTableBodyRow.append(metric, baseline, segmentation1, segmentation2, segmentation3);
 
         return resultsTableBodyRow;
     };

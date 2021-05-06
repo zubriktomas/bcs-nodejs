@@ -30,15 +30,18 @@ function selectFunctionByCodeKey(event, segmentations) {
             break;
 
         case "Digit1":
-            loadSegmentationReference(segmentations.reference);
+            // loadSegmentationReference(segmentations.reference);
+            loadSegmentation(segmentations.segmentation1, Segmentation.segmentation1);
             break;
 
         case "Digit2":
-            loadSegmentationBasic(segmentations.basic);
+            // loadSegmentationBasic(segmentations.basic);
+            loadSegmentation(segmentations.segmentation2, Segmentation.segmentation2);
             break;
 
         case "Digit3":
-            loadExtendedSegmentation();
+            // loadExtendedSegmentation();
+            loadSegmentation(segmentations.segmentation3, Segmentation.segmentation3);
             break;
 
         case "Escape":
@@ -83,7 +86,7 @@ function addGroundTruthDiv() {
 /**
  * Insert all created ground truth segments to RTree for metrics calculations
  */
-function addGroundTruthSegmentationToRTree() {
+function addGroundTruthSegmentationToRTree(segmentations) {
     var segmentDivs = document.querySelectorAll('.resize-drag');
 
     var segmentsGT = [];
@@ -155,7 +158,7 @@ function convertDivGTToJsonSegment(divElement) {
     segment.right = segment.left + segment.width;
     segment.bottom = segment.top + segment.height;
     segment.type = 1;
-    segment.segm = "GT";
+    // segment.segm = "GT";
     return segment;
 }
 
@@ -218,15 +221,31 @@ function loadSegmentationGroundTruth(segmentsGT) {
  * Load segments from reference (FitLayout) segmentation/implementation as DIVS
  * @param {[]} segmentsReference 
  */
-function loadSegmentationReference(segmentsReference) {
+// function loadSegmentationReference(segmentsReference) {
 
-    var divsReference = document.querySelectorAll('.' + Segmentation.reference);
+//     var divsReference = document.querySelectorAll('.' + Segmentation.reference);
+
+//     if (divsReference.length == 0) {
+//         for (const segment of segmentsReference) {
+//             convertSegmentToDiv(segment, Segmentation.reference);
+//         }
+//         window.notyf.success("Reference segmentation loaded!");
+//     } else {
+//         for (const div of divsReference) {
+//             div.classList.toggle('hiddenDiv');
+//         }
+//     }
+// }
+
+function loadSegmentation(segments, segmentation) {
+
+    var divsReference = document.querySelectorAll('.' + segmentation);
 
     if (divsReference.length == 0) {
-        for (const segment of segmentsReference) {
-            convertSegmentToDiv(segment, Segmentation.reference);
+        for (const segment of segments) {
+            convertSegmentToDiv(segment, segmentation);
         }
-        window.notyf.success("Reference segmentation loaded!");
+        window.notyf.success(segmentation + " loaded!");
     } else {
         for (const div of divsReference) {
             div.classList.toggle('hiddenDiv');
@@ -234,45 +253,52 @@ function loadSegmentationReference(segmentsReference) {
     }
 }
 
-/**
- * Load segments from basic segmentation/implementation as DIVS
- * @param {[]} segmentsBasic 
- */
-function loadSegmentationBasic(segmentsBasic) {
-    var divsBasic = document.querySelectorAll('.' + Segmentation.basic);
+// /**
+//  * Load segments from basic segmentation/implementation as DIVS
+//  * @param {[]} segmentsBasic 
+//  */
+// function loadSegmentationBasic(segmentsBasic) {
+//     var divsBasic = document.querySelectorAll('.' + Segmentation.basic);
 
-    if (divsBasic.length == 0) {
-        for (const segment of segmentsBasic) {
-            convertSegmentToDiv(segment, Segmentation.basic);
-        }
-        window.notyf.success("Basic segmentation loaded!");
-    } else {
-        for (const div of divsBasic) {
-            div.classList.toggle('hiddenDiv');
-        }
-    }
+//     if (divsBasic.length == 0) {
+//         for (const segment of segmentsBasic) {
+//             convertSegmentToDiv(segment, Segmentation.basic);
+//         }
+//         window.notyf.success("Basic segmentation loaded!");
+//     } else {
+//         for (const div of divsBasic) {
+//             div.classList.toggle('hiddenDiv');
+//         }
+//     }
 
-}
+// }
 
-/**
- * Load segments from extended segmentation/implementation as DIVS
- * @param {[]} segmentsExtended
- */
-function loadExtendedSegmentation(segmentsExtended) {
-    /** TODO */
-}
+// /**
+//  * Load segments from extended segmentation/implementation as DIVS
+//  * @param {[]} segmentsExtended
+//  */
+// function loadExtendedSegmentation(segmentsExtended) {
+//     /** TODO */
+// }
 
 /**
  * Convert segment to div visual representation by segmentation (implementation) type
  * @param {} segment 
- * @param {Segmentation} segmentationImplType 
+ * @param {Segmentation} segmentation 
  */
-function convertSegmentToDiv(segment, segmentationImplType) {
+function convertSegmentToDiv(segment, segmentation) {
     var color;
-    switch (segmentationImplType) {
-        case Segmentation.reference: color = "rgba(128, 0, 0, 0.5)"; break;
-        case Segmentation.basic: color = "rgba(0, 128, 0, 0.5)"; break;
-        case Segmentation.extended: color = "rgba(0, 0, 128, 0.5)"; break;
+    // switch (segmentation) {
+    //     case Segmentation.reference: color = "rgba(128, 0, 0, 0.5)"; break;
+    //     case Segmentation.basic: color = "rgba(0, 128, 0, 0.5)"; break;
+    //     case Segmentation.extended: color = "rgba(0, 0, 128, 0.5)"; break;
+    //     default: color = "rgba(0, 0, 0, 0.5)"; break;
+    // }
+
+    switch (segmentation) {
+        case Segmentation.segmentation1: color = "rgba(128, 0, 0, 0.5)"; break;
+        case Segmentation.segmentation2: color = "rgba(0, 128, 0, 0.5)"; break;
+        case Segmentation.segmentation3: color = "rgba(0, 0, 128, 0.5)"; break;
         default: color = "rgba(0, 0, 0, 0.5)"; break;
     }
 
@@ -287,7 +313,7 @@ function convertSegmentToDiv(segment, segmentationImplType) {
     div.style.backgroundColor = `${color}`;
     div.style.opacity = 0.5;
 
-    div.className = segmentationImplType;
+    div.className = segmentation;
     document.body.appendChild(div);
 }
 

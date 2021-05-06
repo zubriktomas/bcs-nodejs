@@ -11,7 +11,15 @@ const { chromium } = require('playwright');
 const { readFileSync, existsSync } = require('fs');
 const { buildHtmlTemplate } = require('./box-vizualizer');
 
+/* Constants */
 const FileType = Object.freeze({ png: 0, json: 1, xml: 2});
+const outputFolder = './output/';
+const webpageFilepathPNG = outputFolder + 'webpage.png'; 
+const boxesFilepathPNG = outputFolder + 'boxes.png';
+const boxesFilepathJSON = outputFolder + 'boxes.json';
+const segmentsFilepathPNG = outputFolder + 'segments.png';
+const segmentsFilepathJSON = outputFolder + 'segments.json';
+const segmentsOverWebpagePNG = outputFolder + 'segments-over-webpage.png';
 
 /* Export PNG files by data parameter */
 const exportPNG = async (data) => {
@@ -60,11 +68,11 @@ const exportPNG = async (data) => {
     }, data);
 
     if (data.boxesList) {
-        await page.screenshot({ path: './output/boxes.png', fullPage: true });
+        await page.screenshot({ path: boxesFilepathPNG, fullPage: true });
     } else if (data.clustersList && data.webpagePNG) {
-        await page.screenshot({ path: './output/segments-over-webpage.png', fullPage: true });
+        await page.screenshot({ path: segmentsOverWebpagePNG, fullPage: true });
     } else if (data.clustersList) {
-        await page.screenshot({ path: './output/segments.png', fullPage: true });
+        await page.screenshot({ path: segmentsFilepathPNG, fullPage: true });
     }
 
     await browser.close();
@@ -110,8 +118,6 @@ function exportFiles(argv, data) {
     var clustersList = createClusterListForExport(data.clustersMap);
     var boxesList = createBoxesListForExport(data.boxesMap);
 
-
-
     /* Boxes PNG */
     if (exportListString.includes(1)) {
         exportPNG({ boxesList: boxesList, pageDims: pageDims });
@@ -122,7 +128,7 @@ function exportFiles(argv, data) {
 
     /* Boxes JSON */
     if (exportListString.includes(2)) {
-        exportBoxesToJson(boxesList, './output/boxes.json');
+        exportBoxesToJson(boxesList, boxesFilepathJSON);
         if (argv.showInfo) {
             console.info("Info: [Export] (2) Boxes exported as JSON");
         }
@@ -138,7 +144,7 @@ function exportFiles(argv, data) {
 
     /* Segments JSON */
     if (exportListString.includes(4)) {
-        exportClustersToJson(clustersList, './output/segments.json');
+        exportClustersToJson(clustersList, segmentsFilepathJSON);
         if (argv.showInfo) {
             console.info("Info: [Export] (4) Clusters exported as JSON");
         }
@@ -146,7 +152,7 @@ function exportFiles(argv, data) {
 
     /* Segments over webpage screenshot PNG */
     if (exportListString.includes(5)) {
-        const webpagePNG = tryToLoadFile(`./output/webpage.png`, FileType.png);
+        const webpagePNG = tryToLoadFile(webpageFilepathPNG, FileType.png);
         exportPNG({ clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG })
         if (argv.showInfo) {
             console.info("Info: [Export] (5) Clusters over webpage screenshot");
@@ -156,11 +162,11 @@ function exportFiles(argv, data) {
     /* Export all files */
     if (exportListString.includes(6)) {
         exportPNG({ boxesList: boxesList, pageDims: pageDims });
-        exportBoxesToJson(boxesList, './output/boxes.json');
+        exportBoxesToJson(boxesList, boxesFilepathJSON);
         exportPNG({ clustersList: clustersList, pageDims: pageDims });
-        exportClustersToJson(clustersList, './output/segments.json');
+        exportClustersToJson(clustersList, segmentsFilepathJSON);
 
-        const webpagePNG = tryToLoadFile(`./output/webpage.png`, FileType.png);
+        const webpagePNG = tryToLoadFile(webpageFilepathPNG, FileType.png);
         exportPNG({ clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG });
 
         if (argv.showInfo) {
@@ -189,7 +195,7 @@ function createClusterListForExport(clustersMap) {
         cluster.width = c.right - c.left;
         cluster.height = c.bottom - c.top;
         cluster.type = c.type;
-        cluster.segm = 'basic';
+        // cluster.segm = 'basic';
         return cluster;
     }
 
