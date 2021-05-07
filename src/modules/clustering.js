@@ -299,19 +299,19 @@ class ClusteringManager {
         }
 
         /* Disacrd CC if visually contains any cluster in basic segmentation */
-        // if(!this.argv.extended){
-        //     if(oClusters.length > 0) {
-        //         if(this.argv.debug) console.info("Info [Debug]: CC discarded immediately overlaps (contains) other cluster!");
-        //         return true;
-        //     }
-        // }
+        if(!this.argv.extended){
+            if(oClusters.length > 0) {
+                if(this.argv.debug) console.info("Info [Debug]: CC discarded immediately overlaps (contains) other cluster!");
+                return true;
+            }
+        }
 
         for (const oBox of oBoxes) {
             if(this.argv.debug) console.info("Info [Debug]: Overlapping box added to CC");
             cc.addBoxes(oBox);
         }
 
-        /* Reachable only if some cluster is visually contained in CC, otherwise oClusters empty */
+        /* Reachable only if some cluster is visually contained in CC (only in extended), otherwise oClusters empty */
         for (const oCluster of oClusters) {
             if(this.argv.debug) console.info("Info [Debug]: All boxes from visually contained cluster added to CC");
             cc.addBoxes(oCluster);
@@ -324,6 +324,16 @@ class ClusteringManager {
         for (const oBox of oBoxes) {
             if(this.argv.debug) console.info("Info [Debug]: New overlapping boxes added to CC");
             cc.addBoxes(oBox);
+        }
+
+        /* Try to add all overlapping clusters to CC (aggresive) only in extended version */
+        if(this.argv.extended && this.argv.aggresive) {
+            oClusters = overlapping.filter(entity => isCluster(entity) && !clustersSkip.has(entity.id));    
+            for (const oCluster of oClusters) {
+                if(this.argv.debug) console.info("Info [Debug]: All boxes from cluster added to CC (aggresive)");
+                cc.addBoxes(oCluster);
+                clustersSkip.add(oCluster.id);
+            }
         }
 
         /* Check overlaps after adding boxes in previous step, if any discard CC (overlaps == true) */

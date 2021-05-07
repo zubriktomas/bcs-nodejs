@@ -18,7 +18,6 @@ const webpageFilepathPNG = outputFolder + 'webpage.png';
 const boxesFilepathPNG = outputFolder + 'boxes.png';
 const boxesFilepathJSON = outputFolder + 'boxes.json';
 const segmentsFilepathPNG = outputFolder + 'segments.png';
-const segmentsFilepathJSON = outputFolder + 'segments.json';
 const segmentsOverWebpagePNG = outputFolder + 'segments-over-webpage.png';
 
 /* Export PNG files by data parameter */
@@ -45,6 +44,7 @@ const exportPNG = async (data) => {
             document.body.style.backgroundImage = `url("data:image/png;base64,${data.webpagePNG}")`;
         }
 
+        document.body.style.width = `${data.pageDims.width}px`;
         document.body.style.height = `${data.pageDims.height}px`;
 
         convertEntitiesToDivs(data.boxesList ? data.boxesList : data.clustersList);
@@ -113,6 +113,8 @@ function exportFiles(argv, data) {
 
     /* From program arguments, f.e. 1234567 */
     var exportListString = argv.export;
+
+    const segmentsFilepathJSON = outputFolder + `segments${argv.extended ? "-ex-":"-"}${argv.aggresive ? "A-":""}${argv.CT}.json`;
 
     var pageDims = data.pageDims;
     var clustersList = createClusterListForExport(data.clustersMap);

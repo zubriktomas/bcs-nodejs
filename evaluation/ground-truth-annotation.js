@@ -18,20 +18,22 @@ const gtAnnotatorOutputFolder = './output/';
 const webpageFilepathPNG = bcsOutputFolder + 'webpage.png'; 
 const boxesFilepathPNG = bcsOutputFolder + 'boxes.png';
 const boxesFilepathJSON = bcsOutputFolder + 'boxes.json';
-const segmentsFilepathPNG = bcsOutputFolder + 'segments.png';
 const segmentsFilepathJSON = bcsOutputFolder + 'segments.json';
-const segmentsOverWebpagePNG = bcsOutputFolder + 'segments-over-webpage.png';
 
-const dimensions = sizeOfImage(webpageFilepathPNG); // Get dimensions of page screenshot
-const imageWidth = dimensions.width;
-const imageHeight = dimensions.height;
+const webpagePNGDims = sizeOfImage(webpageFilepathPNG); // Get dimensions of page screenshot
+const boxesPNGDims = sizeOfImage(boxesFilepathPNG); // Get dimensions of boxes screenshot
+
+if(boxesPNGDims.width != webpagePNGDims.width) {
+    console.warn("Screenshots have different width!. Try to run BCS with width of webpage screenshot:", webpagePNGDims.width,"!=" ,boxesPNGDims.width);
+    console.warn("It can cause a vizualization inaccuracies");
+}
+
+const imageWidth = webpagePNGDims.width;
+const imageHeight = webpagePNGDims.height;
 const screenHeight = 1200;
 
-
-/* Parse and convert FiyLayout segments.xml to segments-ref.json */
+/* Reference (FitLayout + puppeteer backend) implementation output */
 const referenceSegmentsXML = './../../../fitlayout-jar/out/segments.xml';
-// var aTreeParserOutFile = './input/segments-ref.json';
-// require('./areatree-parser').areaTreeParse(aTreeParserInFile, aTreeParserOutFile);
 
 /* Parse arguments */
 const argv = require('yargs/yargs')(process.argv.slice(2))
@@ -46,12 +48,6 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
     .alias('S1', 'segmentation1').default('S1', referenceSegmentsXML).describe('S1', 'Filepath to segmentation 1 (xml, json)')
     .alias('S2', 'segmentation2').default('S2', segmentsFilepathJSON).describe('S2', 'Filepath to segmentation 2 (xml, json)')
     .alias('S3', 'segmentation3').default('S3', segmentsFilepathJSON).describe('S3', 'Filepath to segmentation 3 (xml, json)')
-    // .alias('D', 'debug').boolean('D')
-    // .default('D', false).describe('D', 'Allow errors printing from browser')
-    // .alias('D', 'debug').boolean('D')
-    // .default('D', false).describe('D', 'Allow errors printing from browser')
-    // .alias('D', 'debug').boolean('D')
-    // .default('D', false).describe('D', 'Allow errors printing from browser')
     .help('h').alias('h', 'help')
     .argv;
 
@@ -63,19 +59,11 @@ if (argv._.length !== 1) {
 
 const url = argv._[0];
 
-// console.log(argv.S1);
-// console.log(argv.S2);
-// console.log(argv.S3);
-
 /* Extract url substring to be a part of filename */
 const urlSubstring = url.startsWith("https") ? url.substring(8) : url.startsWith("http") ? url.substring(7) : url;
 
 /* Create filename for exported GT segments for specific webpage */
 const gtSegmentsFilename = `GT-segments[${urlSubstring}].json`;
-
-/* Load PNG (webpage and boxes screenshots) and JSON (segmentations) files from filesystem */
-// const data = loadDataFromFileSystem(bcsOutputFolder, gtAnnotatorOutputFolder, gtSegmentsFilename);
-// const data = loadDataFromFileSystem(bcsOutputFolder, aTreeParserInFile);
 
 const data = loadDataFromFileSystem(argv);
 
@@ -125,29 +113,21 @@ const startAnnotator = async () => {
             dismissible: true
         });
 
-        /* Create RTree and load all data */
-        const tree = new RTree();
-        tree.load(data.boxes);
-        // tree.load(data.segmentations.basic);
-        // tree.load(data.segmentations.reference);
-        // tree.load(data.segmentations.gt);
+        /* Assign segmentationX to all input segmentations for metrics calculation */
         data.segmentations.segmentation1.forEach(seg => seg.segm = 'segmentation1');
         data.segmentations.segmentation2.forEach(seg => seg.segm = 'segmentation2');
         data.segmentations.segmentation3.forEach(seg => seg.segm = 'segmentation3');
         data.segmentations.segmentationGT.forEach(seg => seg.segm = 'segmentationGT');
 
-        window.s1 = data.segmentations.segmentation1;
-        window.s2 = data.segmentations.segmentation2;
-        window.s3 = data.segmentations.segmentation3;
-        window.sGT = data.segmentations.segmentationGT;
-
+        /* Create RTree and load all data */
+        const tree = new RTree();
+        tree.load(data.boxes);
         tree.load(data.segmentations.segmentation1);
         tree.load(data.segmentations.segmentation2);
         tree.load(data.segmentations.segmentation3);
         tree.load(data.segmentations.segmentationGT);
 
         /* Load ground truth segments as movable DIVs */
-        // loadSegmentationGroundTruth(data.segmentations.gt);
         loadSegmentationGroundTruth(data.segmentations.segmentationGT);
         var baseline = tree.getBaselineWholePageSegment();
         tree.insert(baseline);
@@ -156,10 +136,6 @@ const startAnnotator = async () => {
         window.tree = tree;
 
         /* If ground truth segmentation was loaded, calculate metrics and create results table immediately */
-        // if (data.segmentations.gt.length) {
-        //     createMetricsResultsTable();
-        //     showResultsModal();
-        // }
         if (data.segmentations.segmentationGT.length) {
             createMetricsResultsTable();
             showResultsModal();
@@ -190,56 +166,26 @@ const startAnnotator = async () => {
 }
 startAnnotator();
 
-// /**
-//  * Try to load file by type from filesystem
-//  * @param {*} filePath path to file 
-//  * @param {FileType} type file type (PNG or JSON)
-//  * @returns null or empty if not exists
-//  */
-// function tryToLoadFile(filePath, type) {
-//     try {
-//         if (existsSync(filePath)) {
-//             return type == FileType.png ? readFileSync(filePath).toString('base64') : JSON.parse(readFileSync(filePath, 'utf8'));
-//         } else {
-//             console.log(`File ${filePath} does not exist!`);
-//             console.log("Returns 'null' (png) / '[]' (json)");
-//             return type == FileType.png ? null : [];
-//         }
-//     } catch (e) {
-//         console.error(e);
-//         process.exit(1);
-//     }
-// }
-
 /**
  * Load all files used by GT annotator (PNG and JSON files)
- * @param {*} bcsOutputFolder BCS output folder path
- * @param {*} gtAnnotatorOutputFolder GT outout folder path
- * @param {*} gtSegmentsFilename GT export file filename
- * @returns data as object
+ * @param {*} argv program arguments
+ * @returns all data in json
  */
-// function loadDataFromFileSystem(bcsOutputFolder, gtAnnotatorOutputFolder, gtSegmentsFilename) {
-
-// function loadDataFromFileSystem(bcsOutputFolder, xmlInFile) {
-
 function loadDataFromFileSystem(argv) {
 
+    /* Load PNG files */
     const webpagePNG = tryToLoadFile(argv.WPNG, FileType.png);
     const boxesPNG = tryToLoadFile(argv.BPNG, FileType.png);
+
+    /* Load boxes JSON */
     const boxes = tryToLoadFile(argv.BJSON, FileType.json);
 
+    /* Loadd segmentations (xml, json) */
     const segmentation1 = argv.S1.includes('xml') ? JSON.parse(areaTreeParse(argv.S1)) : tryToLoadFile(argv.S1, FileType.json);
     const segmentation2 = argv.S2.includes('xml') ? JSON.parse(areaTreeParse(argv.S2)) : tryToLoadFile(argv.S2, FileType.json);
     const segmentation3 = argv.S3.includes('xml') ? JSON.parse(areaTreeParse(argv.S3)) : tryToLoadFile(argv.S3, FileType.json);
     const segmentationGT = tryToLoadFile(gtAnnotatorOutputFolder + gtSegmentsFilename, FileType.json); 
-    // const segmentsBasic = tryToLoadFile(`${bcsOutputFolder}/segments.json`, FileType.json);
-    // const segmentsReference = tryToLoadFile('./input/segments-ref.json', FileType.json);
-    // const segmentsGT = tryToLoadFile(`${gtAnnotatorOutputFolder}/${gtSegmentsFilename}`, FileType.json);
-    // const segmentsGT = JSON.parse(areaTreeParse(xmlInFile));
-// const segmentsGT = [];
-    // console.log(segmentsGT);
 
-    // const segmentations = { reference: segmentsReference, basic: segmentsBasic, gt: segmentsGT };
     const segmentations = { 
         segmentation1: segmentation1, 
         segmentation2: segmentation2, 

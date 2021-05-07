@@ -158,7 +158,7 @@ function convertDivGTToJsonSegment(divElement) {
     segment.right = segment.left + segment.width;
     segment.bottom = segment.top + segment.height;
     segment.type = 1;
-    // segment.segm = "GT";
+    segment.segm = 'segmentationGT';
     return segment;
 }
 

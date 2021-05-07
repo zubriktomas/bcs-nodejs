@@ -12,6 +12,8 @@ const clustering = require('./modules/clustering');
 /* Import chromium from playwright */
 const { chromium } = require('playwright');
 
+const outputFolder = './output'
+
 /* Parse input arguments */
 const argv = require('yargs/yargs')(process.argv.slice(2))
   .usage('Usage: $0 [options] <url>')
@@ -36,13 +38,13 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .boolean('extended').default('extended', false).describe('extended', `Use extended BCS implementation, default using basic`)
   .alias('E', 'export').nargs('E', 1)
   .default('E', 0).describe('E',
-    `Export boxes and clusters: 
-    0 - default 
+    `Export boxes and segments/clusters: 
+    0 - default (nothing) 
     1 - boxes.png 
     2 - boxes.json 
-    3 - clusters.png 
-    4 - clusters.json 
-    5 - clusters-over-webpage.png
+    3 - segments.png 
+    4 - segments.json 
+    5 - segments-over-webpage.png
     6 - all
     7 - all-segmentation-steps as step[iteration].png (must be used as only option -E 7)
     Usage: f.e. -E 134, -E 51, -E *6* (all), -E *0* (none)  
@@ -55,6 +57,8 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .default('IM', false).describe('IM', `Ignore images average color, use default grey (Extraction option)`)
   .alias('WVEC', 'weight-vector').nargs('WVEC', 1)
   .default('WVEC', '[1,1,1]').describe('WVEC', `Use weight vector for similarity calculation`)
+  // .alias('O', 'output-folder').nargs('O', 1)
+  // .default('O', )
   .help('h').alias('h', 'help')
   .argv;
 
@@ -186,6 +190,9 @@ if (argv.showInfo) {
   var ignoreImages = argv.IM;
   /* Box Extraction Process - JavaScript code evaluated in web browser context */
   const extracted = await page.evaluate(async (ignoreImages) => {
+
+    // document.body.style.margin = "0px";
+    // document.body.style.padding = "0px";
 
     const t0 = performance.now();
     const boxes = await extractBoxes(document.body, ignoreImages);
