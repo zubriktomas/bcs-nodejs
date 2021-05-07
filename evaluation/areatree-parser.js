@@ -34,6 +34,7 @@ function areaTreeParse(inFile, outFile) {
 
     // const xmlData = readFileSync(inFile).toString();
     const xmlData = tryToLoadFile(inFile, FileType.xml);
+    if(!xmlData.length) return null; 
     const json = JSON.parse(parser.toJson(xmlData));
     const areaList = json.areaTree.area.area;
     var segments = [];

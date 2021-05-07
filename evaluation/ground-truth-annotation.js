@@ -9,6 +9,7 @@ const { readFileSync, existsSync } = require('fs');
 const sizeOfImage = require('image-size');
 const { tryToLoadFile, FileType } = require('../src/modules/exporter');
 const { areaTreeParse } = require('./areatree-parser');
+const path = require('path');
 
 
 
@@ -137,7 +138,7 @@ const startAnnotator = async () => {
 
         /* If ground truth segmentation was loaded, calculate metrics and create results table immediately */
         if (data.segmentations.segmentationGT.length) {
-            createMetricsResultsTable();
+            createMetricsResultsTable(data.segmentationFilenames);
             showResultsModal();
         }
 
@@ -147,7 +148,7 @@ const startAnnotator = async () => {
         document.body.style.height = `${data.imageHeight + 200}px`;
 
         /* Modal events listeners */
-        document.addEventListener("keydown", e => selectFunctionByCodeKey(e, data.segmentations));
+        document.addEventListener("keydown", e => selectFunctionByCodeKey(e, data.segmentations, data.segmentationFilenames));
         window.onclick = e => { e.target == document.getElementById("myModal") ? hideResultsModal() : null };
         var resultsCloseButton = document.getElementsByClassName("close")[0];
         resultsCloseButton.onclick = hideResultsModal;
@@ -187,15 +188,23 @@ function loadDataFromFileSystem(argv) {
     const segmentationGT = tryToLoadFile(gtAnnotatorOutputFolder + gtSegmentsFilename, FileType.json); 
 
     const segmentations = { 
-        segmentation1: segmentation1, 
-        segmentation2: segmentation2, 
-        segmentation3: segmentation3,
+        segmentation1: segmentation1 || [], 
+        segmentation2: segmentation2 || [], 
+        segmentation3: segmentation3 || [],
         segmentationGT: segmentationGT 
+    };
+
+    const segmentationFilenames = {
+        segmentation1: path.basename(argv.S1),
+        segmentation2: path.basename(argv.S2),
+        segmentation3: path.basename(argv.S3),
+        segmentationGT: path.basename(gtAnnotatorOutputFolder + gtSegmentsFilename)
     };
 
     var data = {
         boxes: boxes,
         segmentations: segmentations,
+        segmentationFilenames: segmentationFilenames,
         imageWidth: imageWidth,
         imageHeight: imageHeight,
         webpagePNG: webpagePNG,

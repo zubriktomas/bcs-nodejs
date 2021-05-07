@@ -9,7 +9,7 @@
  * @param {*} event Event with information which key was pressed
  * @param {*} segmentations All available segmentations
  */
-function selectFunctionByCodeKey(event, segmentations) {
+function selectFunctionByCodeKey(event, segmentations, segmentationFilenames) {
     switch (event.code) {
 
         case "KeyA":
@@ -53,7 +53,7 @@ function selectFunctionByCodeKey(event, segmentations) {
             break;
 
         case "KeyG":
-            addGroundTruthSegmentationToRTree();
+            addGroundTruthSegmentationToRTree(segmentationFilenames);
             break;
 
         case "KeyC":
@@ -86,7 +86,7 @@ function addGroundTruthDiv() {
 /**
  * Insert all created ground truth segments to RTree for metrics calculations
  */
-function addGroundTruthSegmentationToRTree(segmentations) {
+function addGroundTruthSegmentationToRTree(segmentationFilenames) {
     var segmentDivs = document.querySelectorAll('.resize-drag');
 
     var segmentsGT = [];
@@ -106,7 +106,7 @@ function addGroundTruthSegmentationToRTree(segmentations) {
     if (segmentsGT.length) {
         window.tree.load(segmentsGT);
         /* Calculate all metrics and create results table */
-        createMetricsResultsTable();
+        createMetricsResultsTable(segmentationFilenames);
         window.notyf.success("Ground truth segmentation loaded to RTree! Press R to show results.");
     } else {
         window.notyf.error("No ground truth segments added! Previous deleted!");

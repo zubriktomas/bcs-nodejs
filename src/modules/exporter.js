@@ -197,7 +197,6 @@ function createClusterListForExport(clustersMap) {
         cluster.width = c.right - c.left;
         cluster.height = c.bottom - c.top;
         cluster.type = c.type;
-        // cluster.segm = 'basic';
         return cluster;
     }
 
@@ -259,10 +258,9 @@ function tryToLoadFile(filePath, type) {
                 return JSON.parse(readFileSync(filePath, 'utf8'));
             }
 
-            // return type == FileType.png ? readFileSync(filePath).toString('base64') : JSON.parse(readFileSync(filePath, 'utf8'));
         } else {
             console.error(`Error: File ${filePath} does not exist!`);
-            console.error(`       Returns 'null' (png) / '[]' (json, xml)`);
+            // console.error(`       Returns 'null' (png) / '[]' (json, xml)`);
             return type == FileType.png ? null : [];
         }
     } catch (e) {
