@@ -57,8 +57,8 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .default('IM', false).describe('IM', `Ignore images average color, use default grey (Extraction option)`)
   .alias('WVEC', 'weight-vector').nargs('WVEC', 1)
   .default('WVEC', '[1,1,1]').describe('WVEC', `Use weight vector for similarity calculation`)
-  // .alias('O', 'output-folder').nargs('O', 1)
-  // .default('O', )
+  .alias('IURL', 'include-url-in-filename').boolean('IURL')
+  .default('IURL', false).describe('IURL', 'Include URL in exported files filenames')
   .help('h').alias('h', 'help')
   .argv;
 
@@ -86,6 +86,13 @@ try {
 /* Get all args to local variables */
 argv.url = argv._[0];
 argv.export = String(argv.export)
+
+/* Extract url substring to be a part of filename */
+const urlSubstring = argv.url.startsWith("https") ? argv.url.substring(8) : argv.url.startsWith("http") ? argv.url.substring(7) : argv.url;
+
+/* Substring of argument url */
+const includedUrl = argv.IURL ? `[${urlSubstring}]` : "";
+argv.includedUrl = includedUrl;
 
 if (argv.RC == false && argv.extended == false) {
   console.warn('Warning: RC option can be used only in extended. Ignored.');
@@ -134,6 +141,7 @@ if (argv.showInfo) {
   console.info("Info: [Argument] Vizualize step (iteration):", argv.VS);
   console.info("Info: [Argument] Export options:", argv.E);
   console.info("Info: [Argument] Ignore images (average color):", argv.IM);
+  console.info("Info: [Argument] Include URL in filenames:", argv.IURL);
 
   if (argv.extended) {
     console.info("Info: [Argument] Remove containers:", argv.RC);
@@ -141,10 +149,8 @@ if (argv.showInfo) {
   }
 }
 
-
-
 /* BCS main process */
-(async () => {
+(async (includedUrl) => {
 
   /* Create browser instance */
   const browser = await chromium.launch();
@@ -210,7 +216,7 @@ if (argv.showInfo) {
 
   /* Capture screenshot of webpage in PNG format */
   if (argv.saveScreenshot || argv.export.includes(5) || argv.export.includes(6)) {
-    await page.screenshot({ path: './output/webpage.png', fullPage: true });
+    await page.screenshot({ path: `./output/webpage${includedUrl}.png`, fullPage: true });
   }
 
   /* Close browser instance (no longer needed) */
@@ -230,4 +236,4 @@ if (argv.showInfo) {
     console.info("Info: [Finish] BCS has finished successfully!");
   }
 
-})();
+})(includedUrl);

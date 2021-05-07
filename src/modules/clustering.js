@@ -436,13 +436,12 @@ class ClusteringManager {
  * @param {*} argv program arguments
  */
 function createSegmentation(extracted, argv) {
-
-    var cm = new ClusteringManager(extracted, argv);
-    cm.findAllRelations();
-
+    
     if(argv.showInfo)
     console.time("Info: [Segment] Clustering time");
 
+    var cm = new ClusteringManager(extracted, argv);
+    cm.findAllRelations();
     cm.createClusters();
 
     if(argv.showInfo)

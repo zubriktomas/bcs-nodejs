@@ -14,11 +14,7 @@ const { buildHtmlTemplate } = require('./box-vizualizer');
 /* Constants */
 const FileType = Object.freeze({ png: 0, json: 1, xml: 2});
 const outputFolder = './output/';
-const webpageFilepathPNG = outputFolder + 'webpage.png'; 
-const boxesFilepathPNG = outputFolder + 'boxes.png';
-const boxesFilepathJSON = outputFolder + 'boxes.json';
-const segmentsFilepathPNG = outputFolder + 'segments.png';
-const segmentsOverWebpagePNG = outputFolder + 'segments-over-webpage.png';
+
 
 /* Export PNG files by data parameter */
 const exportPNG = async (data) => {
@@ -67,13 +63,13 @@ const exportPNG = async (data) => {
 
     }, data);
 
-    if (data.boxesList) {
-        await page.screenshot({ path: boxesFilepathPNG, fullPage: true });
-    } else if (data.clustersList && data.webpagePNG) {
-        await page.screenshot({ path: segmentsOverWebpagePNG, fullPage: true });
-    } else if (data.clustersList) {
-        await page.screenshot({ path: segmentsFilepathPNG, fullPage: true });
-    }
+    // if (data.boxesList) {
+        await page.screenshot({ path: data.filepath, fullPage: true });
+    // } else if (data.clustersList && data.webpagePNG) {
+    //     await page.screenshot({ path: data.filepath, fullPage: true });
+    // } else if (data.clustersList) {
+    //     await page.screenshot({ path: data.filepath, fullPage: true });
+    // }
 
     await browser.close();
 }
@@ -114,7 +110,14 @@ function exportFiles(argv, data) {
     /* From program arguments, f.e. 1234567 */
     var exportListString = argv.export;
 
-    const segmentsFilepathJSON = outputFolder + `segments${argv.extended ? "-ex-":"-"}${argv.aggresive ? "A-":""}${argv.CT}.json`;
+    const includedUrl = argv.includedUrl;
+
+    const segmentsFilepathJSON = outputFolder + `segments${includedUrl}${argv.extended ? "-ex-":"-"}${argv.aggresive ? "A-":""}${argv.CT}.json`;
+    const webpageFilepathPNG = outputFolder + `webpage${includedUrl}.png`; 
+    const boxesFilepathPNG = outputFolder + `boxes${includedUrl}.png`;
+    const boxesFilepathJSON = outputFolder + `boxes${includedUrl}.json`;
+    const segmentsFilepathPNG = outputFolder + `segments${includedUrl}.png`;
+    const segmentsOverWebpagePNG = outputFolder + `segments-over-webpage${includedUrl}.png`;
 
     var pageDims = data.pageDims;
     var clustersList = createClusterListForExport(data.clustersMap);
@@ -122,7 +125,7 @@ function exportFiles(argv, data) {
 
     /* Boxes PNG */
     if (exportListString.includes(1)) {
-        exportPNG({ boxesList: boxesList, pageDims: pageDims });
+        exportPNG({ boxesList: boxesList, pageDims: pageDims, filepath: boxesFilepathPNG });
         if (argv.showInfo) {
             console.info("Info: [Export] (1) Boxes exported as PNG");
         }
@@ -138,7 +141,7 @@ function exportFiles(argv, data) {
 
     /* Segments PNG */
     if (exportListString.includes(3)) {
-        exportPNG({ clustersList: clustersList, pageDims: pageDims });
+        exportPNG({ clustersList: clustersList, pageDims: pageDims,  filepath: segmentsFilepathPNG});
         if (argv.showInfo) {
             console.info("Info: [Export] (3) Clusters exported as PNG");
         }
@@ -155,7 +158,7 @@ function exportFiles(argv, data) {
     /* Segments over webpage screenshot PNG */
     if (exportListString.includes(5)) {
         const webpagePNG = tryToLoadFile(webpageFilepathPNG, FileType.png);
-        exportPNG({ clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG })
+        exportPNG({ clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG, filepath: segmentsOverWebpagePNG})
         if (argv.showInfo) {
             console.info("Info: [Export] (5) Clusters over webpage screenshot");
         }
@@ -163,13 +166,13 @@ function exportFiles(argv, data) {
 
     /* Export all files */
     if (exportListString.includes(6)) {
-        exportPNG({ boxesList: boxesList, pageDims: pageDims });
+        exportPNG({ boxesList: boxesList, pageDims: pageDims,  filepath: boxesFilepathPNG});
         exportBoxesToJson(boxesList, boxesFilepathJSON);
-        exportPNG({ clustersList: clustersList, pageDims: pageDims });
+        exportPNG({ clustersList: clustersList, pageDims: pageDims,  filepath: segmentsFilepathPNG});
         exportClustersToJson(clustersList, segmentsFilepathJSON);
 
         const webpagePNG = tryToLoadFile(webpageFilepathPNG, FileType.png);
-        exportPNG({ clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG });
+        exportPNG({ clustersList: clustersList, pageDims: pageDims, webpagePNG: webpagePNG,  filepath: segmentsOverWebpagePNG});
 
         if (argv.showInfo) {
             console.info("Info: [Export] (6) All PNG and JSON files exported");
