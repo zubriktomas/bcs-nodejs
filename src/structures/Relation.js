@@ -212,7 +212,7 @@ class Relation {
 
         var colorSim = Math.sqrt(rPart + gPart + bPart) / SQRT3;
 
-        return colorSim;s
+        return colorSim;
     }
 
     /**
