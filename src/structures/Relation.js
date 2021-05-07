@@ -171,11 +171,11 @@ class Relation {
         maxRatio = Math.max(ratioA, ratioB);
         minRatio = Math.min(ratioA, ratioB);
 
-        /* ! Attention: pom is 0 for relation between square and rectangle with higher height ! Problem of definition */
-        var pom = (Math.pow(maxRatio, 2) - 1);
+        /* ! Attention: aux is 0 for relation between square and rectangle with higher height ! Problem of definition */
+        var aux = (Math.pow(maxRatio, 2) - 1);
 
-        /* By definition in BCS paper, 'pom' is about to be around zero, so "close" value to zero is used */
-        ratio = (maxRatio - minRatio) / (pom ? pom : 0.001 / maxRatio);
+        /* By definition in BCS paper, 'aux' is about to be around zero, so "close" value to zero is used */
+        ratio = (maxRatio - minRatio) / (aux ? aux : 1.001 / maxRatio);
 
         /* Variables for calculation size similarity */
         var sizeA, sizeB, size;
@@ -189,7 +189,7 @@ class Relation {
         var shapeSim = (ratio + size) / 2;
 
         /* Problem with ratio calculation above can cause (extreme) exceeding of shapeSim, so it is floored to 1 */
-        shapeSim = shapeSim < 1 ? shapeSim : 1;
+        // shapeSim = shapeSim > 1 ? 1 : shapeSim;
 
         return shapeSim;
     }
@@ -212,7 +212,7 @@ class Relation {
 
         var colorSim = Math.sqrt(rPart + gPart + bPart) / SQRT3;
 
-        return colorSim;
+        return colorSim;s
     }
 
     /**
@@ -224,19 +224,32 @@ class Relation {
     calcBaseSimilarity(boxA, boxB) {
         var relativeDistance = this.calcRelativeDistance(boxA, boxB);
 
-        /* Boxes are aligned next to each other (share edge), avoid unexpected behaviour by checking if < 0 */
+
+        var ascore = this.computeAlignmentScore(boxA, boxB);
+        // console.log(ascore);
+
+        /* Boxes are alignmentScore next to each other (share edge), avoid unexpected behaviour by checking if < 0 */
         if (relativeDistance <= 0) {
             return 0;
 
         /* Avoid unexpected behaviour, floor all similarities to maximum: 1 */
-        } else if (relativeDistance >= 1) {
+        } else if (relativeDistance > 1) {
+
+            // console.log(relativeDistance);
 
             /* For extended implementation, shapeSimilarity and colorSimilartiy has to be accessible from Relation class */
-            if(this.argv.extended){
-                this.shapeSimilarity = this.calcShapeSimilarity(boxA, boxB);
-                this.colorSimilarity = this.calcColorSimilarity(boxA, boxB);
-            }
+            // if(this.argv.extended){
+                // this.shapeSimilarity = this.calcShapeSimilarity(boxA, boxB);
+                // this.colorSimilarity = this.calcColorSimilarity(boxA, boxB);
+
+            //     var relDist = relativeDistance;
+            //     var shapeSim = this.calcShapeSimilarity(boxA, boxB);
+            //     var colorSim = this.calcColorSimilarity(boxA, boxB);
+            //     return (relDist + shapeSim + colorSim)/3;
+
+            // }
             return 1;
+
         } else {
             /* Calculate all components of similarity */
             var relDist = relativeDistance;
@@ -247,7 +260,9 @@ class Relation {
             var w = this.argv.WVEC;
 
             /* Calculate base similarity between boxes */
-            var sim = (relDist * w[0] + shapeSim * w[1] + colorSim * w[2]) / 3;
+            // var sim = (relDist * w[0] + shapeSim * w[1] + colorSim * w[2]) / 3;
+            var sim = (shapeSim + colorSim + relDist)/(ascore > 1 ? ascore*2 : 3);
+
             return sim;
         }
     }
@@ -336,52 +351,6 @@ class Relation {
                     rel = cBox.neighbours.get(entity);
                 }
 
-                /* Recalculate critical relation between boxes one upon another with no left and right neighbours */
-                if (this.argv.extended) {
-
-                    var isRelTwoDirectional = cBox.neighbours.has(entity) && entity.neighbours.has(cBox);
-
-                    /* Recalculate relation only if it is two directional and in backward direction */
-                    if (isRelTwoDirectional && direction == BACK) {
-
-                        const hasRightNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.left).length;
-                        const hasLeftNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.right).length;
-                        const hasDownNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.up).length;
-                        const hasUpNeighbours = (box) => Array.from(box.neighbours.values()).filter(rel => rel.direction == SelectorDirection.down).length;
-                        const hasOnlyUpDownNeighbours = (box) => !hasRightNeighbours(box) && !hasLeftNeighbours(box) && (hasDownNeighbours(box) > 0 || hasUpNeighbours(box) > 0);
-
-                        if (hasOnlyUpDownNeighbours(entity) && hasOnlyUpDownNeighbours(cBox)) {
-
-                            /* Get relation from one side, does not matter */
-                            var criticalRelation = cBox.neighbours.get(entity);
-
-                            /* Get true entity for similarity calculation, if box(entity) is already in cluster, take cluster */
-                            var trueEntity = entity.cluster ? entity.cluster : entity;
-
-                            var absoluteDistance = criticalRelation.absoluteDistance;
-                            var forward = absoluteDistance / cluster.maxNeighbourDistance;
-                            var backward = absoluteDistance / trueEntity.maxNeighbourDistance;
-
-                            /* Calculate new relative distance between entities */
-                            var relativeDistance = (forward + backward) / 2;
-
-                            /* Get original shape and color similarity */
-                            var shapeSim = criticalRelation.shapeSimilarity != null ? criticalRelation.shapeSimilarity : 1;
-                            var colorSim = criticalRelation.colorSimilarity != null ? criticalRelation.colorSimilarity : 1;
-
-                            /* Weight vector for similarity calculation */
-                            var w = this.argv.WVEC;
-
-                            /* Calculate similarity with new relative distance */
-                            var sim = (relativeDistance * w[0] + shapeSim * w[1] + colorSim * w[2]) / 3;
-
-                            /* Add similarity to cumulative similarity and continue in loop */
-                            cumulSimilarity += sim;
-                            continue;
-                        }
-                    }
-                }
-
                 cumulSimilarity += rel ? rel.similarity : 0;
             }
         } else {
@@ -393,6 +362,86 @@ class Relation {
             }
         }
         return cumulSimilarity;
+    }
+
+    computeAlignmentScore(boxA, boxB) {
+
+        /* Enum Alignemnt */
+        const Alignment = Object.freeze({ left:0, top:1, right:2, bottom:3, none:4 });
+
+        /* Get side alignment between two boxes */
+        const getSideAlignment = (a, b) => { 
+            if(a.left == b.left) return Alignment.left;
+            else if(a.top == b.top) return Alignment.top;
+            else if(a.right == b.right) return Alignment.right; 
+            else if(a.bottom == b.bottom) return Alignment.bottom;
+            else return Alignment.none;
+        };
+
+        /* Check if relation is vertical (down, up direction) */
+        const hasVerticalDirection = (rel) => rel.direction == SelectorDirection.down || rel.direction == SelectorDirection.up;
+
+        /* Check if relation is horizontal (left, right direction) */
+        const hasHorizontalDirection = (rel) => rel.direction == SelectorDirection.left || rel.direction == SelectorDirection.right;
+        
+        /* Variables */
+        var alignmentScore = 1;
+        var queue = new Set();
+        var inspected = new Set();
+        var cur;
+
+        /* Get alignment if any */
+        const alignment = getSideAlignment(boxA, boxB);
+
+        /* This coeficient determines how sensitively is alignment treated */
+        const alignmentThresholdCoeficient = 1.5; // this value was used in reference FitLayout implementation
+
+        /* Get (total) minimum of heights and widths of boxes */
+        const minDimensionBoxA = Math.min(boxA.width, boxA.height);
+        const minDimensionBoxB = Math.min(boxB.width, boxB.height);
+        const minimumTotal = Math.min(minDimensionBoxA, minDimensionBoxB);
+        const alignmentThreshold = Math.floor(minimumTotal * alignmentThresholdCoeficient);
+
+
+        /* If they are not side aligned or distance between exceeds threshold */
+        if (alignment == Alignment.none || this.absoluteDistance > alignmentThreshold){
+            return alignmentScore;
+        } else {
+            alignmentScore++;
+        }
+
+        /* Add both boxes to queue */
+        queue.add(boxA);
+        queue.add(boxB);
+
+        /* Get next value from queue if it is not empty */
+        while (queue.size > 0) {
+
+            cur = queue.values().next().value;
+            queue.delete(cur);
+            
+            /* Skip already processed box */
+            if (inspected.has(cur)) continue;
+
+            /* Loop over all current box neighbours */
+            for (const [box, rel] of cur.neighbours.entries()) {
+
+                if ( (hasHorizontalDirection(rel) && hasVerticalDirection(this)) || inspected.has(box) || queue.has(box) ||
+                    getSideAlignment(cur, box) != alignment || rel.absoluteDistance > alignmentThreshold) {
+                    continue;
+                }
+
+                /* If it pass previous condition, it is considered as side aligned, so increase alignment score */
+                alignmentScore++;
+
+                /* And add box into queue */
+                queue.add(box);
+            }
+
+            /* Add current box to inspected set to skip it next time it would be chosen */
+            inspected.add(cur);
+        }
+        return alignmentScore;
     }
 }
 

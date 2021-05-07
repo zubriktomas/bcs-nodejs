@@ -11,8 +11,6 @@ const { tryToLoadFile, FileType } = require('../src/modules/exporter');
 const { areaTreeParse } = require('./areatree-parser');
 const path = require('path');
 
-
-
 /* Constants */
 const bcsOutputFolder = './../output/';
 const gtAnnotatorOutputFolder = './output/';
@@ -20,18 +18,6 @@ const webpageFilepathPNG = bcsOutputFolder + 'webpage.png';
 const boxesFilepathPNG = bcsOutputFolder + 'boxes.png';
 const boxesFilepathJSON = bcsOutputFolder + 'boxes.json';
 const segmentsFilepathJSON = bcsOutputFolder + 'segments.json';
-
-const webpagePNGDims = sizeOfImage(webpageFilepathPNG); // Get dimensions of page screenshot
-const boxesPNGDims = sizeOfImage(boxesFilepathPNG); // Get dimensions of boxes screenshot
-
-if(boxesPNGDims.width != webpagePNGDims.width) {
-    console.warn("Screenshots have different width!. Try to run BCS with width of webpage screenshot:", webpagePNGDims.width,"!=" ,boxesPNGDims.width);
-    console.warn("It can cause a vizualization inaccuracies");
-}
-
-const imageWidth = webpagePNGDims.width;
-const imageHeight = webpagePNGDims.height;
-const screenHeight = 1200;
 
 /* Reference (FitLayout + puppeteer backend) implementation output */
 const referenceSegmentsXML = './../../../fitlayout-jar/out/segments.xml';
@@ -61,11 +47,34 @@ if (argv._.length !== 1) {
 const url = argv._[0];
 
 /* Extract url substring to be a part of filename */
-const urlSubstring = url.startsWith("https") ? url.substring(8) : url.startsWith("http") ? url.substring(7) : url;
+
+var urlSubstring = url.startsWith("https") ? url.substring(8) : url.startsWith("http") ? url.substring(7) : url;
+
+console.log(urlSubstring);
+
+urlSubstring = urlSubstring.replace(/\//g, '_');
 
 /* Create filename for exported GT segments for specific webpage */
 const gtSegmentsFilename = `GT-segments[${urlSubstring}].json`;
 
+var webpagePNGDims, boxesPNGDims;
+
+try {
+    webpagePNGDims = sizeOfImage(argv.WPNG); // Get dimensions of page screenshot
+    boxesPNGDims = sizeOfImage(argv.BPNG); // Get dimensions of boxes screenshot
+} catch(e) {
+    console.error("Error: File:", argv.BPNG, " OR ", argv.WPNG, "does not exists!. Continues without background screenshot.");
+    webpagePNGDims = {width: 1200, height: 800}; 
+    boxesPNGDims = {width: 1200, height: 800}; 
+}
+
+if(boxesPNGDims.width != webpagePNGDims.width) {
+    console.warn("Screenshots have different width!. It can cause a vizualization inaccuracies", webpagePNGDims.width,"!=" ,boxesPNGDims.width);
+}
+
+const imageWidth = webpagePNGDims.width;
+const imageHeight = webpagePNGDims.height;
+const screenHeight = 1200;
 const data = loadDataFromFileSystem(argv);
 
 /* Start Ground Truth annotator */

@@ -88,7 +88,8 @@ argv.url = argv._[0];
 argv.export = String(argv.export)
 
 /* Extract url substring to be a part of filename */
-const urlSubstring = argv.url.startsWith("https") ? argv.url.substring(8) : argv.url.startsWith("http") ? argv.url.substring(7) : argv.url;
+var urlSubstring = argv.url.startsWith("https") ? argv.url.substring(8) : argv.url.startsWith("http") ? argv.url.substring(7) : argv.url;
+urlSubstring = urlSubstring.replace(/\//g, '_'); 
 
 /* Substring of argument url */
 const includedUrl = argv.IURL ? `[${urlSubstring}]` : "";
