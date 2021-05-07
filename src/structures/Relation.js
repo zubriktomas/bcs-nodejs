@@ -174,8 +174,8 @@ class Relation {
         /* ! Attention: aux is 0 for relation between square and rectangle with higher height ! Problem of definition */
         var aux = (Math.pow(maxRatio, 2) - 1);
 
-        /* By definition in BCS paper, 'aux' is about to be around zero, so "close" value to zero is used */
-        ratio = (maxRatio - minRatio) / (aux ? aux : 1.001 / maxRatio);
+        /* By definition in BCS paper, 'aux' is about to be zero, so "close" value to zero is used 0.001 */
+        ratio = (maxRatio - minRatio) / (aux ? aux : 0.001 / maxRatio);
 
         /* Variables for calculation size similarity */
         var sizeA, sizeB, size;
@@ -189,7 +189,7 @@ class Relation {
         var shapeSim = (ratio + size) / 2;
 
         /* Problem with ratio calculation above can cause (extreme) exceeding of shapeSim, so it is floored to 1 */
-        // shapeSim = shapeSim > 1 ? 1 : shapeSim;
+        shapeSim = shapeSim > 1 ? 1 : shapeSim;
 
         return shapeSim;
     }
@@ -224,30 +224,12 @@ class Relation {
     calcBaseSimilarity(boxA, boxB) {
         var relativeDistance = this.calcRelativeDistance(boxA, boxB);
 
-
-        var ascore = this.computeAlignmentScore(boxA, boxB);
-        // console.log(ascore);
-
         /* Boxes are alignmentScore next to each other (share edge), avoid unexpected behaviour by checking if < 0 */
         if (relativeDistance <= 0) {
             return 0;
 
         /* Avoid unexpected behaviour, floor all similarities to maximum: 1 */
         } else if (relativeDistance > 1) {
-
-            // console.log(relativeDistance);
-
-            /* For extended implementation, shapeSimilarity and colorSimilartiy has to be accessible from Relation class */
-            // if(this.argv.extended){
-                // this.shapeSimilarity = this.calcShapeSimilarity(boxA, boxB);
-                // this.colorSimilarity = this.calcColorSimilarity(boxA, boxB);
-
-            //     var relDist = relativeDistance;
-            //     var shapeSim = this.calcShapeSimilarity(boxA, boxB);
-            //     var colorSim = this.calcColorSimilarity(boxA, boxB);
-            //     return (relDist + shapeSim + colorSim)/3;
-
-            // }
             return 1;
 
         } else {
@@ -259,9 +241,23 @@ class Relation {
             /* Weight vector for calculating similarity, allow more customization and testing */
             var w = this.argv.WVEC;
 
-            /* Calculate base similarity between boxes */
-            // var sim = (relDist * w[0] + shapeSim * w[1] + colorSim * w[2]) / 3;
-            var sim = (shapeSim + colorSim + relDist)/(ascore > 1 ? ascore*2 : 3);
+            /* Base similarity between boxes */
+            var sim;
+
+            if(this.argv.extended) {
+                /* If extended implementation is used, allow alignment score and weighted vector */
+                const alignmentScore = this.computeAlignmentScore(boxA, boxB);
+
+                /* Coeficient determines how big impact on similarity alignmentScore will have */
+                const alignmentCoeficient = 2; //value from reference FitLayout implementation by code analysis
+                
+                /* Compute result similarity */
+                sim = (relDist * w[0] + shapeSim * w[1] + colorSim * w[2]) / (alignmentScore > 1 ? (alignmentScore * alignmentCoeficient) : 3);
+
+            } else {
+                /* Basic implementation similarity calculation */
+                sim = (shapeSim + colorSim + relDist)/3;
+            }
 
             return sim;
         }
@@ -394,7 +390,7 @@ class Relation {
         const alignment = getSideAlignment(boxA, boxB);
 
         /* This coeficient determines how sensitively is alignment treated */
-        const alignmentThresholdCoeficient = 1.5; // this value was used in reference FitLayout implementation
+        const alignmentThresholdCoeficient = 1.5; //value from reference FitLayout implementation by code analysis
 
         /* Get (total) minimum of heights and widths of boxes */
         const minDimensionBoxA = Math.min(boxA.width, boxA.height);
@@ -403,7 +399,7 @@ class Relation {
         const alignmentThreshold = Math.floor(minimumTotal * alignmentThresholdCoeficient);
 
 
-        /* If they are not side aligned or distance between exceeds threshold */
+        /* If they are not side aligned or distance between exceeds alignment threshold */
         if (alignment == Alignment.none || this.absoluteDistance > alignmentThreshold){
             return alignmentScore;
         } else {

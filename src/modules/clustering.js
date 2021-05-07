@@ -14,8 +14,6 @@ const { Selector, SelectorDirection } = require('../structures/Selector');
 const { isBox, isCluster } = require('../structures/EntityType');
 const { exportFiles } = require('./exporter');
 
-const assert = (condition, message) => { if(!condition) throw Error('Assert failed: ' + (message || '')) };
-
 /* Calculate contents of entity (W * H) */
 const calcContents = (entity) => {return (entity.right - entity.left ) * (entity.bottom - entity.top);};
 

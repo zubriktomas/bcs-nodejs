@@ -12,7 +12,8 @@ const clustering = require('./modules/clustering');
 /* Import chromium from playwright */
 const { chromium } = require('playwright');
 
-const outputFolder = './output'
+/* Default output folder */
+const defaultOutputFolder = './output/';
 
 /* Parse input arguments */
 const argv = require('yargs/yargs')(process.argv.slice(2))
@@ -56,9 +57,11 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .alias('IM', 'ignore-images').boolean('IM')
   .default('IM', false).describe('IM', `Ignore images average color, use default grey (Extraction option)`)
   .alias('WVEC', 'weight-vector').nargs('WVEC', 1)
-  .default('WVEC', '[1,1,1]').describe('WVEC', `Use weight vector for similarity calculation`)
+  .default('WVEC', '[1,1,1]').describe('WVEC', `Use weight vector for similarity calculation [relDistW, shapeSimW, colorSimW]`)
   .alias('IURL', 'include-url-in-filename').boolean('IURL')
   .default('IURL', false).describe('IURL', 'Include URL in exported files filenames')
+  .alias('O', 'output-folder').nargs('O', 1)
+  .default('O', defaultOutputFolder).describe('H', 'Browser viewport height')
   .help('h').alias('h', 'help')
   .argv;
 
@@ -70,7 +73,7 @@ if (argv._.length !== 1) {
 
 /* Process weight vector from argument */
 try {
-  var weightVector = JSON.parse(argv.WVEC);
+  var weightVector = JSON.parse(argv.WVEC);  
   const isWeightVectorValueOK = (value) => value == parseFloat(value) && value >= 0 && value <= 1;
   if (weightVector.length != 3 || !isWeightVectorValueOK(weightVector[0]) || !isWeightVectorValueOK(weightVector[1]) || !isWeightVectorValueOK(weightVector[2])) {
     console.warn('Warning: Weight vector is invalid. Using default', [1, 1, 1]);
@@ -81,6 +84,10 @@ try {
 } catch (e) {
   console.warn('Warning: Weight vector is invalid. Using default', [1, 1, 1]);
   argv.WVEC = [1, 1, 1];
+}
+
+if(!argv.extended && argv.WVEC != [1,1,1]) {
+  console.warn('Warning: Weight vector has no effect in basic implemenation. Use --extended.');
 }
 
 /* Get all args to local variables */
@@ -143,10 +150,12 @@ if (argv.showInfo) {
   console.info("Info: [Argument] Export options:", argv.E);
   console.info("Info: [Argument] Ignore images (average color):", argv.IM);
   console.info("Info: [Argument] Include URL in filenames:", argv.IURL);
+  console.info("Info: [Argument] Output folder:", argv.O);
 
   if (argv.extended) {
     console.info("Info: [Argument] Remove containers:", argv.RC);
     console.info("Info: [Argument] Aggresive clustering:", argv.A);
+    console.info("Info: [Argument] Weighted vector:", argv.WVEC);
   }
 }
 
@@ -158,8 +167,6 @@ if (argv.showInfo) {
 
   /* Open new page in browser */
   const page = await browser.newPage();
-
-  var width = argv.W;
 
   /* Set viewport size specified by args */
   page.setViewportSize({
@@ -198,9 +205,6 @@ if (argv.showInfo) {
   /* Box Extraction Process - JavaScript code evaluated in web browser context */
   const extracted = await page.evaluate(async (ignoreImages) => {
 
-    // document.body.style.margin = "0px";
-    // document.body.style.padding = "0px";
-
     const t0 = performance.now();
     const boxes = await extractBoxes(document.body, ignoreImages);
     const t1 = performance.now();
@@ -217,7 +221,7 @@ if (argv.showInfo) {
 
   /* Capture screenshot of webpage in PNG format */
   if (argv.saveScreenshot || argv.export.includes(5) || argv.export.includes(6)) {
-    await page.screenshot({ path: `./output/webpage${includedUrl}.png`, fullPage: true });
+    await page.screenshot({ path: argv.O + `webpage${includedUrl}.png`, fullPage: true });
   }
 
   /* Close browser instance (no longer needed) */
