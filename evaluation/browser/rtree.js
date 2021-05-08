@@ -30,8 +30,8 @@ class RTree extends RBush {
     /* Create baseline segmentation with single segment (whole page) given by all RTree data */
     getBaselineWholePageSegment() {
         var segment = {};
-        segment.top = this.data.minY;
-        segment.left = this.data.minX;
+        segment.top = this.data.minY < 0 ? 0 : this.data.minY;
+        segment.left = this.data.minX < 0 ? 0 : this.data.minX;
         segment.bottom = this.data.maxY;
         segment.right = this.data.maxX;
         segment.width = segment.right - segment.left;

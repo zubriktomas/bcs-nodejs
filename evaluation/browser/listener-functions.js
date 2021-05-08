@@ -92,16 +92,9 @@ function addGroundTruthSegmentationToRTree(segmentationFilenames) {
     var segmentsGT = [];
     segmentDivs.forEach(segmentDiv => segmentsGT.push(convertDivGTToJsonSegment(segmentDiv)));
 
-    // for (const segmentDiv of segmentDivs) {
-    //     segmentsGT.push(convertDivGTToJsonSegment(segmentDiv));
-    // }
-
-    var gtSegments = window.tree.all().filter(e => e.type == 1 && e.segm == "GT");
+    var gtSegments = window.tree.all().filter(e => e.type == 1 && e.segm == "segmentationGT");
 
     gtSegments.forEach(segment => window.tree.remove(segment));
-    // for (const segment of gtSegments) {
-    //     window.tree.remove(segment);
-    // }
 
     if (segmentsGT.length) {
         window.tree.load(segmentsGT);

@@ -1,10 +1,10 @@
- /**
- * Project: Box Clustering Segmentation in Node.js
- * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
- * Year: 2021
- * License:  GNU GPLv3
- * Description: Extraction process of boxes from webpage (root node)
- */
+/**
+* Project: Box Clustering Segmentation in Node.js
+* Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
+* Year: 2021
+* License:  GNU GPLv3
+* Description: Extraction process of boxes from webpage (root node)
+*/
 
 const COLOR_GREY = "rgb(128, 128, 128)";
 
@@ -33,32 +33,29 @@ async function extractBoxes(node, ignoreImages) {
    */
   async function extract(node, ignoreImages) {
 
-    if(isTextNode(node))
-    {
+    if (isTextNode(node)) {
       boxes = boxes.concat(getTextBoxes(node));
     }
-    else if(isImageNode(node))
-    {
+    else if (isImageNode(node)) {
       boxes.push(await getImageBox(node, ignoreImages));
     }
     else {
       /* Skip excluded nodes */
-      if(isExcluded(node)) {
-          return;
+      if (isExcluded(node)) {
+        return;
       }
 
-      if(hasNoBranches(node))
-      {
+      if (hasNoBranches(node)) {
         /* Get smallest box and stop recursion */
         var smallest = getSmallest(node);
 
-        if(smallest == null) {
+        if (smallest == null) {
           return;
-        } else if(isTextNode(smallest)) {
+        } else if (isTextNode(smallest)) {
           boxes = boxes.concat(getTextBoxes(smallest));
-        } else if(isImageNode(smallest)) {
+        } else if (isImageNode(smallest)) {
           boxes.push(await getImageBox(smallest, ignoreImages));
-        } else if(isElementNode(smallest)) {
+        } else if (isElementNode(smallest)) {
           boxes.push(await getElementBox(smallest, ignoreImages));
         }
 
@@ -74,6 +71,31 @@ async function extractBoxes(node, ignoreImages) {
     }
   }
 }
+
+async function extractAllNodesAsBoxes(node, ignoreImages) {
+
+  /* List of extracted boxes */
+    var boxes = [];
+    var nodes = document.querySelectorAll("*");
+
+    for (const node of nodes) {
+      if (isExcluded(node)) {
+        continue;
+      }
+
+      if (isTextNode(node)) {
+        boxes = boxes.concat(getTextBoxes(node));
+      }
+      else if (isImageNode(node)) {
+        boxes.push(await getImageBox(node, ignoreImages));
+      } 
+      else if (isElementNode(node)) {
+        boxes.push(await getElementBox(node, ignoreImages));
+      }
+    }
+    return boxes;
+}
+
 
 /**
  * Get average color of background image of HTML element
@@ -92,19 +114,19 @@ async function getBgImgColorAsync(node) {
 
   var imageUrl, imageColor;
 
-  if(isImageNode(node)) {
+  if (isImageNode(node)) {
     imageUrl = node.currentSrc || node.src;
-  } else if(isElementNode(node)){
+  } else if (isElementNode(node)) {
     var bgImage = getStyle(node).backgroundImage;
     regex = /(?:\(['"]?)(.*?)(?:['"]?\))/,
-    /* Remove 'url('...')' from element background image CSS style */
-    imageUrl = regex.exec(bgImage)[1];
+      /* Remove 'url('...')' from element background image CSS style */
+      imageUrl = regex.exec(bgImage)[1];
   }
 
-  if(imageUrl.startsWith("http") || imageUrl.startsWith("data")){
-    try{
+  if (imageUrl.startsWith("http") || imageUrl.startsWith("data")) {
+    try {
       imageColor = await fac.getColorAsync(imageUrl);
-    } catch(e) {
+    } catch (e) {
       /* Return default color if image color cannot be extracted - CORS policy | extraction error */
       return COLOR_GREY;
     }
@@ -124,7 +146,7 @@ async function getBgImgColorAsync(node) {
  * @returns average color | black color (in case of FAC error)
  */
 function getBgImgColor(img) {
-  
+
   assert(isImageNode(img), "Function getBgImgColor() applicable only on imageNodes!");
 
   const fac = new FastAverageColor();
@@ -147,7 +169,7 @@ function getBgColor(node) {
  * @param {boolean} ignoreImage ignore avg color calculation, use default grey
  * @returns BoxInfo
  */
- async function getElementBox(node, ignoreImages) {
+async function getElementBox(node, ignoreImages) {
 
   assert(isElementNode(node), "Parameter in function getElementBox() has to be ElementNode!");
 
@@ -155,17 +177,17 @@ function getBgColor(node) {
 
   bbox = getBoundingBox(node);
 
-  if(hasBackgroundColor(node)) { 
+  if (hasBackgroundColor(node)) {
     color = getBgColor(node);
   } else if (hasBackgroundImage(node)) {
-    if(ignoreImages) {
+    if (ignoreImages) {
       color = COLOR_GREY;
     } else {
       color = await getBgImgColorAsync(node);
     }
   }
 
-  return new BoxInfo(bbox, color);
+  return new BoxInfo(bbox, color ? color : COLOR_GREY);
 }
 
 /**
@@ -179,15 +201,15 @@ async function getImageBox(node, ignoreImages) {
   assert(isImageNode(node));
 
   var bbox, color;
-  
+
   bbox = getBoundingBox(node);
 
-  if(ignoreImages) {
+  if (ignoreImages) {
     color = COLOR_GREY;
-  } else if((color = getBgImgColor(node)) == "rgb(0,0,0)") {
-      color = await getBgImgColorAsync(node);
+  } else if ((color = getBgImgColor(node)) == "rgb(0,0,0)") {
+    color = await getBgImgColorAsync(node);
   }
-    
+
   return new BoxInfo(bbox, color);
 }
 
@@ -199,7 +221,7 @@ function getTextBoxes(textNode) {
 
   assert(isTextNode(textNode), "Parameter in function saveTextBox() has to be TextNode!");
 
-  var color, bboxes, textBoxes=[];
+  var color, bboxes, textBoxes = [];
 
   /* Representative color of every text box is parent's color of text */
   color = getStyle(textNode.parentElement).color;
@@ -225,7 +247,7 @@ function getTextBoxes(textNode) {
  * @param {Node} node 
  * @returns 
  */
- function getBoundingBox(node) {
+function getBoundingBox(node) {
   assert(isElementNode(node));
 
   var bbox = node.getBoundingClientRect();
@@ -239,7 +261,7 @@ function getTextBoxes(textNode) {
  */
 function getBoundingBoxes(textNode) {
   assert(isTextNode(textNode));
-  
+
   /**
    * Check if bbox is valid (local function)
    * @param {*} bbox textnode bbox
@@ -249,10 +271,10 @@ function getBoundingBoxes(textNode) {
     var bboxParent = getBoundingBox(textNode.parentElement);
 
     /* Invalid if parent bbox is smaller than given text node */
-    if(bboxParent.width < bbox.width && bboxParent.height < bbox.height) {
+    if (bboxParent.width < bbox.width && bboxParent.height < bbox.height) {
       return true;
     }
-    else if( bbox.left < 0 || bbox.top < 0 || bbox.bottom < 0 || bbox.right < 0 || bbox.width== 0 || bbox.height == 0 ) {
+    else if (bbox.left < 0 || bbox.top < 0 || bbox.bottom < 0 || bbox.right < 0 || bbox.width == 0 || bbox.height == 0) {
       return true;
     } else {
       return false;
@@ -266,7 +288,7 @@ function getBoundingBoxes(textNode) {
   range.selectNodeContents(textNode);
 
   /* Check bbox of whole text node */
-  if(isInvalidbbox(range.getBoundingClientRect())) {
+  if (isInvalidbbox(range.getBoundingClientRect())) {
     return [];
   }
 
@@ -289,15 +311,15 @@ function getBoundingBoxes(textNode) {
  */
 function isTransparent(element) {
 
-    if(isImageNode(element)) {
-      return false;
-    }
+  if (isImageNode(element)) {
+    return false;
+  }
 
-    if(hasBackgroundColor(element) || hasBackgroundImage(element)) {
-      return false;
-    } else {
-      return true;
-    }
+  if (hasBackgroundColor(element) || hasBackgroundImage(element)) {
+    return false;
+  } else {
+    return true;
+  }
 }
 
 /**
@@ -307,29 +329,29 @@ function isTransparent(element) {
  */
 function isVisible(node) {
 
-    if (isElementNode(node)) {
-      var style = getStyle(node);
+  if (isElementNode(node)) {
+    var style = getStyle(node);
 
-      /* Element implicitly non-visible */
-      if(style.visibility == "hidden" || style.visibility == "collapse"){
-        return false;
-      }
-
-      /* Element implicitly non-visible */
-      if(style.display == "none"){
-        return false;
-      }
-
-    } else if (isTextNode(node)) {
-
-      /* Text non-visible - empty string | \n | \cr and so on */
-      if(node.nodeValue.trim() == "") {
-        return false;
-      }
+    /* Element implicitly non-visible */
+    if (style.visibility == "hidden" || style.visibility == "collapse") {
+      return false;
     }
 
-    /* Node supposed to be visible */
-    return true;
+    /* Element implicitly non-visible */
+    if (style.display == "none") {
+      return false;
+    }
+
+  } else if (isTextNode(node)) {
+
+    /* Text non-visible - empty string | \n | \cr and so on */
+    if (node.nodeValue.trim() == "") {
+      return false;
+    }
+  }
+
+  /* Node supposed to be visible */
+  return true;
 }
 
 /**
@@ -339,20 +361,18 @@ function isVisible(node) {
  */
 function isExcluded(node) {
 
-    /* List of excluded tag names */
-    var excludedTagNames = ["STYLE", "SCRIPT", "NOSCRIPT", "IFRAME", "OBJECT"];
+  /* List of excluded tag names */
+  var excludedTagNames = ["STYLE", "SCRIPT", "NOSCRIPT", "IFRAME", "OBJECT"];
 
-    if(isElementNode(node))
-    {
-        return excludedTagNames.includes(node.tagName);
-    }
-    else if(isTextNode(node))
-    {
-        return excludedTagNames.includes(node.parentElement.tagName);
-    }
-    else {
-        return true;
-    }
+  if (isElementNode(node)) {
+    return excludedTagNames.includes(node.tagName);
+  }
+  else if (isTextNode(node)) {
+    return excludedTagNames.includes(node.parentElement.tagName);
+  }
+  else {
+    return true;
+  }
 }
 
 /**
@@ -363,38 +383,38 @@ function hasNoBranches(node) {
 
   var child, childNodes = getChildNodes(node);
 
-  if(childNodes.length == 1){
+  if (childNodes.length == 1) {
 
     child = childNodes[0];
 
-    if(isTextNode(child)) {
+    if (isTextNode(child)) {
       return true;
     } else {
       return hasNoBranches(child);
     }
-  } 
+  }
   else if (childNodes.length == 0) {
     return true;
   } else {
     return false;
   }
 }
- 
+
 /**
  * Get smallest valid node from root node (according to BCS paper)
  * @param {Node} node 
  * @returns smallest node
- */  
- function getSmallest(node) {
+ */
+function getSmallest(node) {
 
   var lastChild = getLastChild(node);
 
-  if(isElementNode(lastChild) && isTransparent(lastChild)) {
-      return getParentWithBackground(lastChild);
+  if (isElementNode(lastChild) && isTransparent(lastChild)) {
+    return getParentWithBackground(lastChild);
   } else {
-      return lastChild;
+    return lastChild;
   }
-}  
+}
 
 /**
  * Get last one-child node of given node
@@ -403,34 +423,34 @@ function hasNoBranches(node) {
  */
 function getLastChild(node) {
 
-    var childNodes = getChildNodes(node);
-  
-    if(childNodes.length == 1) {
-        return getLastChild(childNodes[0]);
-    } else {
-        return node;
-    }
+  var childNodes = getChildNodes(node);
+
+  if (childNodes.length == 1) {
+    return getLastChild(childNodes[0]);
+  } else {
+    return node;
+  }
 }
-    
+
 /**
  * Get top (one-child) parent node with non-transparent background (recursive)
  * @param {Node} node 
  * @returns parent node with non-transparent bg | null (if does not exist)
  */
 function getParentWithBackground(node) {
-    
-    var parent = node.parentElement;
-    var isParentTransparent = isTransparent(parent);
 
-    if(hasNoBranches(parent) && !isParentTransparent) {
-        return parent;
-    } else if (!isParentTransparent) {
-        return getParentWithBackground(parent);
-    } else {
-        return null;
-    }
+  var parent = node.parentElement;
+  var isParentTransparent = isTransparent(parent);
+
+  if (hasNoBranches(parent) && !isParentTransparent) {
+    return parent;
+  } else if (!isParentTransparent) {
+    return getParentWithBackground(parent);
+  } else {
+    return null;
+  }
 }
-  
+
 /**
  * Get all valid (visible) child nodes of given node
  * @param {Node} node 
@@ -438,16 +458,16 @@ function getParentWithBackground(node) {
  */
 function getChildNodes(node) {
 
-    var validChildNodes = [], childNodes = node.childNodes;
+  var validChildNodes = [], childNodes = node.childNodes;
 
-    for (const childNode of childNodes) {
-      if(isVisible(childNode)) {
-        validChildNodes.push(childNode);
-      }
+  for (const childNode of childNodes) {
+    if (isVisible(childNode)) {
+      validChildNodes.push(childNode);
     }
-    return validChildNodes;
+  }
+  return validChildNodes;
 }
-  
+
 /* Helper functions */
 const isElementNode = (node) => node.nodeType == Node.ELEMENT_NODE;
 const isTextNode = (node) => node.nodeType == Node.TEXT_NODE;
@@ -460,13 +480,13 @@ const hasBackgroundColor = (node) => getStyle(node).backgroundColor != 'rgba(0, 
  * @param {Node} element 
  * @returns computed style of element
  */
- const getStyle = (element) => {return window.getComputedStyle(element, false)};
+const getStyle = (element) => { return window.getComputedStyle(element, false) };
 
- /**
-  * Assert condition and thow error if it false
-  * @param {boolean} condition 
-  * @param {string} message 
-  */
- const assert = (condition, message) => { 
-   if(!condition) throw Error('Assert failed: ' + (message || ''))
- };
+/**
+ * Assert condition and thow error if it false
+ * @param {boolean} condition 
+ * @param {string} message 
+ */
+const assert = (condition, message) => {
+  if (!condition) throw Error('Assert failed: ' + (message || ''))
+};

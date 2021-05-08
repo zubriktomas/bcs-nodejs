@@ -25,5 +25,6 @@
       this.height = bbox.height;
       this.color = color;
       this.id = `(t:${this.top},l:${this.left},b:${this.bottom},r:${this.right},c:${this.color})`;
+      this.type = 0;
     }
 }

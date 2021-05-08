@@ -112,12 +112,13 @@ function exportFiles(argv, data) {
 
     const includedUrl = argv.includedUrl;
 
-    const segmentsFilepathJSON = outputFolder + `segments${includedUrl}${argv.extended ? "-ex-":"-"}${argv.aggresive ? "A-":""}${argv.CT}.json`;
+    const segmentsFilepathJSON = outputFolder + `segments${includedUrl}${argv.extended ? "-ex-":"-"}${argv.aggresive ? "A-":""}${argv.CT}${argv.DT != 0 ? `-${argv.DT}` : ""}.json`;
     const webpageFilepathPNG = outputFolder + `webpage${includedUrl}.png`; 
     const boxesFilepathPNG = outputFolder + `boxes${includedUrl}.png`;
     const boxesFilepathJSON = outputFolder + `boxes${includedUrl}.json`;
     const segmentsFilepathPNG = outputFolder + `segments${includedUrl}.png`;
     const segmentsOverWebpagePNG = outputFolder + `segments-over-webpage${includedUrl}.png`;
+    const allNodesAsBoxesFilepathJSON = outputFolder + `allNodesAsBoxes${includedUrl}.json`;
 
     var pageDims = data.pageDims;
     var clustersList = createClusterListForExport(data.clustersMap);
@@ -177,7 +178,6 @@ function exportFiles(argv, data) {
         if (argv.showInfo) {
             console.info("Info: [Export] (6) All PNG and JSON files exported");
         }
-        return;
     }
 
     /* Export all segmentation steps as png files */
@@ -187,6 +187,13 @@ function exportFiles(argv, data) {
         }
         console.info("Warning: [Export] Exporting all segmentation steps. Can take a while. Please wait...");
         exportAllSegmentationSteps(data);
+    }
+
+    if (exportListString.includes(8)) {
+        if (argv.showInfo) {
+            console.info("Info: [Export] (8) All nodes as boxes to JSON");
+        }
+        exportBoxesToJson(data.allNodesAsBoxes, allNodesAsBoxesFilepathJSON);
     }
 }
 

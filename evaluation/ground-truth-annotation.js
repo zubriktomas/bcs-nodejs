@@ -142,6 +142,8 @@ const startAnnotator = async () => {
         var baseline = tree.getBaselineWholePageSegment();
         tree.insert(baseline);
 
+        console.log(baseline);
+
         /* Assign RTree to window for global access */
         window.tree = tree;
 

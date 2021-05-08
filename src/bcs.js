@@ -86,7 +86,8 @@ try {
   argv.WVEC = [1, 1, 1];
 }
 
-if(!argv.extended && argv.WVEC != [1,1,1]) {
+/* Check if weight vector was specified in basic implementation */
+if(!argv.extended && !argv.WVEC.every( (val, i, arr) => val === arr[0])) {
   console.warn('Warning: Weight vector has no effect in basic implemenation. Use --extended.');
 }
 
@@ -207,10 +208,12 @@ if (argv.showInfo) {
 
     const t0 = performance.now();
     const boxes = await extractBoxes(document.body, ignoreImages);
+    const allNodesAsBoxes = await extractAllNodesAsBoxes(document.body, ignoreImages);
     const t1 = performance.now();
 
     return {
       boxesList: boxes,
+      allNodesAsBoxes: allNodesAsBoxes,
       pageDims: {
         height: document.body.scrollHeight,
         width: document.body.scrollWidth
@@ -218,6 +221,8 @@ if (argv.showInfo) {
       time: t1 - t0
     };
   }, ignoreImages);
+
+  await page.waitForLoadState('networkidle');
 
   /* Capture screenshot of webpage in PNG format */
   if (argv.saveScreenshot || argv.export.includes(5) || argv.export.includes(6)) {
@@ -232,6 +237,8 @@ if (argv.showInfo) {
     console.info("Info: [Extract] Extraction time:", extractionTime, "ms");
     console.info("Info: [Segment] BCS implementation:", argv.extended ? "extended" : "basic");
   }
+
+  // console.log(extracted.boxesList.length, extracted.allNodesAsBoxes.length);
 
   /* Start Segmentation/Clustering Process */
   clustering.createSegmentation(extracted, argv);

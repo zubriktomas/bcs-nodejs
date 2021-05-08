@@ -32,6 +32,8 @@ class ClusteringManager {
         /* Assign arguments from main entry point */
         this.argv = argv;
 
+        this.allNodesAsBoxes = extracted.allNodesAsBoxes;
+
         /* Webpage dimension with defined full scrollWidth and full scrollHeight */
         this.pageDims = extracted.pageDims;
 
@@ -422,7 +424,8 @@ class ClusteringManager {
         var data = {
             boxesMap: this.boxesValid,
             clustersMap: this.clusters,
-            pageDims: this.pageDims
+            pageDims: this.pageDims,
+            allNodesAsBoxes: this.allNodesAsBoxes
         }
         return data;
     }    
