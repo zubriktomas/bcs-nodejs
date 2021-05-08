@@ -45,7 +45,8 @@ const startBoxVizualizer = async (data) => {
     window.clustersMap = new Map();
     window.relationsList = data.relations;
 
-    document.body.style.height = `${data.pageDims.height + 500}px`;
+    /* Page height is doubled (purposely), because it caused problems with scrolling, be aware of that */
+    document.body.style.height = `${data.pageDims.height * 2}px`;
     
     data.bestRel ? (window.bestRel = data.bestRel) : null;
 

@@ -139,6 +139,22 @@ class Box {
             }
         }
       }
+
+    /**
+     * Check if box contains box visually
+     * @param {Box} box 
+     * @returns true|false
+     */
+    containsVisually(box) {
+
+        /* Check if top left corner is inside box */
+        var topLeftInside = this.top <= box.top && this.left <= box.left;
+
+        /* Check if bottom right corner is inside box */
+        var bottomRightInside = this.bottom >= box.bottom && this.right >= box.right;
+
+        return topLeftInside && bottomRightInside;
+    }
 }
 
 module.exports = Box;

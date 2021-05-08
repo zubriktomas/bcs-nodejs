@@ -52,8 +52,6 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
     `)
   .alias('A', 'aggresive').boolean('A')
   .default('A', false).describe('A', `Aggresive clustering - try to cluster all overlapping clusters`)
-  .alias('RC', 'remove-containers').boolean('RC')
-  .default('RC', true).describe('RC', `Remove containers - boxes that visually contains other boxes`)
   .alias('IM', 'ignore-images').boolean('IM')
   .default('IM', false).describe('IM', `Ignore images average color, use default grey (Extraction option)`)
   .alias('WVEC', 'weight-vector').nargs('WVEC', 1)
@@ -103,11 +101,6 @@ urlSubstring = urlSubstring.replace(/\//g, '_');
 const includedUrl = argv.IURL ? `[${urlSubstring}]` : "";
 argv.includedUrl = includedUrl;
 
-if (argv.RC == false && argv.extended == false) {
-  console.warn('Warning: RC option can be used only in extended. Ignored.');
-  argv.RC = true;
-}
-
 if (argv.A == true && argv.extended == false) {
   console.warn('Warning: Aggresive option can be used only in extended. Ignored.');
   argv.A = false;
@@ -154,7 +147,6 @@ if (argv.showInfo) {
   console.info("Info: [Argument] Output folder:", argv.O);
 
   if (argv.extended) {
-    console.info("Info: [Argument] Remove containers:", argv.RC);
     console.info("Info: [Argument] Aggresive clustering:", argv.A);
     console.info("Info: [Argument] Weighted vector:", argv.WVEC);
   }
@@ -203,6 +195,8 @@ if (argv.showInfo) {
 
 
   var ignoreImages = argv.IM;
+
+  await page.waitForLoadState('domcontentloaded');
   /* Box Extraction Process - JavaScript code evaluated in web browser context */
   const extracted = await page.evaluate(async (ignoreImages) => {
 
@@ -221,8 +215,6 @@ if (argv.showInfo) {
       time: t1 - t0
     };
   }, ignoreImages);
-
-  await page.waitForLoadState('networkidle');
 
   /* Capture screenshot of webpage in PNG format */
   if (argv.saveScreenshot || argv.export.includes(5) || argv.export.includes(6)) {

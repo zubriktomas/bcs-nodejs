@@ -34,10 +34,10 @@ async function extractBoxes(node, ignoreImages) {
   async function extract(node, ignoreImages) {
 
     if (isTextNode(node)) {
-      boxes = boxes.concat(getTextBoxes(node));
+      if(isInViewport(node.parentElement)) boxes = boxes.concat(getTextBoxes(node));
     }
     else if (isImageNode(node)) {
-      boxes.push(await getImageBox(node, ignoreImages));
+      if(isInViewport(node)) boxes = boxes.concat(await getImageBox(node, ignoreImages));
     }
     else {
       /* Skip excluded nodes */
@@ -49,14 +49,16 @@ async function extractBoxes(node, ignoreImages) {
         /* Get smallest box and stop recursion */
         var smallest = getSmallest(node);
 
-        if (smallest == null) {
+        if(!smallest || !isInViewport(isElementNode(smallest) ? smallest : smallest.parentElement)) {
           return;
-        } else if (isTextNode(smallest)) {
+        }
+
+        if (isTextNode(smallest)) {
           boxes = boxes.concat(getTextBoxes(smallest));
         } else if (isImageNode(smallest)) {
-          boxes.push(await getImageBox(smallest, ignoreImages));
+          boxes = boxes.concat(await getImageBox(smallest, ignoreImages));
         } else if (isElementNode(smallest)) {
-          boxes.push(await getElementBox(smallest, ignoreImages));
+          boxes = boxes.concat(await getElementBox(smallest, ignoreImages));
         }
 
       } else {
@@ -84,13 +86,13 @@ async function extractAllNodesAsBoxes(node, ignoreImages) {
       }
 
       if (isTextNode(node)) {
-        boxes = boxes.concat(getTextBoxes(node));
+        if(isInViewport(node.parentElement)) boxes = boxes.concat(getTextBoxes(node));
       }
       else if (isImageNode(node)) {
-        boxes.push(await getImageBox(node, ignoreImages));
+        if(isInViewport(node)) boxes = boxes.concat(await getImageBox(node, ignoreImages));
       } 
       else if (isElementNode(node)) {
-        boxes.push(await getElementBox(node, ignoreImages));
+        if(isInViewport(node)) boxes = boxes.concat(await getElementBox(node, ignoreImages));
       }
     }
     return boxes;
@@ -177,6 +179,9 @@ async function getElementBox(node, ignoreImages) {
 
   bbox = getBoundingBox(node);
 
+  /* Return empty array, it will be concatenated with boxes, so wont be changed */
+  if(!bbox) return [];
+
   if (hasBackgroundColor(node)) {
     color = getBgColor(node);
   } else if (hasBackgroundImage(node)) {
@@ -203,6 +208,9 @@ async function getImageBox(node, ignoreImages) {
   var bbox, color;
 
   bbox = getBoundingBox(node);
+
+  /* Return empty array, it will be concatenated with boxes, so wont be changed */
+  if(!bbox) return [];
 
   if (ignoreImages) {
     color = COLOR_GREY;
@@ -243,6 +251,19 @@ function getTextBoxes(textNode) {
 }
 
 /**
+ * @param {*} element 
+ * @returns 
+ */
+function isInViewport(element) {
+  const rect = element.getBoundingClientRect();
+  return (
+      rect.top >= 0 &&
+      rect.left >= 0 &&
+      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  );
+}
+
+/**
  * Get bounding box of HTML node
  * @param {Node} node 
  * @returns 
@@ -251,7 +272,7 @@ function getBoundingBox(node) {
   assert(isElementNode(node));
 
   var bbox = node.getBoundingClientRect();
-  return bbox;
+  return bbox.width && bbox.height ? bbox : null;
 }
 
 /**
@@ -270,7 +291,9 @@ function getBoundingBoxes(textNode) {
   const isInvalidbbox = (bbox) => {
     var bboxParent = getBoundingBox(textNode.parentElement);
 
-    /* Invalid if parent bbox is smaller than given text node */
+    if(!bboxParent) return true;
+
+    /* Invalid if parent bbox is smaller than given text node, text is probably hidden in very small parent element */
     if (bboxParent.width < bbox.width && bboxParent.height < bbox.height) {
       return true;
     }
@@ -364,6 +387,10 @@ function isExcluded(node) {
   /* List of excluded tag names */
   var excludedTagNames = ["STYLE", "SCRIPT", "NOSCRIPT", "IFRAME", "OBJECT"];
 
+  if(!node){
+    return true;
+  }
+
   if (isElementNode(node)) {
     return excludedTagNames.includes(node.tagName);
   }
@@ -409,7 +436,9 @@ function getSmallest(node) {
 
   var lastChild = getLastChild(node);
 
-  if (isElementNode(lastChild) && isTransparent(lastChild)) {
+  console.log(lastChild);
+
+  if (lastChild != null && isElementNode(lastChild) && isTransparent(lastChild)) {
     return getParentWithBackground(lastChild);
   } else {
     return lastChild;
@@ -440,6 +469,9 @@ function getLastChild(node) {
 function getParentWithBackground(node) {
 
   var parent = node.parentElement;
+
+  if(!parent) return null;
+
   var isParentTransparent = isTransparent(parent);
 
   if (hasNoBranches(parent) && !isParentTransparent) {
@@ -469,9 +501,9 @@ function getChildNodes(node) {
 }
 
 /* Helper functions */
-const isElementNode = (node) => node.nodeType == Node.ELEMENT_NODE;
-const isTextNode = (node) => node.nodeType == Node.TEXT_NODE;
-const isImageNode = (node) => node.tagName == "IMG";
+const isElementNode = (node) => node && node.nodeType == Node.ELEMENT_NODE;
+const isTextNode = (node) => node && node.nodeType == Node.TEXT_NODE;
+const isImageNode = (node) => node && node.tagName == "IMG";
 const hasBackgroundImage = (node) => getStyle(node).backgroundImage != 'none';
 const hasBackgroundColor = (node) => getStyle(node).backgroundColor != 'rgba(0, 0, 0, 0)';
 

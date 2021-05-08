@@ -32,8 +32,6 @@ class ClusteringManager {
         /* Assign arguments from main entry point */
         this.argv = argv;
 
-        this.allNodesAsBoxes = extracted.allNodesAsBoxes;
-
         /* Webpage dimension with defined full scrollWidth and full scrollHeight */
         this.pageDims = extracted.pageDims;
 
@@ -48,15 +46,19 @@ class ClusteringManager {
         /* Create RTree from list of unclustered boxes */
         this.tree = this.createRTree(this.boxesUnclustered);
         
-        /* All valid boxes for vizualization purposes (not changed, static) */
+        /* All valid boxes for vizualization purposes (not changed throughout segmentation) */
         // !! Attention: also remove containers from boxesUnclustered !!
-        this.boxesValid = argv.RC ? this.removeContainers(this.boxesUnclustered) : new Map(this.boxesUnclustered.entries());
+        this.boxesValid = this.removeContainers(this.boxesUnclustered);
 
         /* Init empty map of clusters and relations */
         this.clusters = new Map();
         this.relations = new Map();
 
+        /* All segmentation steps data for vizualization purposes */
         this.allSegmentationSteps = [];
+
+        /* All (total) DOM nodes as boxes for evaluation purposes */
+        this.allNodesAsBoxes = extracted.allNodesAsBoxes;
     }
 
     /**
@@ -87,34 +89,40 @@ class ClusteringManager {
     }
 
     /**
-     * Remove containers boxes from extracted boxes
+     * Remove containers (or overlapping) boxes from extracted boxes
      * @param {*} boxesUnclustered 
      * @returns boxes without containers
      */
     removeContainers(boxesUnclustered) {
         var selector, overlapping;
 
-        /* Remove bigger containers that contain more than 2 boxes (probably background images) - elements with absolute positions */
+        /* Remove containers (probably absolute position background images) and overlapping boxes */
         for (let box of boxesUnclustered.values()) {
-            selector = Selector.fromEntity(box);
-            /* Narrowed by 2px for more precise results | originally it was 1px */
-            overlapping = this.tree.search(selector.narrowBy1Px().narrowBy1Px());
-            if(overlapping.length > 2) { 
-                boxesUnclustered.delete(box.id);
-                this.tree.remove(box);
-            }
-        }
 
-        /* Remove smaller containers now */
-        for (let box of boxesUnclustered.values()) {
+            /* Create selector for RTree */
             selector = Selector.fromEntity(box);
-            overlapping = this.tree.search(selector.narrowBy1Px().narrowBy1Px());
+
+            /* Get all overlapping boxes with current box */
+            overlapping = this.tree.search(selector.narrowBy1Px()).filter(oBox => oBox != box);
+
+            /* Box overlaps with some other box */
             if(overlapping.length > 1) { 
-                boxesUnclustered.delete(box.id);
-                this.tree.remove(box);
+
+                for (const oBox of overlapping) {
+                
+                    /* If it is contained visually, remove box (it is container) and break a loop */
+                    if(box.containsVisually(oBox)) {
+                        boxesUnclustered.delete(box.id);
+                        this.tree.remove(box);
+                        break;        
+                    /* If boxes overlap, oBox is nondeterministically chosen for deletion (how to choose which of overlapping boxes is 'better'?) */
+                    } else {
+                        boxesUnclustered.delete(oBox.id);
+                        this.tree.remove(oBox);        
+                    }
+                }
             }
         }
-
         return new Map(boxesUnclustered.entries());
     }
 
@@ -170,7 +178,7 @@ class ClusteringManager {
      * @returns relation with the smallest similarity value
      */
     getBestRelation() {
-        var bestRel, sim = Number.MAX_SAFE_INTEGER;
+        var bestRel = this.relations.values().next().value, sim = Number.MAX_SAFE_INTEGER;
 
         for (const rel of this.relations.values()) {
             if(rel.similarity <= sim ) {

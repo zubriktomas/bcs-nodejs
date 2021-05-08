@@ -40,7 +40,6 @@ const exportPNG = async (data) => {
             document.body.style.backgroundImage = `url("data:image/png;base64,${data.webpagePNG}")`;
         }
 
-        document.body.style.width = `${data.pageDims.width}px`;
         document.body.style.height = `${data.pageDims.height}px`;
 
         convertEntitiesToDivs(data.boxesList ? data.boxesList : data.clustersList);
