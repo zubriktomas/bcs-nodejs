@@ -40,7 +40,14 @@ const exportPNG = async (data) => {
             document.body.style.backgroundImage = `url("data:image/png;base64,${data.webpagePNG}")`;
         }
 
+        /* Set document height */
         document.body.style.height = `${data.pageDims.height}px`;
+
+        /* Regex taken and adapted from: https://stackoverflow.com/questions/14741291/how-to-check-if-the-css-background-color-is-white */
+        const isColorWhite = (color) => color.match(/^(?:white|#fff(?:fff)?|rgba?\(\s*255\s*,\s*255\s*,\s*255\s*(?:,\s*(1|0|0\.\d)\s*)?\))$/i);
+
+        /* Change white color to slightly greyer color, because boxes are not visible in vizualization */
+        const colorAlmostWhite =  "rgb(240, 240, 240)";
 
         convertEntitiesToDivs(data.boxesList ? data.boxesList : data.clustersList);
 
@@ -54,7 +61,7 @@ const exportPNG = async (data) => {
                 div.style.width = `${entity.width}px`;
                 div.style.position = 'absolute';
                 div.style.zIndex = 100;
-                div.style.backgroundColor = entity.type == 0 ? entity.color : "";
+                div.style.backgroundColor = entity.type == 0 ? (isColorWhite(entity.color) ? colorAlmostWhite : entity.color) : "";
                 div.style.border = entity.type == 1 ? "2px solid #FF0000" : "";
                 document.body.appendChild(div);
             }

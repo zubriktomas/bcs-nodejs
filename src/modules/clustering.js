@@ -106,7 +106,7 @@ class ClusteringManager {
             overlapping = this.tree.search(selector.narrowBy1Px()).filter(oBox => oBox != box);
 
             /* Box overlaps with some other box */
-            if(overlapping.length > 1) { 
+            if(overlapping.length > 0) { 
 
                 for (const oBox of overlapping) {
                 

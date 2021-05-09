@@ -256,7 +256,7 @@ class Relation {
 
             } else {
                 /* Basic implementation similarity calculation */
-                sim = (shapeSim + colorSim + relDist)/3;
+                sim = (relDist + shapeSim + colorSim)/3;
             }
 
             return sim;
