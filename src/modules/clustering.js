@@ -91,7 +91,7 @@ class ClusteringManager {
     /**
      * Remove containers (or overlapping) boxes from extracted boxes
      * @param {*} boxesUnclustered 
-     * @returns boxes without containers
+     * @returns boxes without containers/overlaps
      */
     removeContainers(boxesUnclustered) {
         var selector, overlapping;
@@ -115,7 +115,7 @@ class ClusteringManager {
                         boxesUnclustered.delete(box.id);
                         this.tree.remove(box);
                         break;        
-                    /* If boxes overlap, oBox is nondeterministically chosen for deletion (how to choose which of overlapping boxes is 'better'?) */
+                    /* If boxes overlap, oBox is chosen for deletion (how to choose which of overlapping boxes is 'better'?) */
                     } else {
                         boxesUnclustered.delete(oBox.id);
                         this.tree.remove(oBox);        
@@ -446,14 +446,14 @@ class ClusteringManager {
  */
 function createSegmentation(extracted, argv) {
     
-    if(argv.showInfo)
+    // if(argv.showInfo)
     console.time("Info: [Segment] Clustering time");
 
     var cm = new ClusteringManager(extracted, argv);
     cm.findAllRelations();
     cm.createClusters();
 
-    if(argv.showInfo)
+    // if(argv.showInfo)
     console.timeEnd("Info: [Segment] Clustering time");
 
     if(!argv.export.includes(0)) {

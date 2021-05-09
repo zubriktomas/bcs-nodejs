@@ -52,14 +52,16 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
     `)
   .alias('A', 'aggresive').boolean('A')
   .default('A', false).describe('A', `Aggresive clustering - try to cluster all overlapping clusters`)
-  .alias('IM', 'ignore-images').boolean('IM')
-  .default('IM', false).describe('IM', `Ignore images average color, use default grey (Extraction option)`)
+  .alias('IGIM', 'ignore-images').boolean('IGIM')
+  .default('IGIM', false).describe('IGIM', `Ignore images average color, use default grey (Extraction option)`)
   .alias('WVEC', 'weight-vector').nargs('WVEC', 1)
   .default('WVEC', '[1,1,1]').describe('WVEC', `Use weight vector for similarity calculation [relDistW, shapeSimW, colorSimW]`)
   .alias('IURL', 'include-url-in-filename').boolean('IURL')
   .default('IURL', false).describe('IURL', 'Include URL in exported files filenames')
   .alias('O', 'output-folder').nargs('O', 1)
   .default('O', defaultOutputFolder).describe('H', 'Browser viewport height')
+  .alias('CL', 'content-loading').nargs('CL', 1)
+  .default('CL', 0).describe('CL', 'Content loading option (wait for): 0 - networkidle (slower, more precise), 1 - domcontentloaded (faster, less precise)')
   .help('h').alias('h', 'help')
   .argv;
 
@@ -68,6 +70,11 @@ if (argv._.length !== 1) {
   console.error('<url> is required. Use -h for help.\n');
   process.exit(1);
 }
+
+if(argv.CL != 0 && argv.CL != 1) {
+  console.warn('Warning: Content loading option invalid. Using default', 0, 'networkidle');
+  argv.CL = 0;
+} 
 
 /* Process weight vector from argument */
 try {
@@ -142,7 +149,7 @@ if (argv.showInfo) {
   console.info("Info: [Argument] BCS implementation:", argv.extended ? "extended" : "basic");
   console.info("Info: [Argument] Vizualize step (iteration):", argv.VS);
   console.info("Info: [Argument] Export options:", argv.E);
-  console.info("Info: [Argument] Ignore images (average color):", argv.IM);
+  console.info("Info: [Argument] Ignore images (average color):", argv.IGIM);
   console.info("Info: [Argument] Include URL in filenames:", argv.IURL);
   console.info("Info: [Argument] Output folder:", argv.O);
 
@@ -194,9 +201,12 @@ if (argv.showInfo) {
   await page.addScriptTag({ url: 'https://unpkg.com/fast-average-color/dist/index.min.js' });
 
 
-  var ignoreImages = argv.IM;
+  /* Ignore images as variable for browser context */
+  var ignoreImages = argv.IGIM;
 
-  await page.waitForLoadState('domcontentloaded');
+  /* Wait for content loading state, specified by argument */
+  await page.waitForLoadState(argv.CL == 0 ? 'networkidle' : 'domcontentloaded');
+
   /* Box Extraction Process - JavaScript code evaluated in web browser context */
   const extracted = await page.evaluate(async (ignoreImages) => {
 

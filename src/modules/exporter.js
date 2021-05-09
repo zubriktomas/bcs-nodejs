@@ -62,14 +62,7 @@ const exportPNG = async (data) => {
 
     }, data);
 
-    // if (data.boxesList) {
-        await page.screenshot({ path: data.filepath, fullPage: true });
-    // } else if (data.clustersList && data.webpagePNG) {
-    //     await page.screenshot({ path: data.filepath, fullPage: true });
-    // } else if (data.clustersList) {
-    //     await page.screenshot({ path: data.filepath, fullPage: true });
-    // }
-
+    await page.screenshot({ path: data.filepath, fullPage: true });
     await browser.close();
 }
 
@@ -269,7 +262,6 @@ function tryToLoadFile(filePath, type) {
 
         } else {
             console.error(`Error: File ${filePath} does not exist!`);
-            // console.error(`       Returns 'null' (png) / '[]' (json, xml)`);
             return type == FileType.png ? null : [];
         }
     } catch (e) {
