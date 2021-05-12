@@ -177,11 +177,6 @@ if (argv.showInfo) {
   /* Load webpage by url */
   try {
     await page.goto(argv.url);
-    // await page.goto('http://cssbox.sf.net');
-    // await page.goto('https://en.wikipedia.org/wiki/Dyslalia', {waitUntil: 'domcontentloaded'});
-    // await page.goto('https://en.wikipedia.org/wiki/Coronavirus', {waitUntil: 'domcontentloaded'});
-    // await page.goto('http://localhost:8080/5colordivs.html', {waitUntil: 'domcontentloaded'});
-    // await page.goto('https://en.wikipedia.org/wiki/Goods_and_services', {waitUntil: 'domcontentloaded'});
   } catch (e) {
     console.error(`Error: Invalid URL '${argv.url}' Exit 1`);
     process.exit(1);
@@ -212,7 +207,7 @@ if (argv.showInfo) {
 
     const t0 = performance.now();
     const boxes = await extractBoxes(document.body, ignoreImages);
-    const allNodesAsBoxes = await extractAllNodesAsBoxes(document.body, ignoreImages);
+    const allNodesAsBoxes = await extractAllNodesAsBoxes(ignoreImages);
     const t1 = performance.now();
 
     return {

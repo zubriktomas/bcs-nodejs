@@ -307,12 +307,12 @@ class ClusteringManager {
         }
 
         /* Disacrd CC if visually contains any cluster in basic segmentation */
-        if(!this.argv.extended){
+        // if(!this.argv.extended){
             if(oClusters.length > 0) {
                 if(this.argv.debug) console.info("Info [Debug]: CC discarded immediately overlaps (contains) other cluster!");
                 return true;
             }
-        }
+        // }
 
         for (const oBox of oBoxes) {
             if(this.argv.debug) console.info("Info [Debug]: Overlapping box added to CC");

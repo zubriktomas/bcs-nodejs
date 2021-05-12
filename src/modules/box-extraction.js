@@ -34,10 +34,10 @@ async function extractBoxes(node, ignoreImages) {
   async function extract(node, ignoreImages) {
 
     if (isTextNode(node)) {
-      if(isInViewport(node.parentElement)) {boxes = boxes.concat(getTextBoxes(node)); console.log(node)};
+      boxes = boxes.concat(getTextBoxes(node)); console.log(node);
     }
     else if (isImageNode(node)) {
-      if(isInViewport(node)) boxes = boxes.concat(await getImageBox(node, ignoreImages));
+      boxes = boxes.concat(await getImageBox(node, ignoreImages));
     }
     else {
       /* Skip excluded nodes */
@@ -49,11 +49,9 @@ async function extractBoxes(node, ignoreImages) {
         /* Get smallest box and stop recursion */
         var smallest = getSmallest(node);
 
-        if(!smallest || !isInViewport(isElementNode(smallest) ? smallest : smallest.parentElement)) {
+        if(!smallest) {
           return;
         }
-
-        console.log(smallest);
 
         if (isTextNode(smallest)) {
           boxes = boxes.concat(getTextBoxes(smallest));
@@ -76,25 +74,25 @@ async function extractBoxes(node, ignoreImages) {
   }
 }
 
-async function extractAllNodesAsBoxes(node, ignoreImages) {
+async function extractAllNodesAsBoxes(ignoreImages) {
 
   /* List of extracted boxes */
     var boxes = [];
     var nodes = document.querySelectorAll("*");
 
     for (const node of nodes) {
-      if (isExcluded(node)) {
+      if (isExcluded(node) || !isVisible(node)) {
         continue;
       }
 
       if (isTextNode(node)) {
-        if(isInViewport(node.parentElement)) boxes = boxes.concat(getTextBoxes(node));
+        boxes = boxes.concat(getTextBoxes(node));
       }
       else if (isImageNode(node)) {
-        if(isInViewport(node)) boxes = boxes.concat(await getImageBox(node, ignoreImages));
+        boxes = boxes.concat(await getImageBox(node, ignoreImages));
       } 
       else if (isElementNode(node)) {
-        if(isInViewport(node)) boxes = boxes.concat(await getElementBox(node, ignoreImages));
+        boxes = boxes.concat(await getElementBox(node, ignoreImages));
       }
     }
     return boxes;
@@ -194,6 +192,7 @@ async function getElementBox(node, ignoreImages) {
     }
   }
 
+  /* Use representative box color, or default grey in case of IFRAME element */
   return new BoxInfo(bbox, color ? color : COLOR_GREY);
 }
 
@@ -349,6 +348,11 @@ function isTransparent(element) {
 function isVisible(node) {
 
   if (isElementNode(node)) {
+
+    if(!isInViewport(node)) {
+      return false;
+    }
+
     var style = getStyle(node);
 
     /* Element implicitly non-visible */
@@ -362,6 +366,10 @@ function isVisible(node) {
     }
 
   } else if (isTextNode(node)) {
+
+    if(!isInViewport(node.parentElement)) {
+      return false;
+    }
 
     /* Text non-visible - empty string | \n | \cr and so on */
     if (node.nodeValue.trim() == "") {
@@ -381,7 +389,7 @@ function isVisible(node) {
 function isExcluded(node) {
 
   /* List of excluded tag names */
-  var excludedTagNames = ["STYLE", "SCRIPT", "NOSCRIPT", "IFRAME", "OBJECT"];
+  var excludedTagNames = ["STYLE", "SCRIPT", "NOSCRIPT", "OBJECT"];
 
   if(!node){
     return true;
@@ -430,9 +438,15 @@ function hasNoBranches(node) {
  */
 function getSmallest(node) {
 
+  /* Return IFRAME node as smallest onechild node */
+  if(isIframe(node)) return node;
+
   var lastChild = getLastChild(node);
 
-  if (lastChild != null && isElementNode(lastChild) && isTransparent(lastChild)) {
+  /* Return IFRAME node as smallest onechild node */
+  if(isIframe(lastChild)) return lastChild;
+
+  if (lastChild && isElementNode(lastChild) && isTransparent(lastChild)) {
     return getParentWithBackground(lastChild);
   } else {
     return lastChild;
@@ -449,7 +463,8 @@ function getLastChild(node) {
   var childNodes = getChildNodes(node);
 
   if (childNodes.length == 1) {
-    return getLastChild(childNodes[0]);
+    var onlyChild = childNodes[0];
+    return isIframe(onlyChild) ? onlyChild : getLastChild(onlyChild);
   } else {
     return node;
   }
@@ -498,6 +513,7 @@ function getChildNodes(node) {
 const isElementNode = (node) => node && node.nodeType == Node.ELEMENT_NODE;
 const isTextNode = (node) => node && node.nodeType == Node.TEXT_NODE;
 const isImageNode = (node) => node && node.tagName == "IMG";
+const isIframe = (node) => isElementNode(node) && node.tagName == "IFRAME";
 const hasBackgroundImage = (node) => getStyle(node).backgroundImage != 'none';
 const hasBackgroundColor = (node) => getStyle(node).backgroundColor != 'rgba(0, 0, 0, 0)';
 
