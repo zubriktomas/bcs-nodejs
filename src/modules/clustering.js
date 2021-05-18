@@ -69,9 +69,9 @@ class ClusteringManager {
     reinitBoxes(boxesList) {
         var boxesMap = new Map();
 
-        for (const box of boxesList) {
-            var boxStruct = new Box(box);
-            boxesMap.set(boxStruct.id, boxStruct);            
+        for (const boxInfo of boxesList) {
+            var box = new Box(boxInfo);
+            boxesMap.set(box.id, box);            
         }
         return boxesMap;
     }
@@ -263,6 +263,9 @@ class ClusteringManager {
      */
     clusterDensityUnderThreshold(cc) {
 
+        /* Density Threshold can be used only in extended implementation */
+        if(this.argv.extended) return false;
+
         var ccContents = calcContents(cc);
 
         var ccBoxesContents = 0;
@@ -307,12 +310,12 @@ class ClusteringManager {
         }
 
         /* Disacrd CC if visually contains any cluster in basic segmentation */
-        // if(!this.argv.extended){
+        if(!this.argv.extended){
             if(oClusters.length > 0) {
                 if(this.argv.debug) console.info("Info [Debug]: CC discarded immediately overlaps (contains) other cluster!");
                 return true;
             }
-        // }
+        }
 
         for (const oBox of oBoxes) {
             if(this.argv.debug) console.info("Info [Debug]: Overlapping box added to CC");
@@ -446,14 +449,14 @@ class ClusteringManager {
  */
 function createSegmentation(extracted, argv) {
     
-    // if(argv.showInfo)
+    if(argv.showInfo)
     console.time("Info: [Segment] Clustering time");
 
     var cm = new ClusteringManager(extracted, argv);
     cm.findAllRelations();
     cm.createClusters();
 
-    // if(argv.showInfo)
+    if(argv.showInfo)
     console.timeEnd("Info: [Segment] Clustering time");
 
     if(!argv.export.includes(0)) {

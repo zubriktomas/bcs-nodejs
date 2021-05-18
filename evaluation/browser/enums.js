@@ -17,14 +17,6 @@
 /**
  * Enum for segmentation according to implementation
  */
-// var Segmentation = Object.freeze({
-//     reference: 'reference', // FitLayout puppeteer segmentation
-//     basic: 'basic',
-//     extended: 'extended',
-//     baseline: 'baseline', // abstract segmentation (one segment)
-//     GT: "GT" // ground truth segmentation
-// });
-
 var Segmentation = Object.freeze({
     segmentation1: 'segmentation1', // FitLayout puppeteer segmentation
     segmentation2: 'segmentation2',

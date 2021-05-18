@@ -13,7 +13,7 @@ const { buildHtmlTemplate } = require('./box-vizualizer');
 
 /* Constants */
 const FileType = Object.freeze({ png: 0, json: 1, xml: 2});
-const outputFolder = './output/';
+// const outputFolder = './output/';
 
 
 /* Export PNG files by data parameter */
@@ -110,6 +110,7 @@ function exportFiles(argv, data) {
     var exportListString = argv.export;
 
     const includedUrl = argv.includedUrl;
+    const outputFolder = argv.outputFolder;
 
     const segmentsFilepathJSON = outputFolder + `segments${includedUrl}${argv.extended ? "-ex-":"-"}${argv.aggresive ? "A-":""}${argv.CT}${argv.DT != 0 ? `-${argv.DT}` : ""}.json`;
     const webpageFilepathPNG = outputFolder + `webpage${includedUrl}.png`; 

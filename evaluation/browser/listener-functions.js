@@ -30,17 +30,14 @@ function selectFunctionByCodeKey(event, segmentations, segmentationFilenames) {
             break;
 
         case "Digit1":
-            // loadSegmentationReference(segmentations.reference);
             loadSegmentation(segmentations.segmentation1, Segmentation.segmentation1);
             break;
 
         case "Digit2":
-            // loadSegmentationBasic(segmentations.basic);
             loadSegmentation(segmentations.segmentation2, Segmentation.segmentation2);
             break;
 
         case "Digit3":
-            // loadExtendedSegmentation();
             loadSegmentation(segmentations.segmentation3, Segmentation.segmentation3);
             break;
 
@@ -105,8 +102,6 @@ function addGroundTruthSegmentationToRTree(segmentationFilenames) {
         window.notyf.error("No ground truth segments added! Previous deleted!");
     }
 
-    // gtSegments = window.tree.all().filter(e => e.type == 1 && e.segm == "GT");
-    // console.log(gtSegments);
 }
 
 /**
@@ -166,10 +161,6 @@ function exportGroundTruthSegmentsToJsonFile() {
 
     segmentDivs.forEach(segmentDiv => clusters.push(convertDivGTToJsonSegment(segmentDiv)));
 
-    // for (const segmentDiv of segmentDivs) {
-    //     clusters.push(convertDivGTToJsonSegment(segmentDiv));
-    // }
-
     const downloadJsonFile = jsonData => {
         // Creating a blob object from non-blob data using the Blob constructor
         const blob = new Blob([JSON.stringify(jsonData)], { type: 'application/json' });
@@ -210,26 +201,6 @@ function loadSegmentationGroundTruth(segmentsGT) {
     }
 }
 
-/**
- * Load segments from reference (FitLayout) segmentation/implementation as DIVS
- * @param {[]} segmentsReference 
- */
-// function loadSegmentationReference(segmentsReference) {
-
-//     var divsReference = document.querySelectorAll('.' + Segmentation.reference);
-
-//     if (divsReference.length == 0) {
-//         for (const segment of segmentsReference) {
-//             convertSegmentToDiv(segment, Segmentation.reference);
-//         }
-//         window.notyf.success("Reference segmentation loaded!");
-//     } else {
-//         for (const div of divsReference) {
-//             div.classList.toggle('hiddenDiv');
-//         }
-//     }
-// }
-
 function loadSegmentation(segments, segmentation) {
 
     var divsReference = document.querySelectorAll('.' + segmentation);
@@ -246,34 +217,6 @@ function loadSegmentation(segments, segmentation) {
     }
 }
 
-// /**
-//  * Load segments from basic segmentation/implementation as DIVS
-//  * @param {[]} segmentsBasic 
-//  */
-// function loadSegmentationBasic(segmentsBasic) {
-//     var divsBasic = document.querySelectorAll('.' + Segmentation.basic);
-
-//     if (divsBasic.length == 0) {
-//         for (const segment of segmentsBasic) {
-//             convertSegmentToDiv(segment, Segmentation.basic);
-//         }
-//         window.notyf.success("Basic segmentation loaded!");
-//     } else {
-//         for (const div of divsBasic) {
-//             div.classList.toggle('hiddenDiv');
-//         }
-//     }
-
-// }
-
-// /**
-//  * Load segments from extended segmentation/implementation as DIVS
-//  * @param {[]} segmentsExtended
-//  */
-// function loadExtendedSegmentation(segmentsExtended) {
-//     /** TODO */
-// }
-
 /**
  * Convert segment to div visual representation by segmentation (implementation) type
  * @param {} segment 
@@ -281,13 +224,6 @@ function loadSegmentation(segments, segmentation) {
  */
 function convertSegmentToDiv(segment, segmentation) {
     var color;
-    // switch (segmentation) {
-    //     case Segmentation.reference: color = "rgba(128, 0, 0, 0.5)"; break;
-    //     case Segmentation.basic: color = "rgba(0, 128, 0, 0.5)"; break;
-    //     case Segmentation.extended: color = "rgba(0, 0, 128, 0.5)"; break;
-    //     default: color = "rgba(0, 0, 0, 0.5)"; break;
-    // }
-
     switch (segmentation) {
         case Segmentation.segmentation1: color = "rgba(128, 0, 0, 0.5)"; break;
         case Segmentation.segmentation2: color = "rgba(0, 128, 0, 0.5)"; break;

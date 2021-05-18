@@ -26,7 +26,7 @@ async function extractBoxes(node, ignoreImages) {
   return boxes;
 
   /**
-   * Local recursive function for boxes extraction
+   * Local recursive function for boxes extraction with access to boxes array specified few lines above
    * @param {Node} node Root node
    * @param {boolean} ignoreImage ignore avg color calculation, use default grey
    * @returns void
@@ -62,6 +62,9 @@ async function extractBoxes(node, ignoreImages) {
         }
 
       } else {
+
+        console.log(node);  
+
         /* Get all valid child nodes */
         var childNodes = getChildNodes(node);
 

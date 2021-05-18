@@ -168,7 +168,7 @@ class Cluster {
                     /* Add deleted relation to relation delete set */
                     relDelSet.add(relToDel);
 
-                    /* If some neighbour was delete, we have to add candidate cluster (this) as neighbour of commited cluster */
+                    /* If some neighbour was deleted, we have to add candidate cluster (this) as neighbour of commited cluster */
                     relToAdd = commCluster.addNeighbour(this);
                     
                     /* Check if candidate cluster was actually added as neighbour */
