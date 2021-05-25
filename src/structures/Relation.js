@@ -2,7 +2,6 @@
 * Project: Box Clustering Segmentation in Node.js
 * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
 * Year: 2021
-* License:  GNU GPLv3
 * Description: Relation Strucutre for calculating similarity between given entities.
 */
 
@@ -360,6 +359,20 @@ class Relation {
         return cumulSimilarity;
     }
 
+    /**
+     * Author: Jan Zeleny
+     * Date: 2016-11-06
+     * Computation of alignment score between two semi-aligned boxes to improve segmentation accuracy
+     * Code version: 1.0
+     * Type: Source code
+     * URL: https://github.com/janzeleny/bcs/blob/master/src/main/java/org/fit/pis/PageAreaRelation.java
+     * Note: method computeAlignmentScore from above source adapted for JavaScript
+     * 
+     * Compute alignment score for two boxes
+     * @param {Box} boxA 
+     * @param {Box} boxB 
+     * @returns 
+     */
     computeAlignmentScore(boxA, boxB) {
 
         /* Enum Alignemnt */

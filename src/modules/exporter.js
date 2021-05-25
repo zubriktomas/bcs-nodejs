@@ -2,7 +2,6 @@
  * Project: Box Clustering Segmentation in Node.js
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
  * Year: 2021
- * License:  GNU GPLv3
  * Description: Box Vizualizer to show box neighbours, segments
  */
 
@@ -51,6 +50,10 @@ const exportPNG = async (data) => {
 
         convertEntitiesToDivs(data.boxesList ? data.boxesList : data.clustersList);
 
+        /**
+         * Append entities as DIV elements, it is different as in vizualizer
+         * @param {*} entities 
+         */
         function convertEntitiesToDivs(entities) {
 
             for (const entity of entities) {
@@ -73,7 +76,7 @@ const exportPNG = async (data) => {
     await browser.close();
 }
 
-/* Export all segmentation steps */
+/* Export all segmentation steps as PNG files, attention! very time consuming */
 const exportAllSegmentationSteps = async (data) => {
     const allSegmentationSteps = data.allSegmentationSteps;
     const browser = await chromium.launch({ headless: true })
@@ -197,6 +200,11 @@ function exportFiles(argv, data) {
     }
 }
 
+/**
+ * Create list of clusters from clusters Map
+ * @param {*} clustersMap 
+ * @returns 
+ */
 function createClusterListForExport(clustersMap) {
     const convertCluster = (c) => {
         var cluster = {};
@@ -218,12 +226,22 @@ function createClusterListForExport(clustersMap) {
     return clustersToExport;
 }
 
+/**
+ * Export clusters to JSON file 
+ * @param {*} clustersToExport 
+ * @param {*} filepath 
+ */
 function exportClustersToJson(clustersToExport, filepath) {
     writeFileSync(filepath, JSON.stringify(clustersToExport), (err) => {
         if (err) throw err;
     });
 }
 
+/**
+ * Create list of boxes from boxes Map
+ * @param {*} boxesMap 
+ * @returns 
+ */
 function createBoxesListForExport(boxesMap) {
     const convertBox = (b) => {
         var box = {};
@@ -245,6 +263,11 @@ function createBoxesListForExport(boxesMap) {
     return boxesToExport;
 }
 
+/**
+ * Export boxes to JSON file 
+ * @param {*} boxesToExport 
+ * @param {*} filepath 
+ */
 function exportBoxesToJson(boxesToExport, filepath) {
     writeFileSync(filepath, JSON.stringify(boxesToExport), (err) => {
         if (err) throw err;

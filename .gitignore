@@ -104,6 +104,6 @@ dist
 .tern-port
 
 # Generated PNG files
-*.png
+# *.png
 /output/*
 /input/*

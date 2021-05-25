@@ -2,7 +2,6 @@
  * Project: Box Clustering Segmentation in Node.js
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
  * Year: 2021
- * License:  GNU GPLv3
  * Description: RTree Structure adapted for Cluster and Box Structures
  */
 

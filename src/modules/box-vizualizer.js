@@ -2,7 +2,6 @@
  * Project: Box Clustering Segmentation in Node.js
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
  * Year: 2021
- * License:  GNU GPLv3
  * Description: Box Vizualizer for vizualizing boxes, its neighbours and clusters
  */
 
@@ -41,6 +40,7 @@ const startBoxVizualizer = async (data) => {
   /* Evaluate in browser context with loaded data from filesystem */
   await page.evaluate(async (data) => {
 
+    /* Init global variables in window */
     window.boxesMap = new Map();
     window.clustersMap = new Map();
     window.relationsList = data.relations;
@@ -50,10 +50,13 @@ const startBoxVizualizer = async (data) => {
     
     data.bestRel ? (window.bestRel = data.bestRel) : null;
 
+    /* Convert boxes and clusters to div elements */
     convertEntitiesToDivs(data.boxes);
     convertEntitiesToDivs(data.clusters ? data.clusters : []);
 
     var relAId, relBId;
+
+    /* If best relation exists (was specified), highlight it by RED color */
     if (data.bestRel) {
       relAId = data.bestRel.entityAId;
       relBId = data.bestRel.entityBId;
@@ -68,6 +71,10 @@ const startBoxVizualizer = async (data) => {
       document.getElementById(relBId).style.backgroundColor = "#FF1600";
     }
 
+    /**
+     * Change color of divs by its neighbour on mouse over
+     * @param {*} event mouseevent
+     */
     function handleMouseHoverEvent(event) {
       var boxFromMap = window.boxesMap.get(event.target.id);
       var clusterFromMap = window.clustersMap.get(event.target.id);
@@ -96,6 +103,10 @@ const startBoxVizualizer = async (data) => {
       }
     }
 
+    /**
+     * Convert entites to div elements
+     * @param {[]} entities entities in JSON collection
+     */
     function convertEntitiesToDivs(entities) {
 
       for (const entity of entities) {
@@ -123,6 +134,10 @@ const startBoxVizualizer = async (data) => {
   }, data);
 }
 
+/**
+ * Create HTML template for vizualization
+ * @returns html template
+ */
 function buildHtmlTemplate() {
   var header = `<style> body { margin: 0; padding:0; } </style>`;
 
@@ -135,6 +150,11 @@ function buildHtmlTemplate() {
           </html>`;
 }
 
+/**
+ * Convert data format from ClusteringManager context to format expected by vizualizer 
+ * @param {*} entity 
+ * @returns entity in vizualizer expected format
+ */
 function convertEntityForVizualizer(entity) {
   var eViz = {};
   eViz.left = entity.left;
