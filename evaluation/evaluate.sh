@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Tento subor bol pouzity na vyhodnotenie vysledkov a porovnanie vytvorenej implementacie
+# s referencnou implementaciou v Jave (FitLayout s backendom Puppeteer).
+# Je uvedeny pre uplnost a ukazku prace na vyhodnoteni. Jeho pouzitie vyzaduje dodatocne
+# manualne nastavenia a instalaciu FitLayout s puppeteerom. Navod na instalaciu FitLayout a 
+# navod na pouzitie su dostupne na odkaze: https://github.com/FitLayout/FitLayout
+
 # ************************** HELP *********************************************
 # Use as terminal variables for
 # bcsnodejs=ABS_PATH (path to bcs-nodejs folder)                $1 argument
