@@ -1,17 +1,18 @@
 /**
+ * Project: Box Clustering Segmentation in Node.js
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
- * Date: 2021-05-01
- * 
+ * Year: 2021
+ * Description: Ground Truth annotation module
  */
 
 const { chromium } = require('playwright');
-const { readFileSync, existsSync } = require('fs');
+const { readFileSync } = require('fs');
 const sizeOfImage = require('image-size');
 const { tryToLoadFile, FileType } = require('../src/modules/exporter');
 const { areaTreeParse } = require('./areatree-parser');
 const path = require('path');
 
-/* Constants */
+/* Constants for filepaths */
 const bcsOutputFolder = './../output/';
 const gtAnnotatorOutputFolder = './output/';
 const webpageFilepathPNG = bcsOutputFolder + 'webpage.png'; 

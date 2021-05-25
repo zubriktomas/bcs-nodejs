@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<areaTree>
+    <area id="x0" x1="0" y1="0" x2="1183" y2="934" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        <area id="x1" x1="16" y1="22" x2="142" y2="56" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+        <area id="x2" x1="197" y1="147" x2="1112" y2="180" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+        <area id="x3" x1="23" y1="155" x2="139" y2="619" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+        <area id="x4" x1="362" y1="228" x2="967" y2="364" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+        <area id="x5" x1="202" y1="414" x2="292" y2="430" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+        <area id="x6" x1="203" y1="447" x2="824" y2="654" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+        <area id="x7" x1="210" y1="657" x2="660" y2="671" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+        <area id="x8" x1="203" y1="689" x2="358" y2="714" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+        <area id="x9" x1="210" y1="717" x2="634" y2="731" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+        <area id="x10" x1="374" y1="861" x2="846" y2="871" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+        <area id="x11" x1="566" y1="879" x2="653" y2="909" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+        <area id="x12" x1="8" y1="920" x2="8" y2="934" background="" fontsize="0.0" fontweight="0.0" fontstyle="0.0" tags="">
+        </area>
+    </area>
+</areaTree>

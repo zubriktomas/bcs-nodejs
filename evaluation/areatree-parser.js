@@ -1,10 +1,11 @@
 /**
+ * Project: Box Clustering Segmentation in Node.js
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
- * Date: 2021-05-01
- * 
+ * Year: 2021
+ * Description: Module for parsing FitLayout XML format (areaTree)
  */
 
-const { readFileSync, writeFileSync } = require('fs');
+const { writeFileSync } = require('fs');
 const parser = require('xml2json');
 const { tryToLoadFile, FileType } = require('../src/modules/exporter');
 
@@ -22,7 +23,6 @@ function convertAreaToSegment(area) {
     segment.width = segment.right - segment.left;
     segment.height = segment.bottom - segment.top;
     segment.type = 1;
-    // segment.segm = 'reference';
     return segment;
 }
 
@@ -32,7 +32,6 @@ function convertAreaToSegment(area) {
  */
 function areaTreeParse(inFile, outFile) {
 
-    // const xmlData = readFileSync(inFile).toString();
     const xmlData = tryToLoadFile(inFile, FileType.xml);
     if(!xmlData.length) return null; 
     const json = JSON.parse(parser.toJson(xmlData));

@@ -1,7 +1,8 @@
 /**
+ * Project: Box Clustering Segmentation in Node.js
  * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
- * Date: 2021-05-01
- * 
+ * Year: 2021
+ * Description: Listener functions logic of metrics calculation and annotations
  */
 
 /**
@@ -82,6 +83,7 @@ function addGroundTruthDiv() {
 
 /**
  * Insert all created ground truth segments to RTree for metrics calculations
+ * @param {[]} segmentationFilenames 
  */
 function addGroundTruthSegmentationToRTree(segmentationFilenames) {
     var segmentDivs = document.querySelectorAll('.resize-drag');
