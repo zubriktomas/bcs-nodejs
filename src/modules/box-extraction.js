@@ -2,10 +2,10 @@
 * Project: Box Clustering Segmentation in Node.js
 * Author: Tomas Zubrik, xzubri00@stud.fit.vutbr.cz
 * Year: 2021
-* License:  GNU GPLv3
 * Description: Extraction process of boxes from webpage (root node)
 */
 
+/* Default color used in case of error, exception or when color of images is ignored */
 const COLOR_GREY = "rgb(128, 128, 128)";
 
 /**
@@ -49,7 +49,7 @@ async function extractBoxes(node, ignoreImages) {
         /* Get smallest box and stop recursion */
         var smallest = getSmallest(node);
 
-        if(!smallest) {
+        if (!smallest) {
           return;
         }
 
@@ -63,7 +63,7 @@ async function extractBoxes(node, ignoreImages) {
 
       } else {
 
-        console.log(node);  
+        console.log(node);
 
         /* Get all valid child nodes */
         var childNodes = getChildNodes(node);
@@ -77,28 +77,33 @@ async function extractBoxes(node, ignoreImages) {
   }
 }
 
+/**
+ * Extract all visible nodes from webpage (evaluation purposes)
+ * @param {*} ignoreImages 
+ * @returns all DOM nodes as boxes
+ */
 async function extractAllNodesAsBoxes(ignoreImages) {
 
   /* List of extracted boxes */
-    var boxes = [];
-    var nodes = document.querySelectorAll("*");
+  var boxes = [];
+  var nodes = document.querySelectorAll("*");
 
-    for (const node of nodes) {
-      if (isExcluded(node) || !isVisible(node)) {
-        continue;
-      }
-
-      if (isTextNode(node)) {
-        boxes = boxes.concat(getTextBoxes(node));
-      }
-      else if (isImageNode(node)) {
-        boxes = boxes.concat(await getImageBox(node, ignoreImages));
-      } 
-      else if (isElementNode(node)) {
-        boxes = boxes.concat(await getElementBox(node, ignoreImages));
-      }
+  for (const node of nodes) {
+    if (isExcluded(node) || !isVisible(node)) {
+      continue;
     }
-    return boxes;
+
+    if (isTextNode(node)) {
+      boxes = boxes.concat(getTextBoxes(node));
+    }
+    else if (isImageNode(node)) {
+      boxes = boxes.concat(await getImageBox(node, ignoreImages));
+    }
+    else if (isElementNode(node)) {
+      boxes = boxes.concat(await getElementBox(node, ignoreImages));
+    }
+  }
+  return boxes;
 }
 
 
@@ -111,11 +116,14 @@ async function getBgImgColorAsync(node) {
 
   assert(isElementNode(node));
 
-  /* Local constant */
-  // const COLOR_GREY = "rgb(128, 128, 128)";
-
-  /* Module for average color extraction */
-  const fac = new FastAverageColor();
+  var fac;
+  /* Some webpages can block external js modules */
+  try {
+    /* Module for average color extraction */
+    fac = new FastAverageColor();
+  } catch (e) {
+    return COLOR_GREY;
+  }
 
   var imageUrl, imageColor;
 
@@ -129,6 +137,7 @@ async function getBgImgColorAsync(node) {
   }
 
   if (imageUrl.startsWith("http") || imageUrl.startsWith("data")) {
+
     try {
       imageColor = await fac.getColorAsync(imageUrl);
     } catch (e) {
@@ -154,7 +163,16 @@ function getBgImgColor(img) {
 
   assert(isImageNode(img), "Function getBgImgColor() applicable only on imageNodes!");
 
-  const fac = new FastAverageColor();
+  var fac;
+
+  /* It can be possible that FAC will not be appended in webpage as script */
+  try {
+    fac = new FastAverageColor();
+  } catch (error) {
+    /* Return default color, the safest way */
+    return COLOR_GREY;
+  }
+
   var imageColor = fac.getColor(img.src);
   return imageColor.rgb;
 }
@@ -178,12 +196,14 @@ async function getElementBox(node, ignoreImages) {
 
   assert(isElementNode(node), "Parameter in function getElementBox() has to be ElementNode!");
 
+  if (!isInViewport(node)) return [];
+
   var bbox, color;
 
   bbox = getBoundingBox(node);
 
   /* Return empty array, it will be concatenated with boxes, so wont be changed */
-  if(!bbox) return [];
+  if (!bbox) return [];
 
   if (hasBackgroundColor(node)) {
     color = getBgColor(node);
@@ -193,10 +213,12 @@ async function getElementBox(node, ignoreImages) {
     } else {
       color = await getBgImgColorAsync(node);
     }
+  } else {
+    color = COLOR_GREY;
   }
 
   /* Use representative box color, or default grey in case of IFRAME element */
-  return new BoxInfo(bbox, color ? color : COLOR_GREY);
+  return new BoxInfo(bbox, colorFormatRGB(color));
 }
 
 /**
@@ -209,20 +231,24 @@ async function getImageBox(node, ignoreImages) {
 
   assert(isImageNode(node));
 
+  if (!isInViewport(node)) return [];
+
   var bbox, color;
 
   bbox = getBoundingBox(node);
 
   /* Return empty array, it will be concatenated with boxes, so wont be changed */
-  if(!bbox) return [];
+  if (!bbox) return [];
 
   if (ignoreImages) {
     color = COLOR_GREY;
   } else if ((color = getBgImgColor(node)) == "rgb(0,0,0)") {
     color = await getBgImgColorAsync(node);
+  } else {
+    color = COLOR_GREY;
   }
 
-  return new BoxInfo(bbox, color);
+  return new BoxInfo(bbox, colorFormatRGB(color));
 }
 
 /**
@@ -233,16 +259,18 @@ function getTextBoxes(textNode) {
 
   assert(isTextNode(textNode), "Parameter in function saveTextBox() has to be TextNode!");
 
-  var color, bboxes, textBoxes = [];
+  if (!isInViewport(textNode.parentElement)) return [];
+
+  var colorFormatted, bboxes, textBoxes = [];
 
   /* Representative color of every text box is parent's color of text */
-  color = getStyle(textNode.parentElement).color;
+  colorFormatted = colorFormatRGB(getStyle(textNode.parentElement).color);
 
   /* Get multiple bounding boxes - text node can be wrapped into multiple lines */
   bboxes = getBoundingBoxes(textNode);
 
   for (const bbox of bboxes) {
-    textBoxes.push(new BoxInfo(bbox, color));
+    textBoxes.push(new BoxInfo(bbox, colorFormatted));
   }
 
   return textBoxes;
@@ -255,9 +283,9 @@ function getTextBoxes(textNode) {
 function isInViewport(element) {
   const rect = element.getBoundingClientRect();
   return (
-      rect.top >= 0 &&
-      rect.left >= 0 &&
-      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
   );
 }
 
@@ -289,7 +317,7 @@ function getBoundingBoxes(textNode) {
   const isInvalidbbox = (bbox) => {
     var bboxParent = getBoundingBox(textNode.parentElement);
 
-    if(!bboxParent) return true;
+    if (!bboxParent) return true;
 
     /* Invalid if parent bbox is smaller than given text node, text is probably hidden in very small parent element */
     if (bboxParent.width < bbox.width && bboxParent.height < bbox.height) {
@@ -352,10 +380,6 @@ function isVisible(node) {
 
   if (isElementNode(node)) {
 
-    if(!isInViewport(node)) {
-      return false;
-    }
-
     var style = getStyle(node);
 
     /* Element implicitly non-visible */
@@ -369,10 +393,6 @@ function isVisible(node) {
     }
 
   } else if (isTextNode(node)) {
-
-    if(!isInViewport(node.parentElement)) {
-      return false;
-    }
 
     /* Text non-visible - empty string | \n | \cr and so on */
     if (node.nodeValue.trim() == "") {
@@ -394,7 +414,7 @@ function isExcluded(node) {
   /* List of excluded tag names */
   var excludedTagNames = ["STYLE", "SCRIPT", "NOSCRIPT", "OBJECT"];
 
-  if(!node){
+  if (!node) {
     return true;
   }
 
@@ -442,12 +462,12 @@ function hasNoBranches(node) {
 function getSmallest(node) {
 
   /* Return IFRAME node as smallest onechild node */
-  if(isIframe(node)) return node;
+  if (isIframe(node)) return node;
 
   var lastChild = getLastChild(node);
 
   /* Return IFRAME node as smallest onechild node */
-  if(isIframe(lastChild)) return lastChild;
+  if (isIframe(lastChild)) return lastChild;
 
   if (lastChild && isElementNode(lastChild) && isTransparent(lastChild)) {
     return getParentWithBackground(lastChild);
@@ -482,7 +502,7 @@ function getParentWithBackground(node) {
 
   var parent = node.parentElement;
 
-  if(!parent) return null;
+  if (!parent) return null;
 
   var isParentTransparent = isTransparent(parent);
 
@@ -534,4 +554,35 @@ const getStyle = (element) => { return window.getComputedStyle(element, false) }
  */
 const assert = (condition, message) => {
   if (!condition) throw Error('Assert failed: ' + (message || ''))
+};
+
+/**
+ * Convert color to `rgb(n, n, n)` if it is in hex
+ * @param {*} color 
+ * @returns rgb string
+ */
+const colorFormatRGB = (color) => {
+
+  /**
+   * Author: Tim Down
+   * Date: 2012-12-03
+   * Version of hexToRgb() that also parses a shorthand hex triplet
+   * Type: Source code
+   * URL: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
+   * 
+   */
+  const hexToRgb = hex =>
+    hex.replace(/^#?([a-f\d])([a-f\d])([a-f\d])$/i,
+      (m, r, g, b) => '#' + r + r + g + g + b + b)
+      .substring(1).match(/.{2}/g)
+      .map(x => parseInt(x, 16));
+
+  if (color.startsWith("#")) {
+    var rgb = hexToRgb(color);
+    return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+  } else if (color.startsWith("rgb")) {
+    return color;
+  } else {
+    return COLOR_GREY;
+  }
 };
